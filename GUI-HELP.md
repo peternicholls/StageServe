@@ -1,5 +1,7 @@
 # 20i Stack GUI Manager
 
+The GUI is experimental and not fully developed yet. Prefer the shell commands for the most reliable workflow.
+
 ## 🚀 Usage
 
 From any project directory, simply run:
@@ -8,7 +10,7 @@ From any project directory, simply run:
 20i-gui
 ```
 
-This gives you an interactive menu with these options:
+This currently gives you an interactive menu with these options:
 
 ### 📋 Menu Options:
 
@@ -32,12 +34,11 @@ This gives you an interactive menu with these options:
    - Follow real-time logs for selected project
    - Press Ctrl+C to stop following
 
-## 🎯 Perfect For:
+## 🎯 Current Use Cases:
 
-- **Quick project switching** without remembering commands
-- **Beginners** who prefer menus over command line
-- **Visual confirmation** of what's running
-- **Project demos** with clean interface
+- **Basic project switching** without remembering commands
+- **Lightweight inspection** of what is running
+- **Trying the experimental menu flow** while the shell commands remain primary
 
 ## 🛠 Integration with Existing Workflow:
 
@@ -55,11 +56,20 @@ Your existing aliases still work perfectly:
   ```
 
 - **Project Settings**: Create `.20i-local` in your project root:
-  ```bash
-  export HOST_PORT=8080
-  export MYSQL_DATABASE=myproject_db
-  ```
+
+   ```bash
+   export HOST_PORT=8080
+   export PHP_VERSION=8.4
+   export MYSQL_DATABASE=myproject_db
+   ```
+
+- **One-off CLI override**: Start with a different PHP version without editing project config:
+
+   ```bash
+   20i-up --php-version 8.4
+   20i-up version=8.4
+   ```
 
 - **From Anywhere**: The `20i-gui` command works from any project directory
 
-Perfect complement to your powerful shell-based workflow! 🎉
+Use it as a secondary option alongside the shell workflow while the GUI is still being developed.

@@ -1,6 +1,6 @@
 # 🚀 20i Stack Manager - macOS Automation
 
-This automation provides GUI interfaces to manage your 20i Docker stack on macOS.
+This automation provides experimental GUI interfaces to manage your 20i Docker stack on macOS.
 
 ## 📱 What You Get
 

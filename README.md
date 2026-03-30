@@ -2,7 +2,7 @@
 
 ## Overview
 A reusable, centralized Docker development stack for PHP projects using:
-- **PHP 8.4** with FPM on Alpine Linux, a global `phpunit` binary, and Python 3 + pip
+- **PHP 8.5** with FPM on Alpine Linux, a global `phpunit` binary, and Python 3 + pip
 - **Nginx** as reverse proxy
 - **MariaDB** for database
 - **phpMyAdmin** for database management
@@ -12,10 +12,14 @@ A reusable, centralized Docker development stack for PHP projects using:
 ### Shell Commands (Recommended)
 ```bash
 # From any project directory:
-dcu          # Start stack (uses current directory)
-dcd          # Stop stack
-20i          # View status
-20i-gui      # Interactive menu
+20i-up          # Start stack (uses current directory)
+20i-down        # Stop stack
+20i-status      # View status
+20i-gui         # Interactive menu [not fully developed yet]
+
+# Optional PHP version override for this launch
+20i-up --php-version 8.4
+20i-up version=8.4
 ```
 
 ### Manual Usage
@@ -32,7 +36,7 @@ docker compose -f $HOME/docker/20i-stack/docker-compose.yml up -d
 ✅ **Project Isolation** - Each project gets isolated containers  
 ✅ **Environment Variables** - Fully configurable via .env or .20i-local  
 ✅ **Shell Integration** - Convenient aliases and functions  
-✅ **GUI Interface** - Interactive menu system  
+⚠️ **GUI Interface** - Experimental interactive menu, not fully developed yet  
 ✅ **Live Reloading** - Volume mounting for development  
 
 ## Access Points
@@ -52,7 +56,7 @@ docker compose -f $HOME/docker/20i-stack/docker-compose.yml up -d
 ### Global Settings (.env.example)
 ```bash
 HOST_PORT=80
-PHP_VERSION=8.4
+PHP_VERSION=8.5
 MYSQL_VERSION=10.6
 MYSQL_PORT=3306
 PMA_PORT=8081
@@ -62,9 +66,16 @@ PMA_PORT=8081
 Create in your project root:
 ```bash
 export HOST_PORT=8080
+export PHP_VERSION=8.4
 export MYSQL_DATABASE=myproject_db
 export MYSQL_USER=projectuser
 export MYSQL_PASSWORD=projectpass
+```
+
+CLI overrides take precedence for a single run:
+```bash
+20i-up --php-version 8.4
+20i-up version=8.4
 ```
 
 ## Architecture
@@ -80,11 +91,11 @@ export MYSQL_PASSWORD=projectpass
 20i-stack/
 ├── docker/
 │   ├── apache/
-│   │   ├── Dockerfile          # PHP 8.4 + extensions
+│   │   ├── Dockerfile          # PHP 8.5 + extensions
 │   │   └── php.ini            # PHP configuration
 │   └── nginx.conf.tmpl        # Nginx reverse proxy config
 ├── docker-compose.yml         # Main stack definition
-├── 20i-gui                   # Interactive CLI menu
+├── 20i-gui                   # Experimental interactive CLI menu
 ├── .env.example              # Default configuration
 └── README.md                 # This file
 ```
@@ -128,7 +139,7 @@ dcu                    # Start stack for new project
 
 ### Interactive Management
 ```bash
-20i-gui               # Opens menu with start/stop/status/logs options
+20i-gui               # Experimental menu for basic stack actions
 ```
 
 ## Troubleshooting
@@ -151,7 +162,7 @@ dcu
 ### View Logs
 ```bash
 20i-logs              # Follow all logs
-20i-gui               # Menu option for specific service logs
+20i-gui               # Experimental menu option for specific service logs
 ```
 
 ### PHPUnit
@@ -174,7 +185,7 @@ docker compose -f $HOME/docker/20i-stack/docker-compose.yml exec apache pip --ve
 
 - Docker Desktop for Mac
 - Bash/Zsh shell
-- Optional: `dialog` package for prettier GUI menus
+- Optional: `dialog` package for prettier experimental GUI menus
 
 ## License
 
