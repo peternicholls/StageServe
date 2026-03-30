@@ -12,6 +12,8 @@ RUN apk add --no-cache \
     libwebp-dev \
     libxml2-dev \
     libzip-dev \
+    python3 \
+    py3-pip \
     zip \
     unzip \
     curl-dev \
@@ -30,7 +32,9 @@ RUN apk add --no-cache \
     mbstring \
     exif \
     bcmath \
-    opcache
+    opcache \
+    && ln -sf /usr/bin/python3 /usr/local/bin/python \
+    && ln -sf /usr/bin/pip3 /usr/local/bin/pip
 
 # Note: fileinfo and iconv are already built into PHP 8.4
 # No need to install them separately

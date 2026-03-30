@@ -2,7 +2,7 @@
 
 ## Overview
 A reusable, centralized Docker development stack for PHP projects using:
-- **PHP 8.4** with FPM on Alpine Linux and a global `phpunit` binary
+- **PHP 8.4** with FPM on Alpine Linux, a global `phpunit` binary, and Python 3 + pip
 - **Nginx** as reverse proxy
 - **MariaDB** for database
 - **phpMyAdmin** for database management
@@ -161,6 +161,13 @@ docker compose -f $HOME/docker/20i-stack/docker-compose.yml build apache
 
 # Run PHPUnit inside the PHP container
 docker compose -f $HOME/docker/20i-stack/docker-compose.yml exec apache phpunit --version
+```
+
+### Python
+```bash
+# Run Python inside the PHP container
+docker compose -f $HOME/docker/20i-stack/docker-compose.yml exec apache python --version
+docker compose -f $HOME/docker/20i-stack/docker-compose.yml exec apache pip --version
 ```
 
 ## Requirements
