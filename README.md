@@ -190,11 +190,8 @@ This keeps the shell-first workflow intact while removing direct per-project web
 │   ├── migration.md          # old-to-new workflow guide
 │   ├── runtime-contract.md   # command semantics and state model
 │   └── plan.md               # implementation plan and progress
-├── AUTOMATION-README.md      # macOS GUI automation docs
-└── GUI-HELP.md               # GUI wrapper notes (CLI leads)
+└── README.md
 ```
-
-The `20i-gui-depricated` script in the repo root is the original pre-Phase-1 GUI wrapper. It is kept for reference but does not integrate with the shared gateway or project registry; use `stacklane` instead.
 
 ## Shell Integration
 
@@ -267,7 +264,6 @@ docker volume ls
 
 - Docker Desktop for Mac
 - Bash or Zsh
-- Optional: `dialog` for the experimental GUI wrapper
 
 ## Phase Notes
 
