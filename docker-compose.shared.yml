@@ -1,0 +1,18 @@
+services:
+  gateway:
+    image: nginx:1.25-alpine
+    ports:
+      - "${SHARED_GATEWAY_HTTP_PORT:-80}:80"
+      - "${SHARED_GATEWAY_HTTPS_PORT:-443}:443"
+    volumes:
+      - ${SHARED_GATEWAY_CONFIG_FILE:?err}:/etc/nginx/conf.d/default.conf:ro
+    networks:
+      shared-gateway:
+        aliases:
+          - twentyi-gateway
+    restart: unless-stopped
+
+networks:
+  shared-gateway:
+    name: ${SHARED_GATEWAY_NETWORK:-twentyi-shared}
+    external: true
