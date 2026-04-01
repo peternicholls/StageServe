@@ -381,7 +381,7 @@ twentyi_validate_requested_ports() {
             twentyi_load_state_file "$state_file"
             existing_project_dir="${PROJECT_DIR:-}"
 
-            if [[ "$existing_project_dir" != "$PROJECT_DIR" && "${!port_var:-}" == "$current_value" ]]; then
+            if [[ "$existing_project_dir" != "$current_project_dir" && "${!port_var:-}" == "$current_value" ]]; then
                 printf 'Error: %s port %s is already reserved by %s\n' "$port_var" "$current_value" "$existing_project_dir" >&2
                 exit 1
             fi
@@ -442,12 +442,12 @@ twentyi_validate_collision() {
         existing_project_dir="${PROJECT_DIR:-}"
         existing_hostname="${HOSTNAME:-}"
 
-        if [[ "$state_file" == "$(twentyi_project_state_file)" && "$existing_project_dir" != "$PROJECT_DIR" ]]; then
+        if [[ "$state_file" == "$(twentyi_project_state_file)" && "$existing_project_dir" != "$current_project_dir" ]]; then
             printf 'Error: project slug collision for %s (already registered by %s)\n' "$PROJECT_SLUG" "$existing_project_dir" >&2
             exit 1
         fi
 
-        if [[ "$state_file" != "$(twentyi_project_state_file)" && "$existing_hostname" == "$HOSTNAME" ]]; then
+        if [[ "$state_file" != "$(twentyi_project_state_file)" && "$existing_hostname" == "$current_hostname" ]]; then
             printf 'Error: hostname collision for %s (%s already registered by %s)\n' "$HOSTNAME" "$existing_hostname" "$existing_project_dir" >&2
             exit 1
         fi
@@ -1489,7 +1489,7 @@ twentyi_write_shared_env() {
 
     shared_env_file="$(twentyi_shared_env_file)"
     certs_dir="$(dirname "$(twentyi_tls_cert_file)")"
-    mkdir -p "$(dirname "$shared_env_file")"
+    mkdir -p "$(dirname "$shared_env_file")" "$certs_dir"
     : > "$shared_env_file"
 
     {
@@ -1497,11 +1497,7 @@ twentyi_write_shared_env() {
         printf 'SHARED_GATEWAY_HTTP_PORT=%q\n' "$SHARED_GATEWAY_HTTP_PORT"
         printf 'SHARED_GATEWAY_HTTPS_PORT=%q\n' "$SHARED_GATEWAY_HTTPS_PORT"
         printf 'SHARED_GATEWAY_CONFIG_FILE=%q\n' "$SHARED_GATEWAY_CONFIG_FILE"
-        if twentyi_tls_available; then
-            printf 'SHARED_GATEWAY_CERTS_DIR=%q\n' "$certs_dir"
-        else
-            printf 'SHARED_GATEWAY_CERTS_DIR=/dev/null\n'
-        fi
+        printf 'SHARED_GATEWAY_CERTS_DIR=%q\n' "$certs_dir"
     } >> "$shared_env_file"
 }
 
