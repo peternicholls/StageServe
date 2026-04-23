@@ -11,6 +11,14 @@ $ARGUMENTS
 
 You **MUST** consider the user input before proceeding (if not empty).
 
+## Writing Style Guidance
+
+- Use imperative language for the conversion workflow, repository checks, and issue creation steps.
+- Write issue titles and summaries in outcome-oriented prose so each issue communicates both the problem and the intended result.
+- Use brief contextual narrative in issue bodies when it helps explain why the task matters or how it fits the broader feature.
+- Present acceptance points, dependencies, or subtasks in structured lists rather than long paragraphs.
+- Keep the tone operational and repository-safe; precision matters more than stylistic flourish.
+
 ## Outline
 
 1. Run `.specify/scripts/bash/check-prerequisites.sh --json --require-tasks --include-tasks` from repo root and parse FEATURE_DIR and AVAILABLE_DOCS list. All paths must be absolute. For single quotes in args like "I'm Groot", use escape syntax: e.g 'I'\''m Groot' (or double-quote if possible: "I'm Groot").

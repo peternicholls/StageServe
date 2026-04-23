@@ -14,6 +14,14 @@ $ARGUMENTS
 
 You **MUST** consider the user input before proceeding (if not empty).
 
+## Writing Style Guidance
+
+- Write constitutional principles in firm declarative language with explicit normative force.
+- Use explanatory prose for rationale so principles feel intentional rather than arbitrary.
+- Use imperative wording for amendment workflow, propagation checks, and validation duties.
+- When summarizing version changes or sync impact, use compact report style instead of long-form narrative.
+- Keep governance language formal and durable, while keeping examples or clarifications plain enough to remove ambiguity.
+
 ## Outline
 
 You are updating the project constitution at `.specify/memory/constitution.md`. This file is a TEMPLATE containing placeholder tokens in square brackets (e.g. `[PROJECT_NAME]`, `[PRINCIPLE_1_NAME]`). Your job is to (a) collect/derive concrete values, (b) fill the template precisely, and (c) propagate any amendments across dependent artifacts.

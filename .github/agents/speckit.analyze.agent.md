@@ -10,6 +10,14 @@ $ARGUMENTS
 
 You **MUST** consider the user input before proceeding (if not empty).
 
+## Writing Style Guidance
+
+- Use a forensic, evidence-first tone for findings: state the issue, cite the location, and explain the consequence.
+- Keep recommendations imperative and concrete so remediation is obvious.
+- Use analytical prose, not storytelling, for cross-artifact reasoning and severity justification.
+- Reserve brief narrative framing only when it helps explain how one artifact creates downstream confusion in another.
+- Favor dense, high-signal tables and summaries over broad descriptive commentary.
+
 ## Goal
 
 Identify inconsistencies, duplications, ambiguities, and underspecified items across the three core artifacts (`spec.md`, `plan.md`, `tasks.md`) before implementation. This command MUST run only after `/speckit.tasks` has successfully produced a complete `tasks.md`.

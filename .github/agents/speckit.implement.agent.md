@@ -10,6 +10,14 @@ $ARGUMENTS
 
 You **MUST** consider the user input before proceeding (if not empty).
 
+## Writing Style Guidance
+
+- Use imperative language for execution steps, sequencing, and validation checkpoints.
+- Report progress and completion in concise factual prose so the user can distinguish planned work from finished work.
+- When blocked, explain the failure path in plain operational language, then state the next decision needed.
+- Use checklist or status-table formats for gating decisions, task progress, and completion summaries.
+- Keep any explanatory narrative short and practical; this agent should sound like an operator carrying out a plan, not drafting a concept note.
+
 ## Pre-Execution Checks
 
 **Check for extension hooks (before implementation)**:

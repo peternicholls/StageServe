@@ -18,6 +18,14 @@ $ARGUMENTS
 
 You **MUST** consider the user input before proceeding (if not empty).
 
+## Writing Style Guidance
+
+- Use imperative language for the planning workflow, command execution, and gate checks.
+- Use architectural prose when documenting decisions so the plan explains why a structure or approach fits the feature.
+- Write research findings as brief decision records: a clear choice, a rationale, and considered alternatives.
+- Use blueprint-style bullets or tables for artifacts, phases, contracts, and technical context when structure improves scanability.
+- When describing implementation phases, keep the tone forward-looking and outcome-oriented rather than purely procedural.
+
 ## Pre-Execution Checks
 
 **Check for extension hooks (before planning)**:

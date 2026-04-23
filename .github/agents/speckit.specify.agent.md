@@ -18,6 +18,14 @@ $ARGUMENTS
 
 You **MUST** consider the user input before proceeding (if not empty).
 
+## Writing Style Guidance
+
+- Use direct imperative language for command execution, validation steps, and branch/spec creation actions.
+- Write the specification itself in clear stakeholder-facing prose that explains user intent and business value rather than sounding like operator instructions.
+- Use scenario-style language for user journeys and acceptance situations so flows read like concrete stories, not abstract labels.
+- Phrase functional requirements as crisp declarative obligations and success criteria as measurable outcomes.
+- When clarification is unavoidable, present options in concise advisory prose with enough context to explain the tradeoff.
+
 ## Pre-Execution Checks
 
 **Check for extension hooks (before specification)**:
