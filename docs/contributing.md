@@ -2,7 +2,7 @@
 
 ## Prerequisites
 
-- Go 1.22 or newer (matches `.go-version`).
+- Go 1.26.2 or newer (matches `.go-version`).
 - `make` (any flavour).
 - Docker Desktop or Engine for end-to-end testing (not required for `go test -short`).
 

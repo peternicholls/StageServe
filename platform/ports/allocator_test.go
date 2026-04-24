@@ -7,7 +7,6 @@ import (
 	"net"
 	"sync"
 	"testing"
-	"time"
 
 	"github.com/peternicholls/stacklane/core/state"
 )
@@ -38,17 +37,6 @@ type noopAddr struct{}
 
 func (noopAddr) Network() string { return "tcp" }
 func (noopAddr) String() string  { return "127.0.0.1:0" }
-
-type noopConn struct{}
-
-func (noopConn) Read([]byte) (int, error)         { return 0, errors.New("not implemented") }
-func (noopConn) Write([]byte) (int, error)        { return 0, errors.New("not implemented") }
-func (noopConn) Close() error                     { return nil }
-func (noopConn) LocalAddr() net.Addr              { return noopAddr{} }
-func (noopConn) RemoteAddr() net.Addr             { return noopAddr{} }
-func (noopConn) SetDeadline(time.Time) error      { return nil }
-func (noopConn) SetReadDeadline(time.Time) error  { return nil }
-func (noopConn) SetWriteDeadline(time.Time) error { return nil }
 
 func atoiSafe(s string) (int, bool) {
 	n := 0

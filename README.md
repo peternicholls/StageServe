@@ -45,7 +45,7 @@ Optional overrides:
 
 ## First-time Setup
 
-Requirements: macOS, Docker Desktop, and Homebrew. Installing the binary requires no language runtime; building from source requires Go 1.22+.
+Requirements: macOS, Docker Desktop, and Homebrew. Installing the binary requires no language runtime; building from source requires Go 1.26.2+.
 
 ```bash
 # 1. Clone the stack
@@ -273,7 +273,7 @@ docker volume ls
 - macOS (Linux DNS bootstrap is a documented "unsupported platform" surface; lifecycle commands work on Linux but `dns-setup` does not)
 - Docker Desktop (or Docker Engine ≥ Compose v2)
 - Homebrew (only required for `dns-setup`)
-- Go 1.22+ (only required to build from source; not required to run a downloaded binary)
+- Go 1.26.2+ (only required to build from source; not required to run a downloaded binary)
 
 ## Project Status
 

@@ -12,6 +12,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/containerd/errdefs"
 	"github.com/docker/docker/api/types/container"
 	dfilters "github.com/docker/docker/api/types/filters"
 	dnetwork "github.com/docker/docker/api/types/network"
@@ -53,7 +54,7 @@ func (s *SDKClient) NetworkExists(ctx context.Context, name string) (bool, error
 		return false, err
 	}
 	if _, err := c.NetworkInspect(ctx, name, dnetwork.InspectOptions{}); err != nil {
-		if client.IsErrNotFound(err) {
+		if errdefs.IsNotFound(err) {
 			return false, nil
 		}
 		return false, err
@@ -76,7 +77,7 @@ func (s *SDKClient) RemoveNetwork(ctx context.Context, name string) error {
 		return err
 	}
 	if err := c.NetworkRemove(ctx, name); err != nil {
-		if client.IsErrNotFound(err) {
+		if errdefs.IsNotFound(err) {
 			return nil
 		}
 		return err

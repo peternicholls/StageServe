@@ -3,11 +3,6 @@
 package commands
 
 import (
-	"context"
-	"errors"
-	"os"
-	"path/filepath"
-
 	"github.com/spf13/cobra"
 
 	"github.com/peternicholls/stacklane/core/config"
@@ -116,28 +111,4 @@ func buildOrchestrator(cfg config.ProjectConfig) (*lifecycle.Orchestrator, error
 		State:   store,
 		Ports:   ports.NewAllocator(cfg.StateDir),
 	}), nil
-}
-
-// withCtx returns a cobra-friendly context.
-func withCtx(cmd *cobra.Command) context.Context { return cmd.Context() }
-
-// failNotImplemented is a temporary helper for commands deliberately stubbed
-// during the rebase.
-func failNotImplemented(name string) error {
-	return errors.New(name + ": not implemented in this build")
-}
-
-// projectDir returns the resolved project directory used by error messages.
-func projectDir(flags *SharedFlags) string {
-	if flags.ProjectDir != "" {
-		abs, err := filepath.Abs(flags.ProjectDir)
-		if err == nil {
-			return abs
-		}
-		return flags.ProjectDir
-	}
-	if cwd, err := os.Getwd(); err == nil {
-		return cwd
-	}
-	return "."
 }

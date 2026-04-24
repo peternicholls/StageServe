@@ -46,7 +46,7 @@ func (MacOSProvider) Status(s Settings) Status {
 
 func (p MacOSProvider) Bootstrap(s Settings) error {
 	if !brewAvailable() {
-		return fmt.Errorf("Homebrew is required for local DNS bootstrap")
+		return fmt.Errorf("homebrew is required for local DNS bootstrap")
 	}
 	if !dnsmasqInstalled() {
 		return fmt.Errorf("dnsmasq is not installed. Run: brew install dnsmasq")
