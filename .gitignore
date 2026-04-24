@@ -1,5 +1,7 @@
 # Environment files
 .env
+.stacklane-local
+.stacklane-state/
 .20i-local
 .20i-state/
 
@@ -17,7 +19,9 @@ Thumbs.db
 
 # Logs
 *.log
-logs/
+/logs/
+.omx/
+.github/skills
 
 # IDE files
 .vscode/
@@ -49,3 +53,12 @@ build/
 # Test files
 test-site/
 demo-site/
+
+# Go build artefacts
+/stacklane-bin
+/bin/
+*.test
+*.out
+*.prof*
+coverage.out
+coverage.html

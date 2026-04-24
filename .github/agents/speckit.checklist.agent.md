@@ -31,6 +31,14 @@ $ARGUMENTS
 
 You **MUST** consider the user input before proceeding (if not empty).
 
+## Writing Style Guidance
+
+- Frame checklist items as sharp interrogative tests of requirement quality, not as implementation instructions.
+- Use explanatory prose in the setup and clarification stages to teach the distinction between validating requirements and testing software behavior.
+- Use scenario-oriented language where it helps expose missing flows, recovery paths, or non-functional expectations.
+- Keep category headings and summaries concise and structural so the checklist reads like a reusable review instrument.
+- When examples are needed, mix terse contrasts and short illustrative phrases rather than one repeated sentence pattern.
+
 ## Execution Steps
 
 1. **Setup**: Run `.specify/scripts/bash/check-prerequisites.sh --json` from repo root and parse JSON for FEATURE_DIR and AVAILABLE_DOCS list.

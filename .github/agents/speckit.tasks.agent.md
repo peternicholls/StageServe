@@ -19,6 +19,14 @@ $ARGUMENTS
 
 You **MUST** consider the user input before proceeding (if not empty).
 
+## Writing Style Guidance
+
+- Keep every generated task line strictly imperative and action-first so work items are immediately executable.
+- Use short explanatory prose for phase goals, MVP strategy, and dependency summaries where context helps sequencing decisions.
+- Use story-oriented wording in phase introductions to remind the implementer what user outcome each phase unlocks.
+- Prefer compact structural formats such as checklists, dependency lists, and parallelization examples over narrative paragraphs.
+- Do not let descriptive prose dilute task specificity; exact file paths and concrete actions remain the priority.
+
 ## Pre-Execution Checks
 
 **Check for extension hooks (before tasks generation)**:

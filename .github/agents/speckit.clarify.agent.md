@@ -14,6 +14,14 @@ $ARGUMENTS
 
 You **MUST** consider the user input before proceeding (if not empty).
 
+## Writing Style Guidance
+
+- Use a concise investigative tone when identifying ambiguity, with direct language about what is missing and why it matters.
+- Ask questions in plain conversational form, one at a time, so the exchange feels like guided discovery rather than a questionnaire dump.
+- When offering options, use advisory prose that briefly explains the recommended path and the consequence of each alternative.
+- Use short scenario-style wording when a clarification changes user flow, operational behavior, or edge-case handling.
+- When writing accepted answers back into the spec, shift to precise declarative language and remove conversational phrasing.
+
 ## Outline
 
 Goal: Detect and reduce ambiguity or missing decision points in the active feature specification and record the clarifications directly in the spec file.

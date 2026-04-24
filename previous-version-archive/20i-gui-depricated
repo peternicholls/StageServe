@@ -1,8 +1,8 @@
 #!/bin/bash
 
-# 20i Stack GUI Manager
-# A simple dialog-based interface for managing 20i Docker stacks
-# Usage: 20i-gui
+# Stacklane GUI Manager
+# A simple dialog-based interface for managing Stacklane Docker stacks
+# Usage: legacy GUI script
 
 STACK_HOME="${STACK_HOME:-$HOME/docker/20i-stack}"
 STACK_FILE="$STACK_HOME/docker-compose.yml"
@@ -17,7 +17,7 @@ fi
 show_menu() {
     if command -v dialog >/dev/null 2>&1; then
         # Use dialog if available (prettier interface)
-        dialog --clear --title "20i Stack Manager" \
+        dialog --clear --title "Stacklane Manager" \
                --menu "Choose an action:" 15 50 4 \
                1 "🚀 Start Stack (current directory)" \
                2 "🛑 Stop Stack" \
@@ -33,7 +33,7 @@ show_menu() {
         fi
     else
         # Fallback to simple text menu
-        echo "🚀 20i Stack Manager"
+        echo "🚀 Stacklane Manager"
         echo "=================="
         echo "1) 🚀 Start Stack (current directory)"
         echo "2) 🛑 Stop Stack"
@@ -62,7 +62,7 @@ start_stack() {
     local PROJECT_DIR="$(pwd)"
     local PROJECT_NAME="$(basename "$PROJECT_DIR")"
     
-    echo "🚀 Starting 20i stack for project: $PROJECT_NAME"
+    echo "🚀 Starting Stacklane stack for project: $PROJECT_NAME"
     echo "📁 Code directory: $PROJECT_DIR"
     
     # Check for local overrides
@@ -99,18 +99,18 @@ stop_stack() {
     local running_projects=$(docker ps --format 'table {{.Names}}' | grep -E '^[^-]+-[^-]+-[0-9]+$' | sed 's/-[^-]*-[0-9]*$//' | sort -u)
     
     if [[ -z "$running_projects" ]]; then
-        echo "ℹ️  No 20i stacks appear to be running"
+        echo "ℹ️  No Stacklane stacks appear to be running"
         return 0
     fi
     
-    echo "🛑 Running 20i stacks:"
+    echo "🛑 Running Stacklane stacks:"
     echo "$running_projects" | nl
     echo
     
     read -p "Enter project number to stop (or 'a' for all): " choice
     
     if [[ "$choice" == "a" ]]; then
-        echo "🛑 Stopping all 20i stacks..."
+        echo "🛑 Stopping all Stacklane stacks..."
         echo "$running_projects" | while read project; do
             if [[ -n "$project" ]]; then
                 echo "Stopping $project..."
@@ -132,7 +132,7 @@ stop_stack() {
 
 # Function to view status
 view_status() {
-    echo "📊 20i Stack Status"
+    echo "📊 Stacklane Status"
     echo "=================="
     echo
     echo "🐳 All running containers:"
@@ -148,11 +148,11 @@ view_logs() {
     local running_projects=$(docker ps --format 'table {{.Names}}' | grep -E '^[^-]+-[^-]+-[0-9]+$' | sed 's/-[^-]*-[0-9]*$//' | sort -u)
     
     if [[ -z "$running_projects" ]]; then
-        echo "ℹ️  No 20i stacks appear to be running"
+        echo "ℹ️  No Stacklane stacks appear to be running"
         return 0
     fi
     
-    echo "📋 Running 20i stacks:"
+    echo "📋 Running Stacklane stacks:"
     echo "$running_projects" | nl
     echo
     
