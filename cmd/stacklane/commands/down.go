@@ -18,7 +18,12 @@ func NewDown(flags *SharedFlags) *cobra.Command {
 			if err != nil {
 				return err
 			}
+			cfg.All = flags.All
 			if flags.DryRun {
+				if flags.All {
+					fmt.Fprintln(os.Stdout, "DRY RUN: would down every recorded project")
+					return nil
+				}
 				fmt.Fprintf(os.Stdout, "DRY RUN: would down project %s\n", cfg.Slug)
 				return nil
 			}
@@ -28,6 +33,9 @@ func NewDown(flags *SharedFlags) *cobra.Command {
 			}
 			ctx, cancel := contextWithSignal(cmd.Context())
 			defer cancel()
+			if flags.All {
+				return orch.DownAll(ctx, cfg, removeVolumes)
+			}
 			return orch.Down(ctx, cfg, removeVolumes)
 		},
 	}

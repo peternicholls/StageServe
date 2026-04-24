@@ -5,6 +5,7 @@
 .DS_Store
 .vscode/
 .idea/
+.omx/
 .stacklane-state/
 .20i-state/
 node_modules/

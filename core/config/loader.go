@@ -129,7 +129,11 @@ func (l *Loader) resolveStackHome() (string, error) {
 			return cwd, nil
 		}
 	}
-	return filepath.Join(os.Getenv("HOME"), "docker", "stacklane"), nil
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(home, "docker", "stacklane"), nil
 }
 
 // Load implements ConfigLoader.

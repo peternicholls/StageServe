@@ -125,22 +125,47 @@ func (o *Orchestrator) Up(ctx context.Context, cfg config.ProjectConfig) error {
 	return nil
 }
 
-// Down stops the project. AttachmentState is left intact when keepAttached is true
-// (so detach + down semantics remain separable).
+// Down stops the project, keeps its record, and removes any active route.
 func (o *Orchestrator) Down(ctx context.Context, cfg config.ProjectConfig, removeVolumes bool) error {
-	envFile := envFilePath(cfg)
-	if err := o.D.Compose.Down(ctx, compose.DownOptions{
-		ProjectDir:    cfg.Dir,
-		ComposeFile:   cfg.StackFile,
-		ProjectName:   cfg.ComposeProjectName,
-		EnvFile:       envFile,
-		RemoveVolumes: removeVolumes,
-	}); err != nil {
+	if err := o.stopProject(ctx, cfg, removeVolumes); err != nil {
 		return Wrap("compose-down", cfg.Slug, err, "Inspect docker compose output above.")
 	}
-	if rec, err := o.D.State.Load(cfg.Slug); err == nil {
-		rec.AttachmentState = state.StateDown
-		_ = o.D.State.Save(rec)
+	rec, err := o.D.State.Load(cfg.Slug)
+	if err != nil {
+		rec = state.Record{Project: cfg}
+	}
+	rec.Project = cfg
+	rec.AttachmentState = state.StateDown
+	if err := o.D.State.Save(rec); err != nil {
+		return Wrap("save-state", cfg.Slug, err, "Inspect permissions on the state directory.")
+	}
+	if err := o.syncSharedGateway(ctx, cfg, ""); err != nil {
+		return Wrap("gateway-reload", cfg.Slug, err, "Run `docker compose -p stacklane-shared up -d gateway`.")
+	}
+	return nil
+}
+
+// DownAll stops every recorded project runtime, removes all state records, and
+// clears the shared gateway route set.
+func (o *Orchestrator) DownAll(ctx context.Context, cfg config.ProjectConfig, removeVolumes bool) error {
+	registry, err := o.D.State.Registry()
+	if err != nil {
+		return Wrap("registry", "", err, "Inspect the state directory for unreadable JSON files.")
+	}
+	for _, row := range registry {
+		rec, err := o.D.State.Load(row.Slug)
+		if err != nil {
+			return Wrap("load-state", row.Slug, err, "Inspect the recorded state for this project.")
+		}
+		if err := o.stopProject(ctx, rec.Project, removeVolumes); err != nil {
+			return Wrap("compose-down", row.Slug, err, "Inspect docker compose output above.")
+		}
+		if err := o.D.State.Remove(row.Slug); err != nil {
+			return Wrap("remove-state", row.Slug, err, "Inspect permissions on the state directory.")
+		}
+	}
+	if err := o.syncSharedGateway(ctx, cfg, ""); err != nil {
+		return Wrap("gateway-reload", "", err, "Run `docker compose -p stacklane-shared up -d gateway`.")
 	}
 	return nil
 }
@@ -167,22 +192,18 @@ func (o *Orchestrator) Attach(ctx context.Context, cfg config.ProjectConfig) err
 	return o.reloadSharedGateway(ctx, cfg)
 }
 
-// Detach unroutes a project but leaves it running.
+// Detach stops the project, removes its state record, and clears its route.
 func (o *Orchestrator) Detach(ctx context.Context, cfg config.ProjectConfig) error {
-	rec, err := o.D.State.Load(cfg.Slug)
-	if err != nil {
-		return Wrap("detach", cfg.Slug, err, "")
+	if err := o.stopProject(ctx, cfg, false); err != nil {
+		return Wrap("compose-down", cfg.Slug, err, "Inspect docker compose output above.")
 	}
-	rec.AttachmentState = state.StateDown
-	if err := o.D.State.Save(rec); err != nil {
-		return Wrap("save-state", cfg.Slug, err, "")
+	if err := o.D.State.Remove(cfg.Slug); err != nil {
+		return Wrap("remove-state", cfg.Slug, err, "Inspect permissions on the state directory.")
 	}
-	registry, _ := o.D.State.Registry()
-	currentRoutes := routesFromRegistry(registry)
-	if _, _, err := o.D.Gateway.RemoveRoute(cfg.Slug, currentRoutes); err != nil {
-		return Wrap("gateway-config", cfg.Slug, err, "")
+	if err := o.syncSharedGateway(ctx, cfg, ""); err != nil {
+		return Wrap("gateway-reload", cfg.Slug, err, "Run `docker compose -p stacklane-shared up -d gateway`.")
 	}
-	return o.reloadSharedGateway(ctx, cfg)
+	return nil
 }
 
 // --- helpers ---
@@ -217,6 +238,33 @@ func (o *Orchestrator) reloadSharedGateway(ctx context.Context, cfg config.Proje
 		ForceRecreate: true,
 		Services:      []string{"gateway"},
 	})
+}
+
+func (o *Orchestrator) stopProject(ctx context.Context, cfg config.ProjectConfig, removeVolumes bool) error {
+	envFile := envFilePath(cfg)
+	return o.D.Compose.Down(ctx, compose.DownOptions{
+		ProjectDir:    cfg.Dir,
+		ComposeFile:   cfg.StackFile,
+		ProjectName:   cfg.ComposeProjectName,
+		EnvFile:       envFile,
+		RemoveVolumes: removeVolumes,
+	})
+}
+
+func (o *Orchestrator) syncSharedGateway(ctx context.Context, cfg config.ProjectConfig, preferredSlug string) error {
+	registry, err := o.D.State.Registry()
+	if err != nil {
+		return err
+	}
+	if _, _, err := o.D.Gateway.WriteConfig(gateway.RenderInput{
+		Routes:        routesFromRegistry(registry),
+		PreferredSlug: preferredSlug,
+		TLSEnabled:    cfg.SiteSuffix == "dev",
+		HTTPSPort:     cfg.SharedGateway.HTTPSPort,
+	}); err != nil {
+		return err
+	}
+	return o.reloadSharedGateway(ctx, cfg)
 }
 
 func (o *Orchestrator) rollbackProject(ctx context.Context, cfg config.ProjectConfig) {

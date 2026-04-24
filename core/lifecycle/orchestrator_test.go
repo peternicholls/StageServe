@@ -143,3 +143,110 @@ func TestOrchestrator_UpPortConflictBeforeDocker(t *testing.T) {
 		t.Errorf("compose up should not run on port failure")
 	}
 }
+
+func TestOrchestrator_DownSavesDownStateAndReloadsGateway(t *testing.T) {
+	cfg := newCfg(t)
+	composer := mocks.NewComposer()
+	gw := mocks.NewGateway()
+	st := mocks.NewState()
+	pa := mocks.NewPorts(ports.Allocation{})
+	_ = st.Save(state.Record{Project: cfg, AttachmentState: state.StateAttached})
+
+	orch := lifecycle.New(lifecycle.Deps{
+		Docker: mocks.NewDocker(), Compose: composer, Gateway: gw, State: st, Ports: pa,
+	})
+
+	if err := orch.Down(context.Background(), cfg, false); err != nil {
+		t.Fatalf("Down: %v", err)
+	}
+	if len(composer.DownCalls) != 1 {
+		t.Fatalf("down calls=%d want 1", len(composer.DownCalls))
+	}
+	if len(composer.UpCalls) != 1 || !composer.UpCalls[0].ForceRecreate {
+		t.Fatalf("gateway reload not requested with force recreate: %+v", composer.UpCalls)
+	}
+	rec, err := st.Load(cfg.Slug)
+	if err != nil {
+		t.Fatalf("load after down: %v", err)
+	}
+	if rec.AttachmentState != state.StateDown {
+		t.Fatalf("attachment state=%s want down", rec.AttachmentState)
+	}
+	if len(gw.Routes) != 0 {
+		t.Fatalf("gateway routes should be cleared, got %+v", gw.Routes)
+	}
+}
+
+func TestOrchestrator_DetachRemovesStateAndReloadsGateway(t *testing.T) {
+	cfg := newCfg(t)
+	composer := mocks.NewComposer()
+	gw := mocks.NewGateway()
+	st := mocks.NewState()
+	pa := mocks.NewPorts(ports.Allocation{})
+	_ = st.Save(state.Record{Project: cfg, AttachmentState: state.StateAttached})
+
+	orch := lifecycle.New(lifecycle.Deps{
+		Docker: mocks.NewDocker(), Compose: composer, Gateway: gw, State: st, Ports: pa,
+	})
+
+	if err := orch.Detach(context.Background(), cfg); err != nil {
+		t.Fatalf("Detach: %v", err)
+	}
+	if len(composer.DownCalls) != 1 {
+		t.Fatalf("down calls=%d want 1", len(composer.DownCalls))
+	}
+	if len(composer.UpCalls) != 1 || !composer.UpCalls[0].ForceRecreate {
+		t.Fatalf("gateway reload not requested with force recreate: %+v", composer.UpCalls)
+	}
+	if _, err := st.Load(cfg.Slug); !errors.Is(err, state.ErrNotFound) {
+		t.Fatalf("state should be removed, got %v", err)
+	}
+	if len(gw.Routes) != 0 {
+		t.Fatalf("gateway routes should be cleared, got %+v", gw.Routes)
+	}
+}
+
+func TestOrchestrator_DownAllStopsEveryRecordedProject(t *testing.T) {
+	cfg := newCfg(t)
+	other := cfg
+	other.Slug = "beta"
+	other.Name = "beta"
+	other.Hostname = "beta.test"
+	other.ComposeProjectName = "stacklane-beta"
+	other.WebNetworkAlias = "stacklane-beta-web"
+
+	composer := mocks.NewComposer()
+	gw := mocks.NewGateway()
+	st := mocks.NewState()
+	pa := mocks.NewPorts(ports.Allocation{})
+	_ = st.Save(state.Record{Project: cfg, AttachmentState: state.StateAttached})
+	_ = st.Save(state.Record{Project: other, AttachmentState: state.StateAttached})
+
+	orch := lifecycle.New(lifecycle.Deps{
+		Docker: mocks.NewDocker(), Compose: composer, Gateway: gw, State: st, Ports: pa,
+	})
+
+	if err := orch.DownAll(context.Background(), cfg, true); err != nil {
+		t.Fatalf("DownAll: %v", err)
+	}
+	if len(composer.DownCalls) != 2 {
+		t.Fatalf("down calls=%d want 2", len(composer.DownCalls))
+	}
+	for _, call := range composer.DownCalls {
+		if !call.RemoveVolumes {
+			t.Fatalf("expected remove volumes on every down call: %+v", composer.DownCalls)
+		}
+	}
+	if len(composer.UpCalls) != 1 || !composer.UpCalls[0].ForceRecreate {
+		t.Fatalf("gateway reload not requested with force recreate: %+v", composer.UpCalls)
+	}
+	if _, err := st.Load(cfg.Slug); !errors.Is(err, state.ErrNotFound) {
+		t.Fatalf("demo state should be removed, got %v", err)
+	}
+	if _, err := st.Load(other.Slug); !errors.Is(err, state.ErrNotFound) {
+		t.Fatalf("beta state should be removed, got %v", err)
+	}
+	if len(gw.Routes) != 0 {
+		t.Fatalf("gateway routes should be cleared, got %+v", gw.Routes)
+	}
+}

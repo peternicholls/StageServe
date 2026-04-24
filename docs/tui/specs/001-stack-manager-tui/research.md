@@ -6,4 +6,4 @@
 
 ## Research Tasks Identified
 
-Refer to /Users/peternicholls/docker/20i-stack/runbooks/research/01-tui-excellence/findings.md for very detailed findings.
+See [AUDIT-ISSUES.md](./AUDIT-ISSUES.md) and [PHASE3-ANALYSIS.md](./PHASE3-ANALYSIS.md) for the detailed findings captured in this repository.

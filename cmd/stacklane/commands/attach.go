@@ -1,5 +1,5 @@
-// stacklane attach / detach: route or unroute a project at the shared gateway
-// without changing whether its containers are running.
+// stacklane attach / detach: route a project through the shared gateway or
+// tear it down and remove its record.
 package commands
 
 import (
@@ -29,7 +29,7 @@ func NewAttach(flags *SharedFlags) *cobra.Command {
 func NewDetach(flags *SharedFlags) *cobra.Command {
 	return &cobra.Command{
 		Use:   "detach",
-		Short: "Stop routing a project at the shared gateway",
+		Short: "Stop a project and remove its routing/state record",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cfg, err := loadConfig(flags)
 			if err != nil {

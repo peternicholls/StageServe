@@ -37,7 +37,7 @@ func NewStore(stateDir string) (*Store, error) {
 	return &Store{stateDir: stateDir}, nil
 }
 
-// StateDir returns the absolute state directory.
+// StateDir returns the configured state directory.
 func (s *Store) StateDir() string { return s.stateDir }
 
 func (s *Store) projectFile(slug string) string {

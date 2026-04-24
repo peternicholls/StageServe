@@ -20,6 +20,8 @@ Thumbs.db
 # Logs
 *.log
 /logs/
+.omx/
+.github/skills
 
 # IDE files
 .vscode/
