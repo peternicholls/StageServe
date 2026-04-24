@@ -1,0 +1,180 @@
+# Spec 004 Handoff: Workflow And Lifecycle Follow-Up
+
+## Purpose
+
+This document closes the current sprint by recording:
+
+- what changed during the late-stage lifecycle validation work
+- what was verified live versus what is still open
+- which gaps should move forward into spec 004 instead of continuing to stretch spec 003
+
+This is a handoff artifact for the next implementation session.
+
+## Sprint Outcome
+
+The sprint achieved the main Stacklane-side runtime goal: the Go CLI now starts and routes real projects successfully, with stack-wide config separated from application-owned project config.
+
+The work also exposed the next boundary clearly: the remaining high-value work is no longer about startup wiring alone. It is about operator workflow, bootstrap lifecycle, and how Stacklane should behave once containers are healthy but the application still needs setup.
+
+## Stacklane Changes Landed
+
+### 1. Shared gateway startup and routing were hardened
+
+- fixed shared gateway environment propagation for compose interpolation
+- ensured gateway config exists before first shared compose startup
+- hardened gateway config writes against stale path corruption
+- resolved shared HTTPS fallback behavior for `.dev` and busy port `443`
+- verified routing through the shared gateway with hostname-aware responses
+
+### 2. Health and readiness behavior were corrected
+
+- moved nginx health validation onto a Stacklane-owned route: `/__stacklane_health`
+- decoupled container readiness from application home page behavior
+- kept the operator-visible readiness signal tied to Stacklane infrastructure rather than app-specific HTTP responses
+
+### 3. Config ownership was clarified
+
+- stack-wide config now prefers `.stackenv`, with legacy stack `.env` fallback
+- project `.env` is no longer treated as generic Stacklane config
+- project `.env` is used only as a fallback source for DB identity where needed
+- stack config and project runtime config are now conceptually and operationally separated
+
+### 4. Per-project DB provisioning now matches real apps better
+
+- generated runtime envfiles include both `MYSQL_*` and `DB_*` values
+- PHP containers receive runtime `DB_HOST`, `DB_PORT`, `DB_DATABASE`, `DB_USERNAME`, and `DB_PASSWORD`
+- MariaDB provisioning now aligns with project DB expectations instead of always forcing slug defaults
+
+### 5. Local DNS on macOS was repaired
+
+- Stacklane now clears conflicting legacy dnsmasq drop-ins during bootstrap
+- `*.test` resolution was revalidated against the current shared-gateway model
+
+### 6. Optional post-up bootstrap hook was added
+
+- new setting: `STACKLANE_POST_UP_COMMAND`
+- Stacklane runs the hook inside the `apache` container after healthchecks pass
+- hook failure is surfaced as a named lifecycle step failure and triggers rollback
+- Docker exec support was added to the Docker abstraction and mocks to support this cleanly
+
+## Live Validation Completed
+
+### Verified as working
+
+- `stacklane up` now succeeds for the Stacklane repo scenario that originally failed on missing shared gateway config
+- `stacklane.test` routing and gateway behavior were verified with curl and browser checks
+- multi-site attach/routing worked for the Stacklane repo plus sibling projects
+- `BudgetForecaster` and `KitFlowPro` both reached routable application responses through Stacklane after the DB/env fixes
+- after manual bootstrap, both public routes returned `302` redirects to `/login`
+- the new post-up hook was validated live by rebuilding `stacklane-bin`, removing the BudgetForecaster DB volume, running `up` with `STACKLANE_POST_UP_COMMAND='php artisan migrate --force --no-interaction'`, and confirming `http://budgetforecaster.test` returned `302 Found` to `/login` without a manual migrate step
+- focused Go tests passed for the touched slices, including config and lifecycle packages
+
+### Verified as not a Stacklane bug
+
+- `KitFlowPro` still fails partway through its own migrations because `2026_04_23_222426_create_txn_items_table` creates a foreign key that MariaDB rejects
+- this is an application migration issue, not a Stacklane runtime/provisioning issue
+
+## Gaps To Carry Into Spec 004
+
+### 1. Bootstrap workflow is implemented but not fully design-locked
+
+What is true now:
+
+- there is a working `STACKLANE_POST_UP_COMMAND`
+- it executes after healthchecks pass
+- it runs inside the `apache` container
+- failure rolls back the project
+
+What is still open:
+
+- whether one hook is enough or multiple lifecycle phases are needed
+- which config scopes should be allowed to define the hook
+- how hook output should be surfaced in operator diagnostics
+- whether rollback is always the right behavior for bootstrap failures
+
+### 2. Bootstrap coverage is still narrow
+
+What is true now:
+
+- BudgetForecaster bootstrap via migrations was validated successfully
+
+What is still open:
+
+- whether seeding should be documented as part of the same workflow
+- whether common commands such as `composer run setup` deserve explicit guidance
+- whether Stacklane should document framework-specific examples while keeping the core runtime generic
+
+### 3. Real-daemon lifecycle validation is still only partially formalized
+
+Live validation happened, but the formal backlog still contains deferred items from spec 003 around:
+
+- end-to-end lifecycle integration tests
+- health wait integration coverage
+- drift reconciliation coverage
+- failure-path validation against a real daemon
+- final startup/perf/install validation and release workflow work
+
+Spec 004 should absorb the workflow/lifecycle parts of that list. Release/distribution work can remain separate if desired.
+
+### 4. Documentation still needs a tighter lifecycle/operator story
+
+The README now documents `.stackenv` and the new hook, but there is still no single operator handoff that explains:
+
+- stack config versus app config ownership
+- when to use `.stacklane-local` versus `.stackenv`
+- how to bootstrap a framework app after `up`
+- how to classify Stacklane failures versus app failures during validation
+
+### 5. App-level defects need a boundary policy
+
+This sprint surfaced a useful distinction:
+
+- Stacklane should own gateway, DNS, container health, runtime env injection, and DB provisioning alignment
+- application projects should own their own migration bugs, schema defects, and seeding logic unless explicitly in scope
+
+Spec 004 should preserve that boundary so workflow hardening does not turn into unbounded app repair work.
+
+## Suggested Spec 004 Scope
+
+Keep spec 004 focused on workflow and lifecycle hardening:
+
+- lock the bootstrap hook contract
+- document operator workflow after `stacklane up`
+- add real-project lifecycle validation guidance or automation
+- improve lifecycle diagnostics around bootstrap and recovery
+- record a clean boundary between Stacklane infrastructure failures and application failures
+
+Avoid broadening it into:
+
+- release pipeline work by default
+- app-specific migration repairs
+- another architecture rewrite
+- new UI/TUI scope
+
+## File Areas Changed In This Sprint
+
+This handoff covers the runtime and docs work centered on:
+
+- `README.md`
+- `core/config/*`
+- `core/lifecycle/*`
+- `infra/docker/*`
+- `infra/gateway/*`
+- `internal/mocks/*`
+- `platform/dns/macos.go`
+- `docker-compose.yml`
+- `docker/nginx.conf.tmpl`
+- `.stackenv.example` and `.env.example`
+
+There are also other worktree modifications present in the repository. They are not treated as part of this handoff unless they overlap the lifecycle/config changes listed above.
+
+## Recommended Next Session Entry Point
+
+Start from spec 004, not by continuing to append informal follow-ups to spec 003.
+
+Suggested first move:
+
+1. turn the bootstrap hook behavior into an explicit spec contract
+2. decide the intended config scope and failure semantics
+3. document the operator workflow with one validated Laravel example
+4. only then expand automation or additional lifecycle phases

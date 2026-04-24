@@ -66,8 +66,8 @@ func TestLoader_PrecedenceChain(t *testing.T) {
 	stackHome := t.TempDir()
 	projectDir := t.TempDir()
 
-	// .env in stack home (lowest of the file layers)
-	writeFile(t, filepath.Join(stackHome, ".env"), "PHP_VERSION=8.0\nSITE_SUFFIX=stack-env\n")
+	// .stackenv in stack home (lowest of the file layers)
+	writeFile(t, filepath.Join(stackHome, ".stackenv"), "PHP_VERSION=8.0\nSITE_SUFFIX=stack-env\n")
 	// .stacklane-local in project dir (overrides shell env and .env)
 	writeFile(t, filepath.Join(projectDir, ".stacklane-local"), "PHP_VERSION=8.2\nSITE_SUFFIX=local\n")
 
@@ -100,6 +100,74 @@ func TestLoader_PrecedenceChain(t *testing.T) {
 	}
 	if cfg.MySQL.PMAPort != 9999 {
 		t.Errorf("PMA_PORT shell env: got %d, want 9999", cfg.MySQL.PMAPort)
+	}
+}
+
+func TestLoader_ProjectRuntimeEnvDBFallback(t *testing.T) {
+	stackHome := t.TempDir()
+	projectDir := t.TempDir()
+
+	writeFile(t, filepath.Join(stackHome, ".stackenv"), "SITE_SUFFIX=stack-env\n")
+	writeFile(t, filepath.Join(projectDir, ".env"), "DB_HOST=127.0.0.1\nDB_DATABASE=budget_forecaster\nDB_USERNAME=devuser\nDB_PASSWORD=devpass\nSITE_SUFFIX=project-should-be-ignored\n")
+
+	loader := newLoader(t, nil, stackHome)
+	cfg, err := loader.Load(projectDir, CLIFlags{})
+	if err != nil {
+		t.Fatalf("load: %v", err)
+	}
+
+	if cfg.SiteSuffix != "stack-env" {
+		t.Fatalf("SITE_SUFFIX=%q want stack-env from stacklane .env", cfg.SiteSuffix)
+	}
+	if cfg.MySQL.Database != "budget_forecaster" {
+		t.Fatalf("MYSQL_DATABASE=%q want budget_forecaster from project .env fallback", cfg.MySQL.Database)
+	}
+	if cfg.MySQL.User != "devuser" {
+		t.Fatalf("MYSQL_USER=%q want devuser from project .env fallback", cfg.MySQL.User)
+	}
+	if cfg.MySQL.Password != "devpass" {
+		t.Fatalf("MYSQL_PASSWORD=%q want devpass from project .env fallback", cfg.MySQL.Password)
+	}
+	if cfg.Hostname != filepath.Base(projectDir)+".stack-env" {
+		t.Fatalf("hostname=%q want %q", cfg.Hostname, filepath.Base(projectDir)+".stack-env")
+	}
+	if cfg.Slug == "" {
+		t.Fatal("slug should not be empty")
+	}
+	if cfg.Hostname != cfg.Slug+".stack-env" {
+		t.Fatalf("hostname=%q want %q", cfg.Hostname, cfg.Slug+".stack-env")
+	}
+}
+
+func TestLoader_StackEnvFallsBackToLegacyEnv(t *testing.T) {
+	stackHome := t.TempDir()
+	projectDir := t.TempDir()
+
+	writeFile(t, filepath.Join(stackHome, ".env"), "SITE_SUFFIX=legacy-stack-env\n")
+
+	loader := newLoader(t, nil, stackHome)
+	cfg, err := loader.Load(projectDir, CLIFlags{})
+	if err != nil {
+		t.Fatalf("load: %v", err)
+	}
+	if cfg.SiteSuffix != "legacy-stack-env" {
+		t.Fatalf("SITE_SUFFIX=%q want legacy-stack-env from fallback .env", cfg.SiteSuffix)
+	}
+}
+
+func TestLoader_PostUpHookFromProjectLocalConfig(t *testing.T) {
+	stackHome := t.TempDir()
+	projectDir := t.TempDir()
+
+	writeFile(t, filepath.Join(projectDir, ".stacklane-local"), "STACKLANE_POST_UP_COMMAND=php artisan migrate --force --no-interaction\n")
+
+	loader := newLoader(t, nil, stackHome)
+	cfg, err := loader.Load(projectDir, CLIFlags{})
+	if err != nil {
+		t.Fatalf("load: %v", err)
+	}
+	if cfg.PostUpCommand != "php artisan migrate --force --no-interaction" {
+		t.Fatalf("PostUpCommand=%q", cfg.PostUpCommand)
 	}
 }
 

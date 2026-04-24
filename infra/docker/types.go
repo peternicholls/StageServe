@@ -11,6 +11,13 @@ import (
 	"time"
 )
 
+// ExecOptions describes a one-shot command run inside a container.
+type ExecOptions struct {
+	ContainerID string
+	Cmd         []string
+	WorkingDir  string
+}
+
 // Container is the typed projection of a docker container we care about.
 type Container struct {
 	ID      string
@@ -43,6 +50,9 @@ type DockerClient interface {
 	// returned reader; implementations MAY return a never-ending stream when
 	// follow is true.
 	ContainerLogs(ctx context.Context, containerID string, follow bool) (LogStream, error)
+	// Exec runs a one-shot command inside a container and returns combined
+	// stdout/stderr output.
+	Exec(ctx context.Context, opts ExecOptions) (string, error)
 	// Available returns nil if the daemon is reachable, an error otherwise.
 	Available(ctx context.Context) error
 }

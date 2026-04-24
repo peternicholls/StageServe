@@ -6,7 +6,9 @@ package lifecycle
 import (
 	"context"
 	"fmt"
+	"net"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -32,11 +34,17 @@ type Orchestrator struct {
 	D Deps
 }
 
+const sharedGatewayHTTPSFallbackStart = 8443
+
+var sharedGatewayListen = net.Listen
+
 // New returns an orchestrator wired to deps.
 func New(d Deps) *Orchestrator { return &Orchestrator{D: d} }
 
 // Up runs the documented 11-step flow.
 func (o *Orchestrator) Up(ctx context.Context, cfg config.ProjectConfig) error {
+	cfg = resolveSharedGatewayPorts(cfg)
+
 	// Step 1: ensure shared network exists.
 	if err := o.ensureSharedNetwork(ctx, cfg); err != nil {
 		return Wrap("ensure-shared-network", cfg.Slug, err, "Verify Docker is running and the shared network can be created.")
@@ -62,6 +70,10 @@ func (o *Orchestrator) Up(ctx context.Context, cfg config.ProjectConfig) error {
 	cfg.Ports.PMAPort = allocation.PMAPort
 	cfg.MySQL.Port = allocation.MySQLPort
 	cfg.MySQL.PMAPort = allocation.PMAPort
+
+	if err := o.prepareSharedGatewayConfig(cfg, routesFromRegistry(registry), ""); err != nil {
+		return Wrap("gateway-config", "", err, "Inspect the gateway config path under the state directory.")
+	}
 
 	// Step 4: ensure shared gateway is running.
 	if err := o.ensureSharedGateway(ctx, cfg); err != nil {
@@ -92,6 +104,10 @@ func (o *Orchestrator) Up(ctx context.Context, cfg config.ProjectConfig) error {
 	if err := o.D.Docker.WaitHealthy(ctx, cfg.ComposeProjectName, time.Duration(cfg.WaitTimeoutSecs)*time.Second); err != nil {
 		o.rollbackProject(ctx, cfg)
 		return Wrap("wait-healthy", cfg.Slug, err, "Inspect container health with `docker ps` then `stacklane logs`.")
+	}
+	if err := o.runPostUpHook(ctx, cfg); err != nil {
+		o.rollbackProject(ctx, cfg)
+		return Wrap("post-up-hook", cfg.Slug, err, "Check STACKLANE_POST_UP_COMMAND and verify it succeeds inside the apache container.")
 	}
 
 	// Step 8: regenerate gateway config, reload gateway.
@@ -127,6 +143,8 @@ func (o *Orchestrator) Up(ctx context.Context, cfg config.ProjectConfig) error {
 
 // Down stops the project, keeps its record, and removes any active route.
 func (o *Orchestrator) Down(ctx context.Context, cfg config.ProjectConfig, removeVolumes bool) error {
+	cfg = resolveSharedGatewayPorts(cfg)
+
 	if err := o.stopProject(ctx, cfg, removeVolumes); err != nil {
 		return Wrap("compose-down", cfg.Slug, err, "Inspect docker compose output above.")
 	}
@@ -148,6 +166,8 @@ func (o *Orchestrator) Down(ctx context.Context, cfg config.ProjectConfig, remov
 // DownAll stops every recorded project runtime, removes all state records, and
 // clears the shared gateway route set.
 func (o *Orchestrator) DownAll(ctx context.Context, cfg config.ProjectConfig, removeVolumes bool) error {
+	cfg = resolveSharedGatewayPorts(cfg)
+
 	registry, err := o.D.State.Registry()
 	if err != nil {
 		return Wrap("registry", "", err, "Inspect the state directory for unreadable JSON files.")
@@ -172,6 +192,8 @@ func (o *Orchestrator) DownAll(ctx context.Context, cfg config.ProjectConfig, re
 
 // Attach updates state + gateway to mark the project routed.
 func (o *Orchestrator) Attach(ctx context.Context, cfg config.ProjectConfig) error {
+	cfg = resolveSharedGatewayPorts(cfg)
+
 	rec, err := o.D.State.Load(cfg.Slug)
 	if err != nil {
 		return Wrap("attach", cfg.Slug, err, "Run `stacklane up` first.")
@@ -194,6 +216,8 @@ func (o *Orchestrator) Attach(ctx context.Context, cfg config.ProjectConfig) err
 
 // Detach stops the project, removes its state record, and clears its route.
 func (o *Orchestrator) Detach(ctx context.Context, cfg config.ProjectConfig) error {
+	cfg = resolveSharedGatewayPorts(cfg)
+
 	if err := o.stopProject(ctx, cfg, false); err != nil {
 		return Wrap("compose-down", cfg.Slug, err, "Inspect docker compose output above.")
 	}
@@ -224,6 +248,7 @@ func (o *Orchestrator) ensureSharedGateway(ctx context.Context, cfg config.Proje
 		ProjectDir:  cfg.StackHome,
 		ComposeFile: cfg.SharedFile,
 		ProjectName: cfg.SharedGateway.ComposeProjectName,
+		Env:         sharedGatewayEnv(cfg),
 		Detach:      true,
 		WaitTimeout: time.Duration(cfg.WaitTimeoutSecs) * time.Second,
 	})
@@ -234,6 +259,7 @@ func (o *Orchestrator) reloadSharedGateway(ctx context.Context, cfg config.Proje
 		ProjectDir:    cfg.StackHome,
 		ComposeFile:   cfg.SharedFile,
 		ProjectName:   cfg.SharedGateway.ComposeProjectName,
+		Env:           sharedGatewayEnv(cfg),
 		Detach:        true,
 		ForceRecreate: true,
 		Services:      []string{"gateway"},
@@ -256,15 +282,52 @@ func (o *Orchestrator) syncSharedGateway(ctx context.Context, cfg config.Project
 	if err != nil {
 		return err
 	}
-	if _, _, err := o.D.Gateway.WriteConfig(gateway.RenderInput{
-		Routes:        routesFromRegistry(registry),
-		PreferredSlug: preferredSlug,
-		TLSEnabled:    cfg.SiteSuffix == "dev",
-		HTTPSPort:     cfg.SharedGateway.HTTPSPort,
-	}); err != nil {
+	if err := o.prepareSharedGatewayConfig(cfg, routesFromRegistry(registry), preferredSlug); err != nil {
 		return err
 	}
 	return o.reloadSharedGateway(ctx, cfg)
+}
+
+func (o *Orchestrator) prepareSharedGatewayConfig(cfg config.ProjectConfig, routes []gateway.Route, preferredSlug string) error {
+	_, _, err := o.D.Gateway.WriteConfig(gateway.RenderInput{
+		Routes:        routes,
+		PreferredSlug: preferredSlug,
+		TLSEnabled:    cfg.SiteSuffix == "dev",
+		HTTPSPort:     cfg.SharedGateway.HTTPSPort,
+	})
+	return err
+}
+
+func (o *Orchestrator) runPostUpHook(ctx context.Context, cfg config.ProjectConfig) error {
+	if strings.TrimSpace(cfg.PostUpCommand) == "" {
+		return nil
+	}
+	containerID, err := o.findServiceContainer(ctx, cfg.ComposeProjectName, "apache")
+	if err != nil {
+		return err
+	}
+	_, err = o.D.Docker.Exec(ctx, docker.ExecOptions{
+		ContainerID: containerID,
+		Cmd:         []string{"sh", "-lc", cfg.PostUpCommand},
+		WorkingDir:  cfg.ContainerSiteRoot,
+	})
+	return err
+}
+
+func (o *Orchestrator) findServiceContainer(ctx context.Context, projectName, service string) (string, error) {
+	containers, err := o.D.Docker.ListContainersByLabel(ctx, map[string]string{
+		"com.docker.compose.project": projectName,
+		"com.docker.compose.service": service,
+	})
+	if err != nil {
+		return "", err
+	}
+	for _, container := range containers {
+		if container.Service == service {
+			return container.ID, nil
+		}
+	}
+	return "", fmt.Errorf("%s container not found for compose project %s", service, projectName)
 }
 
 func (o *Orchestrator) rollbackProject(ctx context.Context, cfg config.ProjectConfig) {
@@ -288,11 +351,20 @@ func writeEnvFile(cfg config.ProjectConfig) (string, error) {
 	}
 	body := strings.Join([]string{
 		"COMPOSE_PROJECT_NAME=" + cfg.ComposeProjectName,
+		"PROJECT_NAME=" + cfg.Name,
 		"PROJECT_SLUG=" + cfg.Slug,
+		"PROJECT_ROOT=" + cfg.Dir,
+		"PROJECT_HOSTNAME=" + cfg.Hostname,
+		"PROJECT_DOCROOT=" + cfg.DocRoot,
 		"PROJECT_DIR=" + cfg.Dir,
 		"DOCROOT=" + cfg.DocRoot,
 		"CONTAINER_SITE_ROOT=" + cfg.ContainerSiteRoot,
 		"CONTAINER_DOCROOT=" + cfg.ContainerDocRoot,
+		"DB_HOST=mariadb",
+		"DB_PORT=3306",
+		"DB_DATABASE=" + cfg.MySQL.Database,
+		"DB_USERNAME=" + cfg.MySQL.User,
+		"DB_PASSWORD=" + cfg.MySQL.Password,
 		"PHP_VERSION=" + cfg.PHPVersion,
 		"MYSQL_VERSION=" + cfg.MySQL.Version,
 		"MYSQL_DATABASE=" + cfg.MySQL.Database,
@@ -310,6 +382,50 @@ func writeEnvFile(cfg config.ProjectConfig) (string, error) {
 		return "", err
 	}
 	return path, nil
+}
+
+func sharedGatewayEnv(cfg config.ProjectConfig) []string {
+	return []string{
+		"SHARED_GATEWAY_NETWORK=" + cfg.SharedGateway.Network,
+		"SHARED_GATEWAY_HTTP_PORT=" + intStr(cfg.SharedGateway.HTTPPort),
+		"SHARED_GATEWAY_HTTPS_PORT=" + intStr(cfg.SharedGateway.HTTPSPort),
+		"SHARED_GATEWAY_CONFIG_FILE=" + cfg.SharedGateway.ConfigFile,
+	}
+}
+
+func resolveSharedGatewayPorts(cfg config.ProjectConfig) config.ProjectConfig {
+	if cfg.SharedGateway.HTTPSPort == 0 {
+		cfg.SharedGateway.HTTPSPort = 443
+	}
+	if cfg.SiteSuffix == "dev" && cfg.SharedGateway.HTTPSPort == 443 {
+		cfg.SharedGateway.HTTPSPort = sharedGatewayHTTPSFallbackStart
+		return cfg
+	}
+	if cfg.SharedGateway.HTTPSPort != 443 || !sharedGatewayPortInUse(443) {
+		return cfg
+	}
+	if fallback, ok := firstAvailableSharedGatewayPort(sharedGatewayHTTPSFallbackStart); ok {
+		cfg.SharedGateway.HTTPSPort = fallback
+	}
+	return cfg
+}
+
+func sharedGatewayPortInUse(port int) bool {
+	ln, err := sharedGatewayListen("tcp", net.JoinHostPort("127.0.0.1", strconv.Itoa(port)))
+	if err != nil {
+		return true
+	}
+	_ = ln.Close()
+	return false
+}
+
+func firstAvailableSharedGatewayPort(start int) (int, bool) {
+	for port := start; port < 65535; port++ {
+		if !sharedGatewayPortInUse(port) {
+			return port, true
+		}
+	}
+	return 0, false
 }
 
 func intStr(n int) string {

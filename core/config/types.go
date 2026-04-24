@@ -93,7 +93,8 @@ type ProjectConfig struct {
 	DatabaseVolume  string // PROJECT_DATABASE_VOLUME
 	SharedGateway   SharedGateway
 	LocalDNS        LocalDNS
-	WaitTimeoutSecs int // FR-009: default 120
+	WaitTimeoutSecs int    // FR-009: default 120
+	PostUpCommand   string // STACKLANE_POST_UP_COMMAND
 
 	// Operator-visible flags
 	DryRun  bool
@@ -105,7 +106,7 @@ type ProjectConfig struct {
 }
 
 // ConfigLoader resolves the full precedence chain (CLI flags -> .stacklane-local
-// -> shell env -> .env -> defaults) and returns a populated ProjectConfig.
+// -> shell env -> .stackenv/.env -> defaults) and returns a populated ProjectConfig.
 //
 // Implementations must NOT depend on Docker, the network, or any subsystem
 // outside the local filesystem.

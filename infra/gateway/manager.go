@@ -64,6 +64,12 @@ func (m *Manager) WriteConfig(input RenderInput) (string, string, error) {
 		os.Remove(tmp.Name())
 		return "", "", err
 	}
+	if info, err := os.Stat(m.configPath); err == nil && info.IsDir() {
+		if err := os.RemoveAll(m.configPath); err != nil {
+			os.Remove(tmp.Name())
+			return "", "", err
+		}
+	}
 	if err := os.Rename(tmp.Name(), m.configPath); err != nil {
 		return "", "", err
 	}

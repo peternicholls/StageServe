@@ -9,6 +9,25 @@ import (
 	"testing"
 )
 
+func TestWriteConfig_ReplacesStaleDirectory(t *testing.T) {
+	configPath := filepath.Join(t.TempDir(), "shared", "gateway.conf")
+	if err := os.MkdirAll(configPath, 0o755); err != nil {
+		t.Fatalf("mkdir stale gateway path: %v", err)
+	}
+	m := NewManager(configPath)
+
+	if _, _, err := m.WriteConfig(RenderInput{Routes: nil, TLSEnabled: false, HTTPSPort: 443}); err != nil {
+		t.Fatalf("write config: %v", err)
+	}
+	info, err := os.Stat(configPath)
+	if err != nil {
+		t.Fatalf("stat config path: %v", err)
+	}
+	if info.IsDir() {
+		t.Fatalf("config path should be a file, got directory")
+	}
+}
+
 func TestRender_NoRoutes_NoTLS(t *testing.T) {
 	out, err := Render(RenderInput{Routes: nil, TLSEnabled: false, HTTPSPort: 443})
 	if err != nil {

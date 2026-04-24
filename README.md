@@ -11,7 +11,7 @@ The command surface is implemented as a single Go binary (`stacklane-bin`, expos
 - `stacklane` is the canonical CLI entrypoint, with subcommands such as `up`, `attach`, `status`, and `down`.
 - The runtime is a single statically-linked Go binary; no language runtime is required to run it.
 - Root-level `20i-*` wrapper entrypoints are not part of the active runtime.
-- Project config is resolved consistently from `.env`, `.stacklane-local`, shell environment, and CLI flags.
+- Project config is resolved consistently from stack `.stackenv`, project `.env`, `.stacklane-local`, shell environment, and CLI flags.
 - Project identity is standardized around a slug and a `.test` (or configured) hostname.
 - Project state is recorded as one JSON file per project under `.stacklane-state/projects/<slug>.json`.
 - One shared gateway owns the host web ports and routes to one or more attached projects via hostname-aware nginx rules.
@@ -93,10 +93,11 @@ Config is resolved in this order:
 1. CLI flags such as `--php-version`, `--docroot`, or `--site-name`
 2. Project-local `.stacklane-local`
 3. Current shell environment
-4. Stack-wide `.env`
+4. Stack-wide `.stackenv`
 5. Built-in defaults
 
-The stack-wide `.env` is for defaults. `.stacklane-local` is the project contract.
+The stack-wide `.stackenv` is for Stacklane defaults. Project `.env` stays application-owned. `.stacklane-local` is the Stacklane project contract.
+`STACKLANE_POST_UP_COMMAND` is the one project-local escape hatch intended for app bootstrap, such as migrations, after Stacklane has already declared the containers healthy.
 
 ## `.stacklane-local` Contract
 
@@ -127,6 +128,7 @@ Supported keys:
 - `MYSQL_PORT`, `PMA_PORT`: Optional per-project published port overrides
 - `SHARED_GATEWAY_HTTP_PORT`, `SHARED_GATEWAY_HTTPS_PORT`: Shared gateway host port overrides
 - `LOCAL_DNS_PROVIDER`, `LOCAL_DNS_IP`, `LOCAL_DNS_PORT`, `LOCAL_DNS_SUFFIX`: Local DNS bootstrap defaults
+- `STACKLANE_POST_UP_COMMAND`: Optional command run inside the `apache` container after healthchecks pass. Example: `php artisan migrate --force --no-interaction`
 
 Default document root behavior:
 
@@ -187,7 +189,8 @@ stacklane/
 ├── docker-compose.shared.yml # shared gateway and network
 ├── docker/
 │   └── nginx.conf.tmpl       # reference nginx template (Go renderer is authoritative)
-├── .env.example              # stack-wide defaults reference
+├── .env.example              # legacy stack-wide defaults reference
+├── .stackenv.example         # preferred stack-wide defaults reference
 ├── .stacklane-state/         # runtime state (git-ignored)
 │   ├── projects/<slug>.json  # per-project state file
 │   └── shared/               # generated gateway config

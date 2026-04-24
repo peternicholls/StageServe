@@ -26,6 +26,9 @@ type Docker struct {
 	Containers   []docker.Container
 	WaitErr      error
 	WaitCalled   []string
+	ExecCalls    []docker.ExecOptions
+	ExecOutput   string
+	ExecErr      error
 	LogsReader   io.ReadCloser
 	LogsErr      error
 	ListErr      error
@@ -92,6 +95,13 @@ func (m *Docker) ContainerLogs(ctx context.Context, id string, follow bool) (doc
 		return nil, m.LogsErr
 	}
 	return m.LogsReader, nil
+}
+
+func (m *Docker) Exec(ctx context.Context, opts docker.ExecOptions) (string, error) {
+	m.mu.Lock()
+	m.ExecCalls = append(m.ExecCalls, opts)
+	m.mu.Unlock()
+	return m.ExecOutput, m.ExecErr
 }
 
 // --- Composer ---

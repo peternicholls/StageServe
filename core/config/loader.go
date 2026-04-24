@@ -104,8 +104,40 @@ func defaultStateDir(stackHome string) string {
 	return filepath.Join(stackHome, ".stacklane-state")
 }
 
-func loadProjectEnv(stackDir string) (map[string]string, error) {
-	return loadEnvFile(filepath.Join(stackDir, ".stacklane-local"))
+func loadProjectLocalConfig(projectDir string) (map[string]string, error) {
+	return loadEnvFile(filepath.Join(projectDir, ".stacklane-local"))
+}
+
+func loadProjectRuntimeEnv(projectDir string) (map[string]string, error) {
+	return loadEnvFile(filepath.Join(projectDir, ".env"))
+}
+
+func loadStackEnv(stackHome string) (map[string]string, error) {
+	preferred := filepath.Join(stackHome, ".stackenv")
+	if envMap, err := loadEnvFile(preferred); err != nil {
+		return nil, err
+	} else if len(envMap) > 0 {
+		return envMap, nil
+	}
+	return loadEnvFile(filepath.Join(stackHome, ".env"))
+}
+
+func applyProjectRuntimeDBFallback(merged, runtimeEnv map[string]string) {
+	defaults := defaults()
+	for projectKey, stacklaneKey := range map[string]string{
+		"DB_DATABASE": "MYSQL_DATABASE",
+		"DB_USERNAME": "MYSQL_USER",
+		"DB_PASSWORD": "MYSQL_PASSWORD",
+	} {
+		value := strings.TrimSpace(runtimeEnv[projectKey])
+		if value == "" {
+			continue
+		}
+		if merged[stacklaneKey] == defaults[stacklaneKey] {
+			merged[stacklaneKey] = value
+			merged["STACKLANE_PROJECT_ENV_"+stacklaneKey] = "1"
+		}
+	}
 }
 
 // resolveStackHome reproduces stacklane_default_stack_home.
@@ -170,14 +202,23 @@ func (l *Loader) Load(projectDir string, flags CLIFlags) (ProjectConfig, error) 
 	cfg.SharedFile = filepath.Join(stackHome, "docker-compose.shared.yml")
 
 	// 3. Build the precedence-merged map. Lower precedence first; higher
-	// precedence overwrites by key. Order: defaults -> .env -> shell env -> project-local config -> CLI flags.
+	// precedence overwrites by key. Order: defaults -> stacklane .env ->
+	// project runtime .env DB fallback -> shell env -> .stacklane-local ->
+	// CLI flags.
 	merged := defaults()
 
-	// .env (stack home) applies just above built-in defaults.
-	if envMap, err := loadEnvFile(filepath.Join(stackHome, ".env")); err == nil {
+	// .stackenv in the stack home applies just above built-in defaults, with
+	// legacy .env still accepted as a fallback.
+	if envMap, err := loadStackEnv(stackHome); err == nil {
 		for k, v := range envMap {
 			merged[k] = v
 		}
+	}
+	// Project runtime .env stays separate from Stacklane config. We only use it
+	// as a fallback source for the app's DB identity so the provisioned MariaDB
+	// service can match the mounted project.
+	if envMap, err := loadProjectRuntimeEnv(pdAbs); err == nil {
+		applyProjectRuntimeDBFallback(merged, envMap)
 	}
 	// shell env: only consider keys we care about, to avoid leaking unrelated env.
 	for _, k := range trackedEnvKeys {
@@ -186,7 +227,7 @@ func (l *Loader) Load(projectDir string, flags CLIFlags) (ProjectConfig, error) 
 		}
 	}
 	// .stacklane-local
-	if envMap, err := loadProjectEnv(pdAbs); err == nil {
+	if envMap, err := loadProjectLocalConfig(pdAbs); err == nil {
 		for k, v := range envMap {
 			merged[k] = v
 		}
@@ -256,11 +297,11 @@ func (l *Loader) Load(projectDir string, flags CLIFlags) (ProjectConfig, error) 
 	cfg.MySQL.Version = strOr(merged["MYSQL_VERSION"], "10.6")
 	cfg.MySQL.RootPassword = strOr(merged["MYSQL_ROOT_PASSWORD"], "root")
 	cfg.MySQL.Database = strOr(merged["MYSQL_DATABASE"], "devdb")
-	if cfg.MySQL.Database == "devdb" {
+	if cfg.MySQL.Database == "devdb" && merged["STACKLANE_PROJECT_ENV_MYSQL_DATABASE"] != "1" {
 		cfg.MySQL.Database = cfg.Slug
 	}
 	cfg.MySQL.User = strOr(merged["MYSQL_USER"], "devuser")
-	if cfg.MySQL.User == "devuser" {
+	if cfg.MySQL.User == "devuser" && merged["STACKLANE_PROJECT_ENV_MYSQL_USER"] != "1" {
 		cfg.MySQL.User = cfg.Slug
 	}
 	cfg.MySQL.Password = strOr(merged["MYSQL_PASSWORD"], "devpass")
@@ -293,6 +334,7 @@ func (l *Loader) Load(projectDir string, flags CLIFlags) (ProjectConfig, error) 
 	default:
 		cfg.WaitTimeoutSecs = 120
 	}
+	cfg.PostUpCommand = merged["STACKLANE_POST_UP_COMMAND"]
 
 	return cfg, nil
 }
@@ -305,6 +347,7 @@ var trackedEnvKeys = []string{
 	"HOST_PORT", "COMPOSE_PROJECT_NAME", "WEB_NETWORK_ALIAS",
 	"SHARED_GATEWAY_NETWORK", "SHARED_GATEWAY_HTTP_PORT", "SHARED_GATEWAY_HTTPS_PORT",
 	"SHARED_GATEWAY_COMPOSE_PROJECT_NAME",
+	"STACKLANE_POST_UP_COMMAND",
 	"LOCAL_DNS_PROVIDER", "LOCAL_DNS_IP", "LOCAL_DNS_PORT", "LOCAL_DNS_SUFFIX",
 	"STACK_HOME", "STACK_STATE_DIR", "STACKLANE_WAIT_TIMEOUT",
 }

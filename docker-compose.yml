@@ -22,7 +22,7 @@ services:
       apache:
         condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1/ >/dev/null 2>&1 || exit 1"]
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1/__stacklane_health >/dev/null 2>&1 || exit 1"]
       interval: 5s
       timeout: 3s
       retries: 12
@@ -42,6 +42,12 @@ services:
     labels:
       <<: *stacklane-project-labels
       io.stacklane.service: apache
+    environment:
+      DB_HOST: ${DB_HOST:-mariadb}
+      DB_PORT: ${DB_PORT:-3306}
+      DB_DATABASE: ${DB_DATABASE:?err}
+      DB_USERNAME: ${DB_USERNAME:?err}
+      DB_PASSWORD: ${DB_PASSWORD:?err}
     working_dir: ${CONTAINER_DOCROOT:?err}
     volumes:
       - ${PROJECT_ROOT:?err}:${CONTAINER_SITE_ROOT:?err}

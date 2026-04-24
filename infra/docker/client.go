@@ -5,9 +5,11 @@
 package docker
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"strings"
 	"sync"
 	"time"
@@ -17,6 +19,7 @@ import (
 	dfilters "github.com/docker/docker/api/types/filters"
 	dnetwork "github.com/docker/docker/api/types/network"
 	"github.com/docker/docker/client"
+	"github.com/docker/docker/pkg/stdcopy"
 )
 
 // SDKClient is the default DockerClient backed by the Docker Engine SDK.
@@ -136,6 +139,45 @@ func (s *SDKClient) ContainerLogs(ctx context.Context, containerID string, follo
 		return nil, err
 	}
 	return rc, nil
+}
+
+func (s *SDKClient) Exec(ctx context.Context, opts ExecOptions) (string, error) {
+	c, err := s.ensure()
+	if err != nil {
+		return "", err
+	}
+	created, err := c.ContainerExecCreate(ctx, opts.ContainerID, container.ExecOptions{
+		AttachStdout: true,
+		AttachStderr: true,
+		Cmd:          opts.Cmd,
+		WorkingDir:   opts.WorkingDir,
+	})
+	if err != nil {
+		return "", err
+	}
+	resp, err := c.ContainerExecAttach(ctx, created.ID, container.ExecAttachOptions{})
+	if err != nil {
+		return "", err
+	}
+	defer resp.Close()
+
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	if _, err := stdcopy.StdCopy(&stdout, &stderr, resp.Reader); err != nil && !errors.Is(err, io.EOF) {
+		return "", err
+	}
+	inspect, err := c.ContainerExecInspect(ctx, created.ID)
+	if err != nil {
+		return "", err
+	}
+	output := strings.TrimSpace(stdout.String() + stderr.String())
+	if inspect.ExitCode != 0 {
+		if output == "" {
+			output = fmt.Sprintf("exec exited with code %d", inspect.ExitCode)
+		}
+		return output, fmt.Errorf("container exec exit code %d", inspect.ExitCode)
+	}
+	return output, nil
 }
 
 // ErrTimeout is the sentinel WaitHealthy returns when timeout elapses.

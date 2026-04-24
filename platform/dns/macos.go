@@ -61,10 +61,13 @@ func (p MacOSProvider) Bootstrap(s Settings) error {
 	if err := os.MkdirAll(filepath.Dir(managed), 0o755); err != nil {
 		return err
 	}
-	// Strip stale managed configs for the same suffix family.
-	matches, _ := filepath.Glob(filepath.Join(filepath.Dir(managed), "stacklane-*.conf"))
-	for _, m := range matches {
-		_ = os.Remove(m)
+	// Strip stale managed configs so duplicate global dnsmasq directives from
+	// previous Stacklane / legacy 20i runs do not prevent dnsmasq from starting.
+	for _, pattern := range []string{"stacklane-*.conf", "20i-*.conf"} {
+		matches, _ := filepath.Glob(filepath.Join(filepath.Dir(managed), pattern))
+		for _, m := range matches {
+			_ = os.Remove(m)
+		}
 	}
 	if err := copyFile(PreviewConfigPath(s.StateDir, s.Suffix), managed); err != nil {
 		return err
