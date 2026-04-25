@@ -28,7 +28,7 @@ type Loader struct {
 	// Env supplies the shell environment. nil means os.LookupEnv.
 	Env func(string) (string, bool)
 	// StackHomeOverride forces the stack home (used by tests). When empty the
-	// loader uses STACK_HOME or the directory holding docker-compose.yml.
+	// loader uses STACK_HOME or the directory holding docker-compose.shared.yml.
 	StackHomeOverride string
 }
 
@@ -154,16 +154,16 @@ func (l *Loader) resolveStackHome() (string, error) {
 	if v := l.envOrDefault("STACK_HOME", ""); v != "" {
 		return project.AbsDir(v)
 	}
-	// Walk up from this binary's location to find a docker-compose.yml.
+	// Walk up from this binary's location to find docker-compose.shared.yml.
 	exe, err := os.Executable()
 	if err == nil {
 		dir := filepath.Dir(exe)
-		if _, statErr := os.Stat(filepath.Join(dir, "docker-compose.yml")); statErr == nil {
+		if _, statErr := os.Stat(filepath.Join(dir, "docker-compose.shared.yml")); statErr == nil {
 			return dir, nil
 		}
 	}
 	if cwd, err := os.Getwd(); err == nil {
-		if _, statErr := os.Stat(filepath.Join(cwd, "docker-compose.yml")); statErr == nil {
+		if _, statErr := os.Stat(filepath.Join(cwd, "docker-compose.shared.yml")); statErr == nil {
 			return cwd, nil
 		}
 	}
@@ -204,7 +204,6 @@ func (l *Loader) Load(projectDir string, flags CLIFlags) (ProjectConfig, error) 
 	cfg.StackHome = stackHome
 	stateDir := l.envOrDefault("STACK_STATE_DIR", defaultStateDir(stackHome))
 	cfg.StateDir = project.AbsPathFromBase(stackHome, stateDir)
-	cfg.StackFile = filepath.Join(stackHome, "docker-compose.yml")
 	cfg.SharedFile = filepath.Join(stackHome, "docker-compose.shared.yml")
 
 	// 3. Build the precedence-merged map. Lower precedence first; higher
@@ -289,6 +288,7 @@ func (l *Loader) Load(projectDir string, flags CLIFlags) (ProjectConfig, error) 
 		return cfg, fmt.Errorf("unsupported STACKLANE_STACK %q: only 20i is implemented today", stackKind)
 	}
 	cfg.StackKind = stackKind
+	cfg.StackFile = filepath.Join(stackHome, stackComposeFileName(stackKind))
 	cfg.Name = strOr(merged["SITE_NAME"], filepath.Base(pdAbs))
 	cfg.Slug = project.Slugify(cfg.Name)
 	cfg.SiteSuffix = strOr(merged["SITE_SUFFIX"], "test")
@@ -401,6 +401,10 @@ func defaults() map[string]string {
 
 func normalizeStackKind(v string) string {
 	return strings.ToLower(strings.TrimSpace(v))
+}
+
+func stackComposeFileName(stackKind string) string {
+	return "docker-compose." + stackKind + ".yml"
 }
 
 func strOr(v, fallback string) string {

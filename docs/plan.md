@@ -198,7 +198,7 @@ Pass criteria:
 
 **Relevant files**
 
-- `docker-compose.yml` — current all-in-one runtime definition that needs to be split conceptually into shared infra and project-scoped runtime.
+- `docker-compose.20i.yml` — current 20i runtime definition that needs to be split conceptually into shared infra and project-scoped runtime.
 - `docker/nginx.conf.tmpl` — current single-site `localhost` routing template to evolve into hostname-aware behavior.
 - `previous-version-archive/legacy GUI script` — legacy command semantics and status patterns extended with attach/detach and registry-backed monitoring.
 - `previous-version-archive/` archived AppleScript entrypoint — kept aligned with revised command behavior in `previous-version-archive/`.

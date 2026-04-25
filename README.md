@@ -211,7 +211,7 @@ stacklane/
 ├── platform/                 # ports, dns, tls (host integrations)
 ├── observability/            # status, logs (read-only reporting)
 ├── internal/mocks/           # interface mocks for unit tests
-├── docker-compose.yml        # per-project runtime template (with healthchecks; phpMyAdmin under `debug` profile)
+├── docker-compose.20i.yml    # 20i per-project runtime template (with healthchecks; phpMyAdmin under `debug` profile)
 ├── docker-compose.shared.yml # shared gateway and network
 ├── docker/
 │   └── nginx.conf.tmpl       # reference nginx template (Go renderer is authoritative)

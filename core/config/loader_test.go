@@ -46,6 +46,9 @@ func TestLoader_DefaultsApplied(t *testing.T) {
 	if cfg.StackKind != "20i" {
 		t.Errorf("default STACKLANE_STACK=%q want 20i", cfg.StackKind)
 	}
+	if want := filepath.Join(cfg.StackHome, "docker-compose.20i.yml"); cfg.StackFile != want {
+		t.Errorf("StackFile=%q want %q", cfg.StackFile, want)
+	}
 	if cfg.PHPVersion != "8.5" {
 		t.Errorf("default PHP_VERSION=%q want 8.5", cfg.PHPVersion)
 	}

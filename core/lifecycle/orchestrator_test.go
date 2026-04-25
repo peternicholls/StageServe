@@ -28,7 +28,7 @@ func newCfg(t *testing.T) config.ProjectConfig {
 		Dir:                dir,
 		StackHome:          stack,
 		StateDir:           stateDir,
-		StackFile:          stack + "/docker-compose.yml",
+		StackFile:          stack + "/docker-compose.20i.yml",
 		SharedFile:         stack + "/docker-compose.shared.yml",
 		Hostname:           "demo.test",
 		ComposeProjectName: "stln-demo",

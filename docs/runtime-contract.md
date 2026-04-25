@@ -147,6 +147,7 @@ The lifecycle layer rolls back partial progress before returning. A failed `stac
 ## Shared Infrastructure
 
 - Shared routing compose file: `docker-compose.shared.yml`
+- Active 20i project compose file: `docker-compose.20i.yml`
 - Stacklane keeps one shared routing layer available across attached projects and repairs it when the layer is missing or unhealthy.
 - Shared gateway host ports: `80/443` by default; `.dev` runtime resolution moves HTTPS to `8443` when needed
 - Per-project web containers no longer publish host ports directly for normal site access
