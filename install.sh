@@ -141,15 +141,22 @@ check_path_warning() {
 # ──────────────────────────────────────────────────────────────────────────────
 resolve_version() {
   if [[ "$STACKLANE_VERSION" == "latest" ]]; then
-    if command -v curl &>/dev/null; then
-      STACKLANE_VERSION=$(curl -fsSL \
+    local resolved_version=""
+    if [[ "${STACKLANE_TEST_DISABLE_RELEASE_LOOKUP:-0}" != "1" ]] && command -v curl &>/dev/null; then
+      resolved_version=$(curl -fsSL \
         "https://api.github.com/repos/$STACKLANE_REPO/releases/latest" \
         | grep '"tag_name"' | sed -E 's/.*"tag_name": *"([^"]+)".*/\1/')
     fi
     # Fallback if curl/API unavailable (e.g., offline test env)
-    STACKLANE_VERSION="${STACKLANE_VERSION:-dev}"
+    STACKLANE_VERSION="${resolved_version:-dev}"
   fi
 }
+
+if [[ "${STACKLANE_TEST_ONLY_RESOLVED_VERSION:-0}" == "1" ]]; then
+  resolve_version
+  printf '%s\n' "$STACKLANE_VERSION"
+  exit 0
+fi
 
 download_binary() {
   local dest="$1"

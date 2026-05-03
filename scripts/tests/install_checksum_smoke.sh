@@ -59,5 +59,14 @@ else
   fail "sha256_verify_fail"
 fi
 
+# Test 4: latest version falls back to dev when release lookup yields no tag.
+name=$(STACKLANE_TEST_DISABLE_RELEASE_LOOKUP=1 STACKLANE_VERSION="latest" STACKLANE_TEST_ONLY_RESOLVED_VERSION=1 /bin/bash "$INSTALL_SH" --test-mode 2>&1) && true
+if [[ "$name" == "dev" ]]; then
+  pass "latest_version_falls_back_to_dev"
+else
+  fail "latest_version_falls_back_to_dev"
+  echo "Output was: $name"
+fi
+
 printf '\nResults: %d passed, %d failed\n' "$PASS" "$FAIL"
 [[ $FAIL -eq 0 ]]

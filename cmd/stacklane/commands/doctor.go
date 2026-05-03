@@ -50,7 +50,9 @@ func NewDoctor(shared *SharedFlags) *cobra.Command {
 			switch mode {
 			case onboarding.OutputModeJSON:
 				p := onboarding.JSONProjector{W: cmd.OutOrStdout()}
-				return p.Project(result)
+				if err := p.Project(result); err != nil {
+					return err
+				}
 			case onboarding.OutputModeTUI:
 				p := onboarding.TUIProjector{W: cmd.OutOrStdout()}
 				p.Project(result)
@@ -76,4 +78,12 @@ type doctorExitError struct{ code int }
 
 func (e *doctorExitError) Error() string {
 	return fmt.Sprintf("doctor finished with exit code %d", e.code)
+}
+
+func (e *doctorExitError) ExitCode() int {
+	return e.code
+}
+
+func (e *doctorExitError) Silent() bool {
+	return true
 }

@@ -40,6 +40,20 @@ func TestDoctor_JSONFlagAccepted(t *testing.T) {
 	}
 }
 
+// TestDoctor_JSONModeStillReturnsReadinessExit verifies JSON rendering does not
+// swallow the readiness exit classification.
+func TestDoctor_JSONModeStillReturnsReadinessExit(t *testing.T) {
+	root := NewRoot("test")
+	buf := &bytes.Buffer{}
+	root.SetOut(buf)
+	root.SetErr(buf)
+	root.SetArgs([]string{"doctor", "--json"})
+	err := root.Execute()
+	if !isDoctorExitError(err) {
+		t.Fatalf("expected nil or doctorExitError after JSON render, got: %v", err)
+	}
+}
+
 // TestDoctor_JSONOutputShape verifies that --json emits a JSON envelope.
 func TestDoctor_JSONOutputShape(t *testing.T) {
 	root := NewRoot("test")

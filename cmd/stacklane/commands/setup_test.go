@@ -42,6 +42,20 @@ func TestSetup_JSONFlagAccepted(t *testing.T) {
 	}
 }
 
+// TestSetup_JSONModeStillReturnsReadinessExit verifies JSON rendering does not
+// swallow the readiness exit classification.
+func TestSetup_JSONModeStillReturnsReadinessExit(t *testing.T) {
+	root := NewRoot("test")
+	buf := &bytes.Buffer{}
+	root.SetOut(buf)
+	root.SetErr(buf)
+	root.SetArgs([]string{"setup", "--json"})
+	err := root.Execute()
+	if !isSetupExitError(err) {
+		t.Fatalf("expected nil or setupExitError after JSON render, got: %v", err)
+	}
+}
+
 // TestSetup_InvalidSuffixRejected verifies that an invalid --suffix value is
 // rejected with an error that mentions "suffix" and is NOT a readiness exit code.
 func TestSetup_InvalidSuffixRejected(t *testing.T) {
