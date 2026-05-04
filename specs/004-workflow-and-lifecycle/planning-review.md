@@ -88,11 +88,11 @@ T011 / T027 say "retire `.stackenv.example` from the supported path". Per the re
 
 **Recommendation**: Reword to "Delete `.stackenv.example`."
 
-### 2.9 No task addresses CLI surface (`cmd/stacklane/commands/up.go`, etc.)
+### 2.9 No task addresses CLI surface (`cmd/stage/commands/up.go`, etc.)
 
 If failure classification messaging changes (T020), the cobra layer that prints `StepError.Error()` may render new strings. No task verifies that the operator-visible output is still readable, and `--help` text in `up.go` is not reviewed for stale references.
 
-**Recommendation**: Add one short verification step under T020 or T031 to `grep` `cmd/stacklane/commands/` for `stackenv|stage-<slug>` and to spot-check `stage up --help` output.
+**Recommendation**: Add one short verification step under T020 or T031 to `grep` `cmd/stage/commands/` for `stackenv|stage-<slug>` and to spot-check `stage up --help` output.
 
 ### 2.10 No bootstrap-timeout / bootstrap-cancel contract
 
@@ -232,7 +232,7 @@ These are accurate. No changes recommended to the risks table itself; the gaps i
 
 ### Should-do during implementation
 
-7. **Add a `cmd/stacklane/commands/` sweep** to T031 / Phase 6 (§2.9).
+7. **Add a `cmd/stage/commands/` sweep** to T031 / Phase 6 (§2.9).
 8. **Add the documentation-surface sweep task** to Phase 6 covering `core/config/types.go` docstring, `loader.go` package docstring, `docs/architecture.md`, `docs/migration.md`, `CONTRIBUTING.md` (§2.7, §3.3).
 9. **State `.stackenv.example` is deleted** in T011/T027 (§2.8).
 10. **Add an attach-slice test or an explicit recorded gap** for US3 (§2.6).

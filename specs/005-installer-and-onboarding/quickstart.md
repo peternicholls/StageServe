@@ -15,7 +15,7 @@ Implement and validate installer + onboarding command surfaces in this order:
 - Go 1.26 toolchain available.
 - Docker Desktop installed on macOS.
 - Writable local checkout of StageServe.
-- If validating against a deployed stack copy under `$HOME/docker/20i-stack`, sync the repo changes into that deployed copy before running operator-facing checks.
+- If validating against a deployed stack copy under `$HOME/docker/stageserve-stack`, sync the repo changes into that deployed copy before running operator-facing checks.
 
 ## TDD Loop
 
@@ -39,9 +39,9 @@ Start implementation with these concrete red-green-refactor slices, in order.
 | 1 | Exit code reducer prefers `unsupported-os` over lower severities | `core/onboarding/runtime_test.go` | `TestReduceExitCode_PrefersUnsupportedOS` | `go test ./core/onboarding -run TestReduceExitCode_PrefersUnsupportedOS` |
 | 2 | Overall status becomes `needs_action` when any step needs action and none error | `core/onboarding/runtime_test.go` | `TestOverallStatus_NeedsActionWithoutError` | `go test ./core/onboarding -run TestOverallStatus_NeedsActionWithoutError` |
 | 3 | Docker binary readiness returns actionable non-ready result when binary is missing | `core/onboarding/machine_readiness_test.go` | `TestDockerBinaryCheck_MissingBinary` | `go test ./core/onboarding -run TestDockerBinaryCheck_MissingBinary` |
-| 4 | Setup reports `config.dns_suffix=needs_action` in non-interactive mode when suffix is absent | `cmd/stacklane/commands/setup_test.go` or `core/onboarding/runtime_test.go` | `TestSetup_NonInteractiveMissingSuffix` | `go test ./cmd/stacklane/commands -run TestSetup_NonInteractiveMissingSuffix` |
+| 4 | Setup reports `config.dns_suffix=needs_action` in non-interactive mode when suffix is absent | `cmd/stage/commands/setup_test.go` or `core/onboarding/runtime_test.go` | `TestSetup_NonInteractiveMissingSuffix` | `go test ./cmd/stage/commands -run TestSetup_NonInteractiveMissingSuffix` |
 | 5 | Project env validation rejects docroot outside project root and writes no file | `core/onboarding/project_env_test.go` | `TestValidateProjectEnv_RejectsDocrootOutsideProjectRoot` | `go test ./core/onboarding -run TestValidateProjectEnv_RejectsDocrootOutsideProjectRoot` |
-| 6 | Doctor reports unhealthy gateway with exact remediation and stays read-only | `cmd/stacklane/commands/doctor_test.go` or `core/onboarding/machine_readiness_test.go` | `TestDoctor_UnhealthyGateway` | `go test ./cmd/stacklane/commands -run TestDoctor_UnhealthyGateway` |
+| 6 | Doctor reports unhealthy gateway with exact remediation and stays read-only | `cmd/stage/commands/doctor_test.go` or `core/onboarding/machine_readiness_test.go` | `TestDoctor_UnhealthyGateway` | `go test ./cmd/stage/commands -run TestDoctor_UnhealthyGateway` |
 
 For each slice:
 
@@ -53,7 +53,7 @@ For each slice:
 
 ## Step 1: Add command entrypoints
 
-1. Add command constructors in `cmd/stacklane/commands`:
+1. Add command constructors in `cmd/stage/commands`:
 - `NewSetup(flags *SharedFlags)`
 - `NewDoctor(flags *SharedFlags)`
 - `NewInit(flags *SharedFlags)`
@@ -152,14 +152,14 @@ Begin with the smallest failing ownership or validation test in `core/onboarding
 If operator validation uses a deployed stack copy, sync first:
 
 ```bash
-rsync -a --delete ./ "$HOME/docker/20i-stack/"
+rsync -a --delete ./ "$HOME/docker/stageserve-stack/"
 ```
 
 Run focused tests first:
 
 ```bash
 go test ./core/onboarding
-go test ./cmd/stacklane/commands
+go test ./cmd/stage/commands
 go test ./core/config
 go test ./core/lifecycle
 ```
@@ -216,7 +216,7 @@ Update in same change set:
 - `README.md` onboarding sequence (`install -> setup -> init -> up`)
 - `docs/runtime-contract.md` command ownership and output semantics
 - install/onboarding compatibility + integrity verification docs
-- repo-to-deployed-stack sync guidance when operators validate against `$HOME/docker/20i-stack`
+- repo-to-deployed-stack sync guidance when operators validate against `$HOME/docker/stageserve-stack`
 
 ## Completion Criteria
 
@@ -292,14 +292,14 @@ Expected: file overwritten. Exit 0.
 | Package                              | Result | Tests |
 |--------------------------------------|--------|-------|
 | `core/onboarding`                    | PASS   | 21    |
-| `cmd/stacklane/commands`             | PASS   | 13    |
+| `cmd/stage/commands`                 | PASS   | 13    |
 | `core/config`                        | PASS   | —     |
 | `core/lifecycle`                     | PASS   | —     |
 
 Command:
 
 ```bash
-go test ./core/onboarding/... ./cmd/stacklane/commands/... ./core/config/... ./core/lifecycle/...
+go test ./core/onboarding/... ./cmd/stage/commands/... ./core/config/... ./core/lifecycle/...
 ```
 
 All four packages PASS as of implementation completion.

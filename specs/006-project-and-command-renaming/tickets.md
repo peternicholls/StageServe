@@ -25,14 +25,14 @@ Why this style is preferred for this phase:
 
 ## Objective
 
-Execute a controlled rename from Stacklane to StageServe with CLI command `stage`, while preserving runtime safety, allowing phased execution where necessary, and finishing with no active `stacklane` references left in code or maintained documentation.
+Execute the final StageServe cutover with CLI command `stage`, while preserving runtime safety, allowing phased execution where necessary, and finishing with no active legacy references left in code or maintained documentation.
 
 ## Scope Baseline
 
 - Product identity: StageServe
 - Primary command: `stage`
 - Current state: pre-release
-- Default posture: phase risky rename slices if needed, but do not leave any active `stacklane` references behind by spec closeout
+- Default posture: phase risky rename slices if needed, but do not leave any active legacy references behind by spec closeout
 
 Temporary staging surfaces that may survive early gates but not final closeout:
 
@@ -51,12 +51,12 @@ Runtime prefixes `stln-*` must be renamed to `stage-*` by closeout. This covers 
 ## Definition Of Done
 
 - `stage` is the documented and installed canonical command everywhere active
-- No active `stacklane` references remain in code or maintained documentation by closeout
+- No active legacy references remain in code or maintained documentation by closeout
 - Every change packet has dry-run evidence before the real change packet lands
 - Validation matrix passes on both clean and dirty machines
 - Rollback path is rehearsed and documented before cutover
 - Only historical or archival material may still mention StageServe after closeout
-- Any compatibility shim decision is explicit, tested, and time-bounded
+- No compatibility shim remains in scope or implementation
 
 ## Contract Freeze Before Any Implementation
 
@@ -65,19 +65,18 @@ These decisions must be locked before any rename changes start:
 1. External naming contract
 	 - Product name: StageServe
 	 - Canonical command: `stage`
-	 - Discoverability note: whether and where to use "formerly Stacklane"
+	 - Active branding uses StageServe only
 2. Internal naming end-state contract
 	 - Temporary staging exceptions are allowed during early phases only
 	 - `.env.stage` cannot remain in active code or maintained docs by final closeout
 	 - `stln-*` must be renamed to `stage-*` by closeout
 3. Compatibility contract
-	 - Decide whether a temporary `stage` shim exists
-	 - If yes, define exact forwarding behavior and sunset milestone up front
+	 - No temporary compatibility shim exists
 4. Distribution contract
 	 - Decide which release, installer, checksum, and package surfaces change in this phase
 5. Output contract
 	 - Keep stdout clean for JSON and machine-readable modes
-	 - Preserve exit-code parity for canonical command and any shim
+	 - Preserve exit-code parity for canonical `stage` command
 
 ## How Actionable Tasks Must Be Written
 
@@ -98,7 +97,6 @@ Task writing rules:
 - Separate dry-run tasks from production-facing tasks
 - Do not combine binary rename, docs sweep, CI migration, and release publication in one task
 - Make clean-machine and dirty-machine validation separate tasks
-- Make shim work conditional, not assumed
 - Prefer one owning surface per task: command help, installer, completions, docs, CI, release, rollback
 - Every task must define the cheapest discriminating check, not just "tests pass"
 
@@ -113,7 +111,7 @@ Purpose: freeze the rename contract, final end state, and non-goals.
 Exit when:
 
 - External naming and temporary staging boundaries are explicit
-- Shim decision is made or explicitly deferred out of scope
+- No compatibility shim is permitted
 - Abort criteria and rollback owner are named
 
 ### Gate B: Inventory Dry Run
@@ -135,7 +133,7 @@ Exit when:
 - `stage --help` and `stage version` behave as expected
 - PATH shadowing and shell hash behavior are understood
 - Completion generation is rehearsed
-- Shim parity is rehearsed if shim is in scope
+- No compatibility command path remains in rehearsal scope
 
 ### Gate D: Docs And Spec Dry Run
 
@@ -268,16 +266,16 @@ This workplan was checked against specialist planning patterns before being writ
 - Abort if: stale completion or cache behavior cannot be corrected predictably.
 - Rollback: keep canonical cutover blocked until shell guidance is fixed.
 
-#### RENAME-007 Shim Behavior Dry Run
+#### RENAME-007 No-Compatibility Verification Dry Run
 
-- Goal: if a shim is in scope, prove it is behavior-safe before adding it.
+- Goal: prove the canonical `stage` path stands alone with no forwarding dependency.
 - Preconditions: RENAME-001 and RENAME-005.
-- Dry run: rehearse forwarding, stderr deprecation output, JSON stdout purity, and exit-code parity.
-- Real change: none until parity is proven.
-- Validation: canonical command and shim return equivalent results for help, version, JSON, noninteractive, and failure cases.
-- Evidence: parity matrix.
-- Abort if: shim contaminates stdout or changes exit behavior.
-- Rollback: drop shim from scope and continue with direct cutover only.
+- Dry run: verify there is no active legacy command path in the repository-owned tree and no docs depend on one.
+- Real change: none until the direct cutover path is verified.
+- Validation: canonical command behavior is validated without any shim parity matrix.
+- Evidence: zero-compatibility search log.
+- Abort if: an active flow still depends on a forwarding command.
+- Rollback: keep cutover blocked until the dependency is removed.
 
 ### Phase 3: Implement External Rename In Narrow Slices
 
@@ -300,19 +298,19 @@ This workplan was checked against specialist planning patterns before being writ
 - Real change: update help banners, examples, and user-facing usage strings.
 - Validation: targeted command help checks.
 - Evidence: before and after help snapshots.
-- Abort if: any user-facing `stage` examples remain outside explicit compatibility notes.
+- Abort if: any user-facing legacy examples remain in active help.
 - Rollback: restore prior help strings and reopen help sweep.
 
-#### RENAME-010 Optional Shim Change Packet
+#### RENAME-010 Remove Residual Compatibility Paths
 
-- Goal: add the `stage` forwarding shim only if RENAME-007 proved it safe and the contract requires it.
+- Goal: remove any remaining repository-owned legacy command path or compatibility wording.
 - Preconditions: RENAME-007 and RENAME-008.
-- Dry run: confirm parity matrix still matches the implementation slice.
-- Real change: add shim and deprecation wording.
-- Validation: focused shim parity checks.
-- Evidence: same parity matrix extended with implemented outputs.
-- Abort if: shim differs from the rehearsal or muddies the canonical command contract.
-- Rollback: remove shim and retain direct `stage` cutover.
+- Dry run: confirm the zero-compatibility search log still matches the implementation slice.
+- Real change: delete or rewrite any remaining compatibility residue.
+- Validation: focused zero-active-reference checks for command-path and doc surfaces.
+- Evidence: updated zero-compatibility search log.
+- Abort if: removing the residue exposes a hidden runtime dependency.
+- Rollback: restore only the affected slice long enough to replace it correctly, not as a permanent shim.
 
 ### Phase 4: Align Active Docs And Normative Specs
 
@@ -332,7 +330,7 @@ This workplan was checked against specialist planning patterns before being writ
 - Goal: update active docs so `stage` and the final renamed internal surfaces are canonical, and any transition notes are explicit and temporary.
 - Preconditions: Gates A through D green, RENAME-009 complete, and relevant internal rename slices landed.
 - Dry run: copy-paste audit of active command blocks before editing.
-- Real change: update README and active docs with `stage`, migration notes, and any shim timeline.
+- Real change: update README and active docs with `stage` and the final no-compatibility contract.
 - Validation: docs command-block audit using the updated command.
 - Evidence: list of audited command blocks and any exceptions.
 - Abort if: any active doc still depends on `stage` or another superseded internal name as canonical.
@@ -445,7 +443,7 @@ This workplan was checked against specialist planning patterns before being writ
 
 #### RENAME-020A Zero Active Reference Sweep
 
-- Goal: prove the spec closes with no active `stacklane` references remaining outside historical or archival material.
+- Goal: prove the spec closes with no active legacy references remaining outside historical or archival material.
 - Preconditions: RENAME-011A, RENAME-011, RENAME-012, and the main cutover packets complete.
 - Dry run: define the exact search scope for active code and maintained documentation.
 - Real change: run the final sweep, classify any remaining hits, and remove or relabel them.
@@ -471,9 +469,9 @@ This workplan was checked against specialist planning patterns before being writ
 
 - Goal: publish concise migration guidance that matches the actual cutover behavior.
 - Preconditions: RENAME-021 and all verification tasks green.
-- Dry run: verify release notes against the implemented contract, shim policy, and known issues.
+- Dry run: verify release notes against the implemented contract and known issues.
 - Real change: publish release notes and migration guidance.
-- Validation: links, command table, compatibility notes, and cleanup guidance are accurate.
+- Validation: links, command table, and cleanup guidance are accurate.
 - Evidence: final release note checklist.
 - Abort if: release guidance overpromises compatibility or omits known cleanup steps.
 - Rollback: correct the notes before announcing the release.
@@ -494,14 +492,13 @@ This workplan was checked against specialist planning patterns before being writ
 - Do not combine binary/install rename with public release asset publication.
 - Do not combine CI invocation changes with cache-key rotation without a rehearsal.
 - Do not combine docs sweep with a broad internal env/state/runtime rename; keep internal renames behavior-scoped and slice them first.
-- Do not combine shim introduction with shim sunset-policy negotiation.
 - Do not combine clean-machine and dirty-machine validation into one task.
 
 ## Recommended Execution Order
 
 1. Freeze the contract.
 2. Build the active-surface inventory.
-3. Rehearse local build, install, PATH, completion, and optional shim behavior.
+3. Rehearse local build, install, PATH, and completion behavior.
 4. Implement the external rename in narrow command and installer slices.
 5. Rename the remaining active internal `stage` surfaces in narrow slices.
 6. Align active docs and normative specs.
@@ -522,7 +519,6 @@ If a dry run reveals a gap, add or split task packets before proceeding. Do not 
 ## Risk Register Snapshot
 
 - High risk: stale PATH entries causing users to run old binary unexpectedly.
-- High risk: deprecation text leaking into JSON stdout during shim forwarding.
 - Medium risk: stale shell completion caches producing misleading command hints.
 - Medium risk: CI cache key reuse masking artifact/path mistakes.
 - Medium risk: docs drift where old command appears in less-visible pages.

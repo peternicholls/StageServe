@@ -37,10 +37,10 @@ Observed patterns:
 
 #### CLI Help And User-Facing Command Strings
 
-- `cmd/stacklane/commands/root.go`
-- `cmd/stacklane/commands/version.go`
-- `cmd/stacklane/commands/init.go`
-- command files with user-facing help comments or descriptions under `cmd/stacklane/commands/`
+- `cmd/stage/commands/root.go`
+- `cmd/stage/commands/version.go`
+- `cmd/stage/commands/init.go`
+- command files with user-facing help comments or descriptions under `cmd/stage/commands/`
 
 Observed patterns:
 
@@ -74,17 +74,14 @@ Observed patterns:
 
 These surfaces may stay temporarily during early dry-run phases, but they must be renamed or removed before this spec is closed.
 
-- `.env.stageserve`
-- `.stageserve-state`
-- `STAGESERVE_*`
-- `stage-*` → `stage-*` (Docker Compose project names, network names, volume names in `core/config/loader.go` and compose YAML files)
-- internal file-system and runtime names that derive from the old boundary above
-- package/import paths such as `github.com/peternicholls/stage/...` if they remain repository-owned and active by closeout
+- runtime-owned stale legacy state-dir material still present in workspaces
+- stale legacy command-root paths in maintained specs and planning docs
+- any repository-owned package/import paths that still carry the legacy identity
 
 Evidence observed in active code:
 
-- command code and tests refer to `.env.stageserve` and `.stageserve-state`
-- active runtime docs explicitly lock these surfaces as part of the current contract today, which means this spec must now replace that contract rather than preserve it
+- command code and tests already refer to `.env.stageserve` and `.stageserve-state`
+- active runtime docs already lock the final StageServe surfaces as the contract; any remaining legacy references are drift, not an open design question
 
 ### Category 3: Mark Legacy Or Historical Only
 
@@ -113,8 +110,8 @@ Requirement for this category:
 
 Current evidence from the repository search:
 
-- no active runtime or doc surface currently uses `stage` as the canonical command
-- the rename plan therefore has no in-repo ambiguity, but it does increase machine-level collision risk because the new command is much more generic than `stage`
+- active runtime and docs use `stage` as the canonical command
+- the remaining risk is stale legacy residue in code, docs, or local machine state, not ambiguity about the canonical command
 
 Implications for dry runs:
 
@@ -126,14 +123,14 @@ Implications for dry runs:
 
 1. The active spec folder for 006 originally lacked separate contract and research artifacts, which made it too easy to jump from idea to implementation without freeze points.
 2. User-facing command references exist across README, installer docs, runtime docs, migration docs, and multiple maintained spec artifacts, so a narrow code-only rename would leave the operator contract inconsistent.
-3. Internal `stage` surfaces are deeply present in both docs and tests, so the plan needs an explicit later-phase rename sweep rather than pretending the external cutover alone finishes the job.
-4. The generic command name `stage` raises a machine-level collision risk that the previous `stage` command did not.
+3. Internal stale legacy surfaces can survive in docs, tests, and runtime-owned local state even after the command cutover, so the plan needs an explicit sweep.
+4. The generic command name `stage` still raises a machine-level collision risk and must be validated explicitly.
 
 ## Recommended Next Reads Before Any Rename Implementation
 
 Use these as the first local anchors when implementation begins:
 
-1. `cmd/stacklane/commands/root.go`
+1. `cmd/stage/commands/root.go`
 2. `install.sh`
 3. `README.md`
 4. `docs/installer-onboarding.md`

@@ -53,9 +53,8 @@ Abort or pause the cutover if any of the following is true:
 
 - the final replacement names for active internal surfaces are still undecided
 - local install rehearsal does not produce a reliable `stage` command path
-- a shim is required for transition but cannot preserve stdout purity and exit-code parity
 - CI or release rehearsal depends on stale cache state or an old binary path
-- any maintained doc or normative spec still teaches `stage` as current behavior
+- any maintained doc or normative spec still teaches a legacy name or command as current behavior
 - the final zero-active-reference sweep finds active code or maintained doc hits that are not explicitly historical or archival
 - rollback depends on undocumented manual recovery
 
@@ -82,10 +81,10 @@ Abort or pause the cutover if any of the following is true:
 - docs copy-paste audit log
 - zero-active-reference search log
 
-## Gate A Decisions Still Open - CLOSED. Changes can be breaking. All references to `stage` must be replaced.
+## Gate A Decisions Closed
 
-1. Final replacement names for `.env.stageserve`, `.stageserve-state`, and `STAGESERVE_*`
-2. Whether a temporary `stage` shim exists at all
-3. Final replacement module path and any repository-rename dependency it creates
-4. Final names for gateway headers, route sentinels, and health endpoints that currently carry `stage`
-5. Final runtime prefix for Docker Compose projects, networks, and volumes (`stage-*` → `stage-*`)
+1. `.env.stageserve`, `.stageserve-state`, and `STAGESERVE_*` are the canonical config and state surfaces.
+2. No temporary compatibility shim is permitted.
+3. The active module path is `github.com/peternicholls/stageserve`.
+4. Runtime-visible gateway headers, route sentinels, and health endpoints use StageServe naming.
+5. The runtime Docker prefix remains `stage-*`.

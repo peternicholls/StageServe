@@ -34,10 +34,10 @@
 
 ## Decision 5: Shorten Project-Scoped Runtime Names To `stage-`
 
-- Decision: Change project-scoped runtime naming defaults from `stage-` to `stage-`.
+- Decision: Change project-scoped runtime naming defaults from `stln-` to `stage-`.
 - Rationale: Docker resource lists are easier to scan when the runtime prefix is shorter and leaves more room for the actual project slug. This matters most in multi-project workflows, where the current prefix consumes too much of the operator-visible resource name.
 - Alternatives considered:
-  - Keep `stage-`. Rejected because it adds no functional value and reduces scanability.
+  - Keep `stln-`. Rejected because the shorter `stage-` prefix is clearer and matches the current StageServe contract.
   - Use uppercase `STLN-`. Rejected because current compose project naming and downstream runtime naming are lowercase-oriented.
 
 ## Decision 6: Keep Shared Resources Explicit

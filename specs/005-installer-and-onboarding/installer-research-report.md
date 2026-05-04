@@ -144,7 +144,7 @@ Example:
 ✖ Docker daemon not reachable
   Why: StageServe requires a running Docker provider.
   Fix: Open Docker Desktop (or start your configured provider), then run:
-       stage setup --recheck docker
+       stage setup
 ```
 
 ### E. Align privileges with principle of least astonishment

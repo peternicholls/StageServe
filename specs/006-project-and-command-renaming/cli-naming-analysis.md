@@ -377,7 +377,7 @@ This checklist assumes the selected direction is:
 
 2. Decide compatibility posture:
 - **Hard switch** (pre-release clean break): only `stage` shipped.
-- **Soft transition** (recommended even pre-release): ship `stage` shim for 1–2 milestones.
+- No compatibility shim or secondary command path should remain.
 
 3. Decide brand surfaces:
 - GitHub repo name (`stage` vs `stageserve`).
@@ -387,7 +387,7 @@ This checklist assumes the selected direction is:
 
 1. CLI binary and entrypoint:
 - Update build/install targets so installed binary is `stage`.
-- Keep optional `stage` symlink shim if soft transition is chosen.
+- Do not keep any compatibility symlink or alternate command path.
 
 2. Command help/version strings:
 - Update usage banners, examples, and command synopsis to `stage`.
@@ -399,7 +399,7 @@ This checklist assumes the selected direction is:
 
 4. Shell completion scripts:
 - Regenerate completion for bash/zsh/fish under `stage`.
-- If keeping shim, either generate separate completion for `stage` or document it as unsupported.
+- Do not generate or document completions for any retired command name.
 
 5. Makefile and installer:
 - Update install destination filename and any chmod/symlink lines.
@@ -420,8 +420,8 @@ This checklist assumes the selected direction is:
 3. Keep archive boundaries explicit:
 - Do not present `previous-version-archive/` wrappers as active behavior.
 
-4. Add rename note:
-- Add a short "formerly Stacklane" note in README for searchability.
+4. Keep branding singular:
+- Do not add a "formerly Stacklane" tagline to active README branding.
 
 ### D. CI/CD and release pipeline niches
 
@@ -479,22 +479,22 @@ This checklist assumes the selected direction is:
 - spot-check npm/pip/cargo registry CLI name collisions
 
 2. Searchability and discoverability:
-- Add keywords in README/repo description: "StageServe (formerly Stacklane)".
+- Use StageServe-only branding in active README and repo description.
 
 3. Future Homebrew formula reservation:
 - If planning formula publication, verify `stage` naming strategy early to avoid future formula conflict surprises.
 
-### H. Compatibility shim plan (if chosen)
+### H. Compatibility posture
 
-1. `stage` shim behavior:
-- Print short deprecation note to stderr.
-- Exec `stage` with identical args and exit code passthrough.
+1. No shim:
+- Do not ship any `stacklane` forwarding path.
+- Keep `stage` as the only supported executable.
 
-2. Sunset policy:
-- Publish exact removal milestone (for example: remove after N minor releases).
+2. Completion policy:
+- Generate completions only for `stage`.
 
-3. Test parity:
-- Ensure `stage <cmd>` and `stage <cmd>` produce equivalent behavior during shim window.
+3. Validation:
+- Verify no active docs, scripts, or build targets still rely on `stacklane`.
 
 ### I. Validation plan (must-pass before merge)
 

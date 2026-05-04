@@ -10,21 +10,21 @@ This file exists to freeze the rename boundaries before implementation. No publi
 
 - Product name: `StageServe`
 - Canonical CLI command: `stage`
-- Searchability note: active docs should use a concise transitional phrase such as `StageServe (formerly Stacklane)` only where discoverability materially helps operators
+- Searchability note: active docs should use StageServe-only branding.
 
 ## Internal Naming End-State Contract
 
 The final state for this spec is:
 
-- no active `stacklane` references remain in code or maintained documentation
-- `stacklane` survives only in clearly historical notes, archival material, or explicitly labeled migration history
+- no active legacy references remain in code or maintained documentation
+- legacy naming survives only in clearly historical notes, archival material, or explicitly labeled migration history
 
 This includes repository-owned internal surfaces such as:
 
-- lingering `Stacklane` / `stacklane` branding
-- `.env.stage` that still needs to become `.env.stageserve`
-- `.stacklane-state` that still needs to become `.stageserve-state`
-- package, module, path, and layout names that still carry the old identity
+- lingering legacy branding
+- any env-file references that do not use `.env.stageserve`
+- any state-dir references that do not use `.stageserve-state`
+- package, module, path, and layout names that still carry the legacy identity
 
 Temporary staging rule:
 
@@ -41,24 +41,13 @@ Runtime prefix rename:
 
 - The canonical command must preserve existing exit-code behavior for equivalent success, needs-action, and failure paths.
 - Machine-readable and JSON output must remain clean on stdout.
-- Any deprecation or compatibility messaging must go to stderr only.
 - Help text and examples must present `stage` as canonical once cutover is complete.
 
 ## Compatibility Contract
 
-Recommended default for Gate A discussion:
-
-- Keep a temporary `stage` forwarding shim only if dry-run parity proves it behavior-safe.
-- If parity is not clean, do not ship the shim.
-- If the shim ships, it must be removed before this spec is closed so no active `stacklane` command path remains.
-- If the shim ships, it must:
-  - forward `stacklane <args>` to `stage <args>`
-  - preserve exit codes
-  - avoid stdout contamination for JSON or machine-readable modes
-  - print concise deprecation guidance to stderr
-  - have an explicit removal milestone before implementation begins
-
-This keeps compatibility as a controlled transition decision rather than an assumed final-state feature.
+- No compatibility forwarding shim is shipped.
+- `stage` is the only supported executable path.
+- Machine-readable and JSON modes stay clean because there is no compatibility layer injecting messaging.
 
 ## Distribution Contract
 
@@ -70,7 +59,7 @@ The following external surfaces are in scope for this phase:
 - shell completions
 - active docs and normative specs
 - CI smoke paths and release automation that invoke the canonical command
-- active internal naming surfaces that still carry `stacklane`
+- active internal naming surfaces that still carry the legacy identity
 
 The following surfaces require explicit classification before change:
 
@@ -82,17 +71,17 @@ The following surfaces require explicit classification before change:
 
 These defaults are the current recommended path unless dry runs uncover a blocker:
 
-- use a hard switch by default: ship `stage` as canonical and do not keep a long-lived `stage` shim
-- rename `.env.stage` to `.env.stageserve`
-- rename `.stacklane-state` to `.stageserve-state`
-- rename `STACKLANE_*` to `STAGESERVE_*`
+- use a hard switch: ship `stage` as canonical and do not keep any compatibility shim
+- use `.env.stageserve` as the env-file contract
+- use `.stageserve-state` as the state-dir contract
+- use `STAGESERVE_*` as the environment-variable contract
 - rename `stln-*` to `stage-*` (Docker Compose project names, network names, volume names)
-- rename runtime-visible gateway headers and sentinels from `Stacklane`/`stacklane` to `StageServe`/`stageserve`
+- use `StageServe` / `stageserve` for runtime-visible gateway headers and sentinels
 - rename the Go module path to `github.com/peternicholls/stageserve` only when repository identity is ready to support it
 
 Rationale:
 
-- these changes remove literal `stacklane` references from active code and docs
+- these changes remove literal legacy references from active code and docs
 - they keep the highest-risk scope focused on names rather than runtime behavior changes
 - they avoid widening the migration to every internal abbreviation unless there is independent value
 
@@ -117,8 +106,8 @@ Before public cutover, the following must be green:
 ## Approval Checklist
 
 - [x] External name and canonical command accepted
-- [x] Final no-active-`stacklane` end state accepted
-- [x] Shim policy accepted (hard switch; no shim unless dry-run parity proves it safe, must be removed before closeout)
+- [x] Final no-active-legacy end state accepted
+- [x] Shim policy accepted (hard switch; no shim)
 - [x] `stln-*` → `stage-*` runtime prefix rename accepted (local dev only; `docker system prune` acceptable)
 - [x] Gate A approved — implementation may begin
 - [ ] Distribution surfaces for this phase accepted

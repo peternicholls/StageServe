@@ -5,7 +5,7 @@
 
 ## Summary
 
-Rename the product identity from Stacklane to StageServe and the canonical CLI command from `stacklane` to `stage`, then carry that rename through the remaining active internal and documentation surfaces so the spec closes with no active `stacklane` references left in code or docs. Execute the rename as a gated hybrid plan: freeze the final end state first, inventory every active rename surface, rehearse local install and release mechanics, cut over the public command and docs in narrow slices, then finish with the internal rename sweep and a zero-active-reference verification gate.
+Finalize the StageServe identity and canonical `stage` CLI across the remaining active internal and documentation surfaces so the spec closes with no active legacy references left in code or docs. Execute the rename as a gated hybrid plan: freeze the final end state first, inventory every active rename surface, rehearse local install and release mechanics, cut over the public command and docs in narrow slices, then finish with the internal rename sweep and a zero-active-reference verification gate.
 
 This phase is intentionally dry-run-first. No public-facing cutover step should happen before local binary/install rehearsal, docs/spec rehearsal, CI/release rehearsal, and rollback rehearsal are all green.
 
@@ -14,17 +14,17 @@ This phase is intentionally dry-run-first. No public-facing cutover step should 
 **Language/Version**: Go 1.26.2 for the active CLI, shell installer for binary distribution, Markdown docs/specs for operator contract
 **Primary Dependencies**: `github.com/spf13/cobra`, current release/install flow in `install.sh`, GitHub Releases distribution, existing docs/spec artifacts under `README.md`, `docs/`, and `specs/`
 **Storage**: local files under `.env.stageserve`, `.stageserve-state`, release assets and checksums, shell completion scripts
-**Testing**: focused `go test` for `cmd/stacklane/commands`, `core/config`, and `core/lifecycle`, plus dry-run and manual operator validation for install, PATH, completion, CI, release, and rollback surfaces
+**Testing**: focused `go test` for `cmd/stage/commands`, `core/config`, and `core/lifecycle`, plus dry-run and manual operator validation for install, PATH, completion, CI, release, and rollback surfaces
 **Target Platform**: macOS primary, with CI/release surfaces validated wherever the installer currently supports
 **Project Type**: CLI/runtime tool with installer, documentation, and release pipeline
 **Performance Goals**: preserve existing command behavior and output contracts; do not add hidden migration work or widen runtime behavior during rename
-**Constraints**: phased execution is allowed, but no active `stacklane` references may remain by closeout except clearly historical or archival references; preserve JSON/stdout purity during any transition step; avoid combining rename slices that hide rollback boundaries
+**Constraints**: phased execution is allowed, but no active legacy references may remain by closeout except clearly historical or archival references; preserve JSON/stdout purity during any transition step; avoid combining rename slices that hide rollback boundaries
 **Scale/Scope**: one product rename, one command cutover, the remaining active internal naming surfaces, all maintained user-facing docs/specs, installer/release/CI surfaces, and explicit clean/dirty-machine verification
 
 ## Constitution Check
 
 - [x] Ease-of-use impact is explicit: the rename shortens the CLI and changes the public product name, but the operator journey must remain copy-pasteable and predictable.
-- [x] Reliability expectations are explicit: phased migration is allowed, but the end state is a repository with no active `stacklane` references outside historical or archival material; output contracts remain intact, and any shim decision must be time-bounded and parity-tested.
+- [x] Reliability expectations are explicit: phased migration is allowed, but the end state is a repository with no active legacy references outside historical or archival material; output contracts remain intact, and no compatibility shim survives closeout.
 - [x] Robustness boundaries are explicit: this is a naming migration, not a runtime behavior redesign.
 - [x] Same-change documentation scope is explicit: active docs, active normative specs, install/release guidance, and operator-facing help text all change together.
 - [x] Validation covers install, help, version, clean/dirty-machine command behavior, CI/release rehearsal, and rollback rehearsal.
@@ -70,9 +70,9 @@ scripts/
 
 ### Temporary Staging Boundary
 
-- Decision: literal `stage`-named internal surfaces may remain temporarily during early dry-run phases only, but they are not acceptable as the final state for this spec.
-- Rationale: phasing reduces cutover risk, but leaving active internal `stage` references behind would contradict the required end state.
-- Exception: `stage-*` may remain if review confirms it is still the best runtime prefix and not a confusing active reference to the old product name.
+- Decision: literal legacy-named internal surfaces may remain temporarily during early dry-run phases only, but they are not acceptable as the final state for this spec.
+- Rationale: phasing reduces cutover risk, but leaving active internal legacy references behind would contradict the required end state.
+- Exception: `stage-*` remains the accepted final runtime prefix.
 
 ### Dry-Run Requirement
 
@@ -85,7 +85,7 @@ scripts/
 
 1. Write and review the rename contract in `contracts/stageserve-rename-contract.md`.
 2. Record the owner matrix, abort criteria, and rollback ownership in `runbook.md`.
-3. Refuse implementation work until the final no-active-`stage` end state and any temporary staging exceptions are both explicit.
+3. Refuse implementation work until the final no-active-legacy end state and any temporary staging exceptions are both explicit.
 
 ### Phase 1 - Inventory Before Edit
 
@@ -97,13 +97,13 @@ scripts/
 
 1. Rehearse local binary naming and install path behavior before changing release surfaces.
 2. Rehearse shell completion generation and stale cache cleanup.
-3. If a shim stays in scope, prove forwarding parity before implementing it.
+3. Do not add a compatibility shim; validate only the canonical `stage` path.
 
 ### Phase 3 - Cut Over The External Command Surface In Narrow Slices
 
 1. Update binary/install naming.
 2. Update root help and user-facing command examples.
-3. Optionally add a forwarding shim only if rehearsal evidence proves it safe.
+3. Reject any forwarding shim; this spec closes only when `stage` is the sole active command path.
 
 ### Phase 4 - Migrate Remaining Active Internal Naming Surfaces
 
@@ -133,11 +133,11 @@ scripts/
 
 ### Planning Validation
 
-- Ensure `tickets.md`, `plan.md`, `research.md`, and the rename contract agree on the temporary staging rule, the final no-active-`stage` end state, and what requires dry-run evidence.
+- Ensure `tickets.md`, `plan.md`, `research.md`, and the rename contract agree on the temporary staging rule, the final no-active-legacy end state, and what requires dry-run evidence.
 
 ### Focused Technical Validation
 
-- `go test ./cmd/stacklane/commands`
+- `go test ./cmd/stage/commands`
 - `go test ./core/config`
 - `go test ./core/lifecycle`
 

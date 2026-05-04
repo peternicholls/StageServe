@@ -10,6 +10,6 @@ When changing config, lifecycle, naming, or runtime behavior, keep implementatio
 
 Treat `previous-version-archive/` as historical reference only. Do not restore legacy `20i-*` wrappers, archived TUI plans, or removed migration fallbacks unless the user explicitly asks for archival or compatibility work.
 
-Prefer focused validation over broad test runs. Use the narrowest relevant checks first, especially `go test ./cmd/stacklane/commands`, `go test ./core/config`, and `go test ./core/lifecycle` when those areas change. Use `make test`, `make vet`, or `make lint` only when the change scope justifies it.
+Prefer focused validation over broad test runs. Use the narrowest relevant checks first, especially `go test ./cmd/stage/commands`, `go test ./core/config`, and `go test ./core/lifecycle` when those areas change. Use `make test`, `make vet`, or `make lint` only when the change scope justifies it.
 
 Keep changes minimal and contract-driven. Avoid inventing new config surfaces when an existing stack-home, project-local, or runtime-owned boundary already exists.

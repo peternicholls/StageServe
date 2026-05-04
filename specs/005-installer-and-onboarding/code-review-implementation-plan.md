@@ -44,10 +44,10 @@ All three issues are isolated, small changes with clear acceptance criteria. Eac
 
 **Files**: 
 - `core/onboarding/project_env.go` (renderEnv)
-- `cmd/stacklane/commands/project_env.go` (reference implementation for shellQuote)
+- `cmd/stage/commands/project_env.go` (reference implementation for shellQuote)
 
 **Changes**:
-- Extract or copy the `shellDoubleQuote` logic from `cmd/stacklane/commands/project_env.go` into a shared utility (e.g., `core/onboarding/shell_quote.go` or add to `project_env.go`)
+- Extract or copy the `shellDoubleQuote` logic from `cmd/stage/commands/project_env.go` into a shared utility (e.g., `core/onboarding/shell_quote.go` or add to `project_env.go`)
 - Update lines 82–91 in `core/onboarding/project_env.go` to quote both values:
   ```go
   b.WriteString("SITE_NAME=" + shellQuote(siteName) + "\n")
@@ -67,8 +67,8 @@ All three issues are isolated, small changes with clear acceptance criteria. Eac
 **Issue**: `os.UserHomeDir()` errors are silently discarded in `setup.go` and `doctor.go`, leading to state paths under `/` if HOME is unavailable.
 
 **Files**:
-- `cmd/stacklane/commands/setup.go` (line 48)
-- `cmd/stacklane/commands/doctor.go` (line 31)
+- `cmd/stage/commands/setup.go` (line 48)
+- `cmd/stage/commands/doctor.go` (line 31)
 
 **Changes**:
 - Replace `home, _ := os.UserHomeDir()` with proper error handling in both files
@@ -123,7 +123,7 @@ All three issues are isolated, small changes with clear acceptance criteria. Eac
 
 **Issue**: `setup.go` accepts `--recheck` flag but never reads it; test only checks parsing, not behaviour.
 
-**Files**: `cmd/stacklane/commands/setup.go`
+**Files**: `cmd/stage/commands/setup.go`
 
 **Options**:
 - **Option A (Defer)**: Remove flag, test, and any documentation references. Re-add when feature is planned.
@@ -145,7 +145,7 @@ All three issues are isolated, small changes with clear acceptance criteria. Eac
 
 **Issue**: Task T031 is checked off, but `setup_platform_test.go` does not exist. Unsupported-OS exit-code contract is untested at command level.
 
-**File**: `cmd/stacklane/commands/setup_platform_test.go` (new)
+**File**: `cmd/stage/commands/setup_platform_test.go` (new)
 
 **Changes**:
 - Create test file with platform-specific build tags (e.g., `//go:build !darwin && !linux`)
@@ -205,9 +205,9 @@ All three issues are isolated, small changes with clear acceptance criteria. Eac
 **Issue**: Switch-on-mode dispatch block is copy-pasted verbatim into `setup.go`, `doctor.go`, `init.go`.
 
 **Files**:
-- `cmd/stacklane/commands/setup.go`
-- `cmd/stacklane/commands/doctor.go`
-- `cmd/stacklane/commands/init.go`
+- `cmd/stage/commands/setup.go`
+- `cmd/stage/commands/doctor.go`
+- `cmd/stage/commands/init.go`
 
 **Changes**:
 - Replace all three dispatch blocks with a single call to the factory:
@@ -251,7 +251,7 @@ All three issues are isolated, small changes with clear acceptance criteria. Eac
 
 **Issue**: `buildSetupCmd` helper in `setup_test.go` is defined but never called.
 
-**File**: `cmd/stacklane/commands/setup_test.go`
+**File**: `cmd/stage/commands/setup_test.go`
 
 **Changes**:
 - Delete the `buildSetupCmd` function (lines 12–15)

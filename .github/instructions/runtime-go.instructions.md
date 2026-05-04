@@ -19,6 +19,6 @@ Keep the active runtime contract intact unless the task explicitly changes it:
 When touching these areas, prefer focused validation with the smallest relevant test command first:
 - `go test ./core/config`
 - `go test ./core/lifecycle`
-- `go test ./cmd/stacklane/commands`
+- `go test ./cmd/stage/commands`
 
 Do not reintroduce legacy fallback behavior such as `.stackenv`, `<stack-home>/.env`, `.stage-local`, or deprecated `20i-*` wrapper semantics unless the task explicitly asks for compatibility restoration.

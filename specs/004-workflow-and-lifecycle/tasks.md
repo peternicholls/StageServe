@@ -24,7 +24,7 @@ description: "Tasks for workflow and lifecycle hardening"
 
 Single Go module at repository root:
 
-- `cmd/stacklane/` — CLI wiring
+- `cmd/stage/` — CLI wiring
 - `core/config/` — precedence, stack defaults, runtime naming
 - `core/lifecycle/` — bootstrap execution, rollback, failure classification
 - `core/state/` — project state persistence and registry projection
@@ -100,7 +100,7 @@ Single Go module at repository root:
 
 ### Implementation for User Story 2
 
-- [ ] T020 [US2] Tighten bootstrap failure wrapping and remediation messaging in `core/lifecycle/errors.go` and `core/lifecycle/orchestrator.go`. Spot-check the rendered text via `go test` golden output and ensure `cmd/stacklane/commands/up.go` still surfaces the error legibly to operators.
+- [ ] T020 [US2] Tighten bootstrap failure wrapping and remediation messaging in `core/lifecycle/errors.go` and `core/lifecycle/orchestrator.go`. Spot-check the rendered text via `go test` golden output and ensure `cmd/stage/commands/up.go` still surfaces the error legibly to operators.
 - [ ] T021 [P] [US2] Update rollback handling in `core/lifecycle/orchestrator.go` so failed bootstrap attempts leave state and route outcomes coherent: state record is removed (or never persisted as `attached`), gateway route is not added, and unrelated projects' routes are untouched.
 - [ ] T022 [P] [US2] Update `observability/status/status.go` so post-rollback status output reflects reality, keeps bootstrap failure separate from infrastructure readiness failures, and preserves unrelated attached project state.
 - [ ] T023 [US2] Run focused validation for failure-path reporting with `go test ./core/lifecycle ./observability/status` and record any remaining real-daemon-only gap in `specs/004-workflow-and-lifecycle/quickstart.md`.
