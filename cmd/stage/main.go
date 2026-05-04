@@ -10,7 +10,7 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/peternicholls/stageserve/cmd/stacklane/commands"
+	"github.com/peternicholls/stageserve/cmd/stage/commands"
 )
 
 // version is overridden at build time via -ldflags.

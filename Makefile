@@ -4,7 +4,7 @@ BINARY := stage-bin
 PKG := ./...
 
 build:
-	go build -o $(BINARY) ./cmd/stacklane
+	go build -o $(BINARY) ./cmd/stage
 
 test:
 	go test -race $(PKG)

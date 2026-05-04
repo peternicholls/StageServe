@@ -2,11 +2,15 @@ package commands
 
 import (
 	"bytes"
+	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/peternicholls/stageserve/core/onboarding"
 )
 
 // isInitExitError returns true for nil or a readiness-class exit error.
@@ -105,5 +109,44 @@ func TestInit_JSONOutput(t *testing.T) {
 	out := buf.String()
 	if !strings.Contains(out, `"overall_status"`) {
 		t.Errorf("expected JSON output with overall_status, got: %s", out)
+	}
+}
+
+func TestInit_NextStepsTextOutputDoesNotEmbedNewline(t *testing.T) {
+	dir := t.TempDir()
+	root := NewRoot("test")
+	buf := &bytes.Buffer{}
+	root.SetOut(buf)
+	root.SetErr(buf)
+	root.SetArgs([]string{"init", "--project-dir", dir, "--non-interactive", "--no-tui"})
+	if err := root.Execute(); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	out := buf.String()
+	if !strings.Contains(out, "Next: stage up\n") {
+		t.Fatalf("expected clean next step, got: %q", out)
+	}
+	if strings.Contains(out, "stage up\n\n") {
+		t.Fatalf("next step contains embedded newline: %q", out)
+	}
+}
+
+func TestInit_NextStepsJSONOutputDoesNotEmbedNewline(t *testing.T) {
+	dir := t.TempDir()
+	root := NewRoot("test")
+	buf := &bytes.Buffer{}
+	root.SetOut(buf)
+	root.SetErr(buf)
+	root.SetArgs([]string{"init", "--project-dir", dir, "--json"})
+	if err := root.Execute(); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	var result onboarding.CommandResult
+	if err := json.Unmarshal(buf.Bytes(), &result); err != nil {
+		t.Fatalf("json output did not unmarshal: %v\n%s", err, buf.String())
+	}
+	if got, want := fmt.Sprint(result.NextSteps), "[stage up]"; got != want {
+		t.Fatalf("next_steps=%s, want %s", got, want)
 	}
 }

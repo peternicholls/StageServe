@@ -81,7 +81,7 @@ func NewInit(shared *SharedFlags) *cobra.Command {
 				}
 			}
 
-			result := onboarding.BuildResult([]onboarding.StepResult{step}, nil, []string{"stage up\n"})
+			result := onboarding.BuildResult([]onboarding.StepResult{step}, nil, []string{"stage up"})
 
 			switch mode {
 			case onboarding.OutputModeJSON:
