@@ -202,7 +202,7 @@ func (l *Loader) Load(projectDir string, flags CLIFlags) (ProjectConfig, error) 
 		return cfg, fmt.Errorf("resolve stack home: %w", err)
 	}
 	cfg.StackHome = stackHome
-	stateDir := l.envOrDefault("STACK_STATE_DIR", defaultStateDir(stackHome))
+	stateDir := l.envOrDefault("STAGESERVE_STATE_DIR", defaultStateDir(stackHome))
 	cfg.StateDir = project.AbsPathFromBase(stackHome, stateDir)
 	cfg.SharedFile = filepath.Join(stackHome, "docker-compose.shared.yml")
 
@@ -373,7 +373,7 @@ var trackedEnvKeys = []string{
 	"MYSQL_DATABASE", "MYSQL_USER", "MYSQL_PASSWORD", "MYSQL_PORT", "PMA_PORT",
 	"HOST_PORT", "COMPOSE_PROJECT_NAME", "WEB_NETWORK_ALIAS",
 	"LOCAL_DNS_PROVIDER", "LOCAL_DNS_IP", "LOCAL_DNS_PORT", "LOCAL_DNS_SUFFIX",
-	"STACK_HOME", "STACK_STATE_DIR", "STAGESERVE_WAIT_TIMEOUT",
+	"STACK_HOME", "STAGESERVE_STATE_DIR", "STAGESERVE_WAIT_TIMEOUT",
 }
 
 var projectEnvDisallowedKeys = map[string]bool{}

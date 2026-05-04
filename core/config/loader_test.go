@@ -401,6 +401,25 @@ func TestLoader_IgnoresLegacyProjectAndStatePaths(t *testing.T) {
 	}
 }
 
+func TestLoader_StateDirUsesStageserveEnvKey(t *testing.T) {
+	stackHome := t.TempDir()
+	projectDir := t.TempDir()
+	wantStateDir := filepath.Join(t.TempDir(), "custom-state")
+	legacyStateDir := filepath.Join(t.TempDir(), "legacy-state")
+	loader := newLoader(t, map[string]string{
+		"STAGESERVE_STATE_DIR": wantStateDir,
+		"STACK_STATE_DIR":      legacyStateDir,
+	}, stackHome)
+
+	cfg, err := loader.Load(projectDir, CLIFlags{})
+	if err != nil {
+		t.Fatalf("load: %v", err)
+	}
+	if cfg.StateDir != wantStateDir {
+		t.Fatalf("StateDir=%q, want %q", cfg.StateDir, wantStateDir)
+	}
+}
+
 func TestLoader_WaitTimeoutPrecedence(t *testing.T) {
 	stackHome := t.TempDir()
 	projectDir := t.TempDir()
