@@ -128,7 +128,7 @@
             <h3>🔗 Quick Links</h3>
             <a href="?phpinfo=1">PHP Info</a>
             <a href="http://localhost:8081" target="_blank">phpMyAdmin</a>
-            <a href="https://github.com/peternicholls/StackLane" target="_blank">StackLane GitHub</a>
+            <a href="https://github.com/peternicholls/StageServe" target="_blank">StageServe GitHub</a>
         </div>
 
         <?php if (isset($_GET['phpinfo'])): ?>

@@ -30,7 +30,7 @@ func TestInit_FlagsAccepted(t *testing.T) {
 }
 
 // TestInit_CreatesEnvFile verifies that running init in a fresh directory
-// creates a .env.stacklane file.
+// creates a .env.stageserve file.
 func TestInit_CreatesEnvFile(t *testing.T) {
 	dir := t.TempDir()
 	root := NewRoot("test")
@@ -41,17 +41,17 @@ func TestInit_CreatesEnvFile(t *testing.T) {
 	if err := root.Execute(); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	envFile := filepath.Join(dir, ".env.stacklane")
+	envFile := filepath.Join(dir, ".env.stageserve")
 	if _, err := os.Stat(envFile); err != nil {
-		t.Errorf("expected .env.stacklane to be created, but stat failed: %v", err)
+		t.Errorf("expected .env.stageserve to be created, but stat failed: %v", err)
 	}
 }
 
 // TestInit_SkipsExistingWithoutForce verifies that init without --force does
-// not overwrite an existing .env.stacklane.
+// not overwrite an existing .env.stageserve.
 func TestInit_SkipsExistingWithoutForce(t *testing.T) {
 	dir := t.TempDir()
-	envFile := filepath.Join(dir, ".env.stacklane")
+	envFile := filepath.Join(dir, ".env.stageserve")
 	original := "# existing config\n"
 	if err := os.WriteFile(envFile, []byte(original), 0o644); err != nil {
 		t.Fatalf("setup failed: %v", err)
@@ -66,14 +66,14 @@ func TestInit_SkipsExistingWithoutForce(t *testing.T) {
 	}
 	got, _ := os.ReadFile(envFile)
 	if string(got) != original {
-		t.Error("expected existing .env.stacklane to be preserved, but content changed")
+		t.Error("expected existing .env.stageserve to be preserved, but content changed")
 	}
 }
 
 // TestInit_OverwritesWithForce verifies that --force overwrites an existing file.
 func TestInit_OverwritesWithForce(t *testing.T) {
 	dir := t.TempDir()
-	envFile := filepath.Join(dir, ".env.stacklane")
+	envFile := filepath.Join(dir, ".env.stageserve")
 	if err := os.WriteFile(envFile, []byte("# old\n"), 0o644); err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
@@ -87,7 +87,7 @@ func TestInit_OverwritesWithForce(t *testing.T) {
 	}
 	got, _ := os.ReadFile(envFile)
 	if strings.Contains(string(got), "# old") {
-		t.Error("expected --force to overwrite old .env.stacklane, but old content remains")
+		t.Error("expected --force to overwrite old .env.stageserve, but old content remains")
 	}
 }
 

@@ -1,6 +1,6 @@
 .PHONY: build test test-short lint vet fmt tidy clean release
 
-BINARY := stacklane-bin
+BINARY := stage-bin
 PKG := ./...
 
 build:
