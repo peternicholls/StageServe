@@ -21,4 +21,4 @@ When touching these areas, prefer focused validation with the smallest relevant 
 - `go test ./core/lifecycle`
 - `go test ./cmd/stage/commands`
 
-Do not reintroduce legacy fallback behavior such as `.stackenv`, `<stack-home>/.env`, `.stage-local`, or deprecated `20i-*` wrapper semantics unless the task explicitly asks for compatibility restoration.
+Do not reintroduce legacy fallback behavior such as `.stackenv`, `<stack-home>/.env`, `.stageserve-local`, or deprecated `20i-*` wrapper semantics unless the task explicitly asks for compatibility restoration.
