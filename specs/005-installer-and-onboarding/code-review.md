@@ -49,7 +49,7 @@ Code:   "unsupported-os",
 
 ---
 
-#### CR-002 · `renderEnv` writes unquoted, unsanitised values to `.env.stacklane`
+#### CR-002 · `renderEnv` writes unquoted, unsanitised values to `.env.stageserve`
 
 **File**: [core/onboarding/project_env.go](../../core/onboarding/project_env.go)  
 **Lines**: 82–91
@@ -62,7 +62,7 @@ b.WriteString("SITE_NAME=" + siteName + "\n")
 b.WriteString("DOCROOT=" + docroot + "\n")
 ```
 
-If either value contains spaces, `$`, a backtick, or a quote character, the resulting file will be unparseable by `source` / `export` (the shell contract for `.env` files). An adversarially crafted value (e.g. from a flag passed to `stacklane init`) could inject arbitrary env-var assignments.
+If either value contains spaces, `$`, a backtick, or a quote character, the resulting file will be unparseable by `source` / `export` (the shell contract for `.env` files). An adversarially crafted value (e.g. from a flag passed to `stage init`) could inject arbitrary env-var assignments.
 
 The parallel `renderEnvValue` + `shellDoubleQuote` pipeline in `cmd/stacklane/commands/project_env.go` already solves this problem correctly. It is not reused here.
 
@@ -85,10 +85,10 @@ Both commands resolve the state directory with:
 
 ```go
 home, _ := os.UserHomeDir()
-stateDir = filepath.Join(home, ".stacklane-state")
+stateDir = filepath.Join(home, ".stageserve-state")
 ```
 
-`os.UserHomeDir` can fail in stripped or container environments where `$HOME` and the passwd database are both absent. When it does, `home` is `""` and `stateDir` silently becomes `/.stacklane-state`. The command then proceeds to stat or create a path at the filesystem root rather than surfacing a clear error.
+`os.UserHomeDir` can fail in stripped or container environments where `$HOME` and the passwd database are both absent. When it does, `home` is `""` and `stateDir` silently becomes `/.stageserve-state`. The command then proceeds to stat or create a path at the filesystem root rather than surfacing a clear error.
 
 **Fix**
 
@@ -97,7 +97,7 @@ home, err := os.UserHomeDir()
 if err != nil {
     return fmt.Errorf("cannot determine home directory: %w", err)
 }
-stateDir = filepath.Join(home, ".stacklane-state")
+stateDir = filepath.Join(home, ".stageserve-state")
 ```
 
 ---
@@ -121,7 +121,7 @@ exec.Command("osascript", "-e", "do shell script \""+cmd+"\" with administrator 
 
 `%q` produces Go string-literal quoting (e.g. `"path"`, with `\"` for embedded quotes), not POSIX shell quoting. A `previewResolver` path that contains `\"`, `$(...)`, `` `...` ``, or `\` can break out of the double-quoted region inside the `do shell script` string and inject arbitrary commands executed with administrator privileges.
 
-`previewResolver` is derived from `Settings.StateDir` and `Settings.Suffix`. `StateDir` ultimately comes from an environment variable (`STACKLANE_STATE_DIR`). A user or process that controls that variable on a shared machine could escalate to root.
+`previewResolver` is derived from `Settings.StateDir` and `Settings.Suffix`. `StateDir` ultimately comes from an environment variable (`STAGESERVE_STATE_DIR`). A user or process that controls that variable on a shared machine could escalate to root.
 
 **Fix**  
 Pass the paths as separate `argv` elements to `/bin/sh` rather than embedding them in a string:
@@ -268,12 +268,12 @@ The TTY branch prints:
 
 ```
 ==> Launching first-run setup …
-  Run: stacklane setup --tui
+  Run: stage setup --tui
 
-  Or start setup now:  stacklane setup --tui
+  Or start setup now:  stage setup --tui
 ```
 
-The banner says "Launching" but immediately prints the command without executing it. This reads as a bug to users. Either exec `stacklane setup --tui` (subject to it being on PATH) or change the wording to "To complete setup, run:".
+The banner says "Launching" but immediately prints the command without executing it. This reads as a bug to users. Either exec `stage setup --tui` (subject to it being on PATH) or change the wording to "To complete setup, run:".
 
 ---
 
@@ -281,7 +281,7 @@ The banner says "Launching" but immediately prints the command without executing
 
 **File**: [core/onboarding/project_env.go](../../core/onboarding/project_env.go)
 
-`ValidateDocroot` verifies containment but not existence. `stacklane init --docroot nonexistent` will write a config that references a path that does not yet exist, with no warning. The current behaviour is technically documented (the function name says "validate", not "ensure"), but a note in the doc comment or an advisory `StepResult` in the init command would save operator confusion.
+`ValidateDocroot` verifies containment but not existence. `stage init --docroot nonexistent` will write a config that references a path that does not yet exist, with no warning. The current behaviour is technically documented (the function name says "validate", not "ensure"), but a note in the doc comment or an advisory `StepResult` in the init command would save operator confusion.
 
 ---
 

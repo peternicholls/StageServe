@@ -47,11 +47,11 @@ description: "Detailed implementation tasks for installer, onboarding, and readi
 
 ---
 
-## Phase 3: User Story 1 - Install StackLane Through A Recommended Path (Priority: P1) 🎯 MVP
+## Phase 3: User Story 1 - Install StageServe Through A Recommended Path (Priority: P1) 🎯 MVP
 
 **Goal**: Deliver one deterministic install path with checksum verification and onboarding handoff behavior.
 
-**Independent Test**: On a clean supported macOS machine, run the canonical install command and verify `stacklane --version` output and handoff behavior.
+**Independent Test**: On a clean supported macOS machine, run the canonical install command and verify `stage --version` output and handoff behavior.
 
 ### Tests for User Story 1
 
@@ -65,7 +65,7 @@ Execute US1 in red-green-refactor slices: write the failing test for asset selec
 - [x] T017 [US1] Implement release asset OS/arch detection and naming in `install.sh`.
 - [x] T018 [US1] Implement checksum fetch and verification workflow in `install.sh`.
 - [x] T019 [US1] Implement deterministic install destination and PATH warning behavior in `install.sh`.
-- [x] T020 [US1] Implement interactive `stacklane setup --tui` handoff and `NONINTERACTIVE=1` next-step behavior in `install.sh`.
+- [x] T020 [US1] Implement interactive `stage setup --tui` handoff and `NONINTERACTIVE=1` next-step behavior in `install.sh`.
 - [x] T021 [US1] Implement release artifact naming and checksum publication updates in `.github/workflows/release.yml`.
 - [x] T022 [US1] Publish installer path, fallback verification, and next-step docs in `README.md`.
 
@@ -75,9 +75,9 @@ Execute US1 in red-green-refactor slices: write the failing test for asset selec
 
 ## Phase 4: User Story 2 - Complete First-Run Machine Setup Reliably (Priority: P1)
 
-**Goal**: Deliver `stacklane setup` with ordered readiness checks, explicit privilege semantics, and deterministic outputs.
+**Goal**: Deliver `stage setup` with ordered readiness checks, explicit privilege semantics, and deterministic outputs.
 
-**Independent Test**: Run `stacklane setup` with at least one missing prerequisite and verify `ready`/`needs_action`/`error` statuses with exact remediation.
+**Independent Test**: Run `stage setup` with at least one missing prerequisite and verify `ready`/`needs_action`/`error` statuses with exact remediation.
 
 ### Tests for User Story 2
 
@@ -101,11 +101,11 @@ Execute US2 in red-green-refactor slices: start with one failing readiness or po
 
 ---
 
-## Phase 5: User Story 4 - Initialize A Project For StackLane (Priority: P1)
+## Phase 5: User Story 4 - Initialize A Project For StageServe (Priority: P1)
 
-**Goal**: Deliver `stacklane init` with guided defaults, strict docroot validation, and safe write semantics.
+**Goal**: Deliver `stage init` with guided defaults, strict docroot validation, and safe write semantics.
 
-**Independent Test**: In a project without `.env.stacklane`, run `stacklane init` and verify minimal file output, validation behavior, and next-step guidance.
+**Independent Test**: In a project without `.env.stageserve`, run `stage init` and verify minimal file output, validation behavior, and next-step guidance.
 
 ### Tests for User Story 4
 
@@ -119,7 +119,7 @@ Execute US4 in red-green-refactor slices: start with one failing ownership or va
 - [x] T035 [US4] Implement init command adapter and mode wiring in `cmd/stacklane/commands/init.go`.
 - [x] T036 [US4] Implement project-root resolution, validation, and ownership rules in `core/onboarding/project_env.go`.
 - [x] T037 [US4] Implement init interactive confirmation and adjustment flow on top of the ownership seam in `cmd/stacklane/commands/init.go` and `core/onboarding/projection_tui.go`.
-- [x] T038 [US4] Implement minimal `.env.stacklane` write, overwrite protection, and preservation semantics in `core/onboarding/project_env.go`.
+- [x] T038 [US4] Implement minimal `.env.stageserve` write, overwrite protection, and preservation semantics in `core/onboarding/project_env.go`.
 - [x] T039 [US4] Route the silent fallback helper through the shared project-env ownership module in `cmd/stacklane/commands/project_env.go`.
 - [x] T040 [US4] Implement init success summary and next-step projection in `cmd/stacklane/commands/init.go`.
 
@@ -129,9 +129,9 @@ Execute US4 in red-green-refactor slices: start with one failing ownership or va
 
 ## Phase 6: User Story 3 - Diagnose Drift And Recover Quickly (Priority: P2)
 
-**Goal**: Deliver `stacklane doctor` read-only diagnostics with targeted recovery guidance and JSON parity.
+**Goal**: Deliver `stage doctor` read-only diagnostics with targeted recovery guidance and JSON parity.
 
-**Independent Test**: Break one dependency (for example resolver file drift), run `stacklane doctor`, and verify precise detection plus recovery command.
+**Independent Test**: Break one dependency (for example resolver file drift), run `stage doctor`, and verify precise detection plus recovery command.
 
 ### Tests for User Story 3
 

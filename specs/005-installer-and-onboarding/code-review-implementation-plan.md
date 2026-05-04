@@ -40,7 +40,7 @@ All three issues are isolated, small changes with clear acceptance criteria. Eac
 
 ### T1.2 — CR-002: Add shell quoting to env value rendering
 
-**Issue**: `renderEnv` writes unquoted `siteName` and `docroot` to `.env.stacklane`, allowing injection if values contain special characters or quotes.
+**Issue**: `renderEnv` writes unquoted `siteName` and `docroot` to `.env.stageserve`, allowing injection if values contain special characters or quotes.
 
 **Files**: 
 - `core/onboarding/project_env.go` (renderEnv)
@@ -86,7 +86,7 @@ All three issues are isolated, small changes with clear acceptance criteria. Eac
 
 ### T2.1 — CR-004: Fix osascript shell injection vulnerability
 
-**Issue**: `platform/dns/macos.go` uses Go `%q` formatting (not POSIX shell quoting) to build paths for `osascript ... with administrator privileges`. A crafted `STACKLANE_STATE_DIR` can inject arbitrary commands executed as root.
+**Issue**: `platform/dns/macos.go` uses Go `%q` formatting (not POSIX shell quoting) to build paths for `osascript ... with administrator privileges`. A crafted `STAGESERVE_STATE_DIR` can inject arbitrary commands executed as root.
 
 **File**: `platform/dns/macos.go` lines 192–196 (`installResolver`)
 
@@ -137,7 +137,7 @@ All three issues are isolated, small changes with clear acceptance criteria. Eac
 - Remove `TestSetup_RecheckFlagAccepted` test
 - Search codebase for any other references and remove
 
-**Acceptance**: No `--recheck` flag exists; `stacklane setup --recheck` produces "unknown flag" error
+**Acceptance**: No `--recheck` flag exists; `stage setup --recheck` produces "unknown flag" error
 
 ---
 
@@ -270,7 +270,7 @@ All three issues are isolated, small changes with clear acceptance criteria. Eac
 
 **Changes**:
 - Change wording from "Launching first-run setup …" to "To complete setup, run:"
-- Or optionally: exec `stacklane setup --tui` (if it's guaranteed to be on PATH)
+- Or optionally: exec `stage setup --tui` (if it's guaranteed to be on PATH)
 
 **Recommendation**: Change wording (safer, no PATH dependency).
 

@@ -10,7 +10,7 @@ description: "Execution ticket list for StageServe project rename and stage CLI 
 - Project identity: StageServe
 - Primary command: `stage`
 - Current state: pre-release
-- Default recommendation: keep runtime/state internals (`STACKLANE_*`, `.env.stacklane`, `.stacklane-state`, `stln-*`) stable unless explicitly changed by a dedicated migration ticket
+- Default recommendation: keep runtime/state internals (`STAGESERVE_*`, `.env.stageserve`, `.stageserve-state`, `stage-*`) stable unless explicitly changed by a dedicated migration ticket
 
 **Out of scope unless explicitly added**:
 - Runtime architecture changes unrelated to naming
@@ -27,8 +27,8 @@ description: "Execution ticket list for StageServe project rename and stage CLI 
 
 - [ ] RENAME-001 Lock naming contract decisions in an ADR at specs/005-installer-and-onboarding/contracts/stageserve-rename-contract.md
 Acceptance criteria:
-1. Contract states which internal surfaces stay unchanged: `STACKLANE_*`, `.env.stacklane`, `.stacklane-state`, `stln-*`.
-2. Contract states whether a temporary `stacklane` compatibility shim is included.
+1. Contract states which internal surfaces stay unchanged: `STAGESERVE_*`, `.env.stageserve`, `.stageserve-state`, `stage-*`.
+2. Contract states whether a temporary `stage` compatibility shim is included.
 3. Contract defines sunset milestone for shim removal if enabled.
 Dependencies: none.
 
@@ -41,7 +41,7 @@ Dependencies: RENAME-001.
 
 ## Phase 1: Binary, Install, And Command Surface
 
-- [ ] RENAME-003 Rename installed binary target from `stacklane` to `stage` in install/build paths
+- [ ] RENAME-003 Rename installed binary target from `stage` to `stage` in install/build paths
 Primary files:
 1. install.sh
 2. Makefile
@@ -59,7 +59,7 @@ Primary files:
 Acceptance criteria:
 1. `stage --help` top banner uses StageServe branding.
 2. All command examples in runtime help use `stage`.
-3. No user-facing `stacklane` examples remain in command help.
+3. No user-facing `stage` examples remain in command help.
 Dependencies: RENAME-003.
 
 - [ ] RENAME-005 Regenerate and validate shell completions for `stage`
@@ -71,9 +71,9 @@ Dependencies: RENAME-003.
 
 ## Phase 2: Compatibility Shim (Recommended Even Pre-Release)
 
-- [ ] RENAME-006 Add optional `stacklane` shim forwarding to `stage`
+- [ ] RENAME-006 Add optional `stage` shim forwarding to `stage`
 Acceptance criteria:
-1. `stacklane <args>` forwards to `stage <args>` preserving exit code.
+1. `stage <args>` forwards to `stage <args>` preserving exit code.
 2. Shim prints concise deprecation notice to stderr once per invocation.
 3. Shim does not alter stdout payload contract for JSON modes.
 Dependencies: RENAME-003.
@@ -132,7 +132,7 @@ Primary files:
 Acceptance criteria:
 1. CI calls `stage` as canonical command.
 2. Any shim test is explicit and isolated.
-3. Pipeline passes without depending on stale `stacklane` binary in runner cache.
+3. Pipeline passes without depending on stale `stage` binary in runner cache.
 Dependencies: RENAME-003.
 
 - [ ] RENAME-013 Audit cache keys, artifact paths, and restore behavior
@@ -183,14 +183,14 @@ Dependencies: RENAME-002.
 
 - [ ] RENAME-019 Clean machine install and first-run smoke
 Acceptance criteria:
-1. Install on machine with no prior Stacklane binary succeeds.
+1. Install on machine with no prior StageServe binary succeeds.
 2. `stage init`, `stage up`, `stage status`, `stage logs`, `stage down` execute as documented.
 3. Recorded evidence includes exact commands and outputs summary.
 Dependencies: RENAME-011, RENAME-012.
 
 - [ ] RENAME-020 Dirty machine upgrade with old binary present
 Acceptance criteria:
-1. Existing `stacklane` binary does not prevent `stage` from becoming canonical.
+1. Existing `stage` binary does not prevent `stage` from becoming canonical.
 2. Expected precedence behavior documented and validated.
 3. Shim behavior (if enabled) verified end to end.
 Dependencies: RENAME-006, RENAME-019.
@@ -205,7 +205,7 @@ Dependencies: RENAME-004, RENAME-012.
 - [ ] RENAME-022 Docs copy/paste audit
 Acceptance criteria:
 1. Every command block in active docs executes with `stage`.
-2. Stale `stacklane` references are either removed or marked legacy.
+2. Stale `stage` references are either removed or marked legacy.
 3. Failures are logged and fixed before cut.
 Dependencies: RENAME-008, RENAME-010.
 

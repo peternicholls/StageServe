@@ -13,7 +13,7 @@ This phase is intentionally dry-run-first. No public-facing cutover step should 
 
 **Language/Version**: Go 1.26.2 for the active CLI, shell installer for binary distribution, Markdown docs/specs for operator contract
 **Primary Dependencies**: `github.com/spf13/cobra`, current release/install flow in `install.sh`, GitHub Releases distribution, existing docs/spec artifacts under `README.md`, `docs/`, and `specs/`
-**Storage**: local files under `.env.stacklane`, `.stacklane-state`, release assets and checksums, shell completion scripts
+**Storage**: local files under `.env.stageserve`, `.stageserve-state`, release assets and checksums, shell completion scripts
 **Testing**: focused `go test` for `cmd/stacklane/commands`, `core/config`, and `core/lifecycle`, plus dry-run and manual operator validation for install, PATH, completion, CI, release, and rollback surfaces
 **Target Platform**: macOS primary, with CI/release surfaces validated wherever the installer currently supports
 **Project Type**: CLI/runtime tool with installer, documentation, and release pipeline
@@ -50,10 +50,10 @@ specs/006-project-and-command-renaming/
 README.md
 install.sh
 Makefile
-stacklane
-stacklane-bin
+stage
+stage-bin
 cmd/
-  stacklane/
+  stage/
 docs/
 specs/
 scripts/
@@ -70,9 +70,9 @@ scripts/
 
 ### Temporary Staging Boundary
 
-- Decision: literal `stacklane`-named internal surfaces may remain temporarily during early dry-run phases only, but they are not acceptable as the final state for this spec.
-- Rationale: phasing reduces cutover risk, but leaving active internal `stacklane` references behind would contradict the required end state.
-- Exception: `stln-*` may remain if review confirms it is still the best runtime prefix and not a confusing active reference to the old product name.
+- Decision: literal `stage`-named internal surfaces may remain temporarily during early dry-run phases only, but they are not acceptable as the final state for this spec.
+- Rationale: phasing reduces cutover risk, but leaving active internal `stage` references behind would contradict the required end state.
+- Exception: `stage-*` may remain if review confirms it is still the best runtime prefix and not a confusing active reference to the old product name.
 
 ### Dry-Run Requirement
 
@@ -85,11 +85,11 @@ scripts/
 
 1. Write and review the rename contract in `contracts/stageserve-rename-contract.md`.
 2. Record the owner matrix, abort criteria, and rollback ownership in `runbook.md`.
-3. Refuse implementation work until the final no-active-`stacklane` end state and any temporary staging exceptions are both explicit.
+3. Refuse implementation work until the final no-active-`stage` end state and any temporary staging exceptions are both explicit.
 
 ### Phase 1 - Inventory Before Edit
 
-1. Record active `stacklane` surfaces in `research.md` and `inventory.md`.
+1. Record active `stage` surfaces in `research.md` and `inventory.md`.
 2. Classify each surface as rename now, rename later in this spec, mark legacy, or archive only.
 3. Record namespace and shadowing risks for `stage`.
 
@@ -107,7 +107,7 @@ scripts/
 
 ### Phase 4 - Migrate Remaining Active Internal Naming Surfaces
 
-1. Rename the remaining active internal `stacklane`-named env, state, runtime, path, and code surfaces that are still repository-owned.
+1. Rename the remaining active internal `stage`-named env, state, runtime, path, and code surfaces that are still repository-owned.
 2. Keep the migration behavior-scoped and reversible by slice rather than mixing it into release publication.
 3. Remove temporary staging exceptions once the replacement names are proven.
 
@@ -133,7 +133,7 @@ scripts/
 
 ### Planning Validation
 
-- Ensure `tickets.md`, `plan.md`, `research.md`, and the rename contract agree on the temporary staging rule, the final no-active-`stacklane` end state, and what requires dry-run evidence.
+- Ensure `tickets.md`, `plan.md`, `research.md`, and the rename contract agree on the temporary staging rule, the final no-active-`stage` end state, and what requires dry-run evidence.
 
 ### Focused Technical Validation
 
@@ -146,7 +146,7 @@ scripts/
 - Local build/install rehearsal for `stage`
 - Completion and shell-cache rehearsal
 - Clean-machine install rehearsal
-- Dirty-machine upgrade rehearsal with old `stacklane` residue present
+- Dirty-machine upgrade rehearsal with old `stage` residue present
 - CI/release rehearsal with rotated cache assumptions
 - Rollback rehearsal against prepared release surfaces
 - Zero-active-reference sweep across active code and docs before closeout

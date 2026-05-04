@@ -21,9 +21,9 @@ The final state for this spec is:
 
 This includes repository-owned internal surfaces such as:
 
-- `STACKLANE_*`
-- `.env.stacklane`
-- `.stacklane-state`
+- lingering `Stacklane` / `stacklane` branding
+- `.env.stage` that still needs to become `.env.stageserve`
+- `.stacklane-state` that still needs to become `.stageserve-state`
 - package, module, path, and layout names that still carry the old identity
 
 Temporary staging rule:
@@ -48,7 +48,7 @@ Runtime prefix rename:
 
 Recommended default for Gate A discussion:
 
-- Keep a temporary `stacklane` forwarding shim only if dry-run parity proves it behavior-safe.
+- Keep a temporary `stage` forwarding shim only if dry-run parity proves it behavior-safe.
 - If parity is not clean, do not ship the shim.
 - If the shim ships, it must be removed before this spec is closed so no active `stacklane` command path remains.
 - If the shim ships, it must:
@@ -82,8 +82,8 @@ The following surfaces require explicit classification before change:
 
 These defaults are the current recommended path unless dry runs uncover a blocker:
 
-- use a hard switch by default: ship `stage` as canonical and do not keep a long-lived `stacklane` shim
-- rename `.env.stacklane` to `.env.stageserve`
+- use a hard switch by default: ship `stage` as canonical and do not keep a long-lived `stage` shim
+- rename `.env.stage` to `.env.stageserve`
 - rename `.stacklane-state` to `.stageserve-state`
 - rename `STACKLANE_*` to `STAGESERVE_*`
 - rename `stln-*` to `stage-*` (Docker Compose project names, network names, volume names)
@@ -116,9 +116,11 @@ Before public cutover, the following must be green:
 
 ## Approval Checklist
 
-- [ ] External name and canonical command accepted
-- [ ] Final no-active-`stacklane` end state accepted
-- [ ] Shim policy accepted
+- [x] External name and canonical command accepted
+- [x] Final no-active-`stacklane` end state accepted
+- [x] Shim policy accepted (hard switch; no shim unless dry-run parity proves it safe, must be removed before closeout)
+- [x] `stln-*` → `stage-*` runtime prefix rename accepted (local dev only; `docker system prune` acceptable)
+- [x] Gate A approved — implementation may begin
 - [ ] Distribution surfaces for this phase accepted
 - [ ] Abort criteria and rollback owner named
 - [ ] Dry-run evidence locations defined

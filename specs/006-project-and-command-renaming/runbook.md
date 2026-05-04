@@ -55,7 +55,7 @@ Abort or pause the cutover if any of the following is true:
 - local install rehearsal does not produce a reliable `stage` command path
 - a shim is required for transition but cannot preserve stdout purity and exit-code parity
 - CI or release rehearsal depends on stale cache state or an old binary path
-- any maintained doc or normative spec still teaches `stacklane` as current behavior
+- any maintained doc or normative spec still teaches `stage` as current behavior
 - the final zero-active-reference sweep finds active code or maintained doc hits that are not explicitly historical or archival
 - rollback depends on undocumented manual recovery
 
@@ -82,10 +82,10 @@ Abort or pause the cutover if any of the following is true:
 - docs copy-paste audit log
 - zero-active-reference search log
 
-## Gate A Decisions Still Open
+## Gate A Decisions Still Open - CLOSED. Changes can be breaking. All references to `stage` must be replaced.
 
-1. Final replacement names for `.env.stacklane`, `.stacklane-state`, and `STACKLANE_*`
-2. Whether a temporary `stacklane` shim exists at all
+1. Final replacement names for `.env.stageserve`, `.stageserve-state`, and `STAGESERVE_*`
+2. Whether a temporary `stage` shim exists at all
 3. Final replacement module path and any repository-rename dependency it creates
-4. Final names for gateway headers, route sentinels, and health endpoints that currently carry `stacklane`
-5. Whether `stln-*` remains the runtime prefix after review
+4. Final names for gateway headers, route sentinels, and health endpoints that currently carry `stage`
+5. Final runtime prefix for Docker Compose projects, networks, and volumes (`stage-*` → `stage-*`)

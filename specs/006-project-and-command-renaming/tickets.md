@@ -36,9 +36,8 @@ Execute a controlled rename from Stacklane to StageServe with CLI command `stage
 
 Temporary staging surfaces that may survive early gates but not final closeout:
 
-- `STACKLANE_*`
-- `.env.stacklane`
-- `.stacklane-state`
+- `.env.stage`
+- `.stageserve-state`
 
 Runtime prefixes `stln-*` must be renamed to `stage-*` by closeout. This covers Docker Compose project names, network names, and volume names. No live runtime migration is required; a `docker system prune` before first use under the new prefix is acceptable.
 
@@ -56,7 +55,7 @@ Runtime prefixes `stln-*` must be renamed to `stage-*` by closeout. This covers 
 - Every change packet has dry-run evidence before the real change packet lands
 - Validation matrix passes on both clean and dirty machines
 - Rollback path is rehearsed and documented before cutover
-- Only historical or archival material may still mention Stacklane after closeout
+- Only historical or archival material may still mention StageServe after closeout
 - Any compatibility shim decision is explicit, tested, and time-bounded
 
 ## Contract Freeze Before Any Implementation
@@ -69,10 +68,10 @@ These decisions must be locked before any rename changes start:
 	 - Discoverability note: whether and where to use "formerly Stacklane"
 2. Internal naming end-state contract
 	 - Temporary staging exceptions are allowed during early phases only
-	 - `STACKLANE_*`, `.env.stacklane`, and `.stacklane-state` cannot remain in active code or maintained docs by final closeout
+	 - `.env.stage` cannot remain in active code or maintained docs by final closeout
 	 - `stln-*` must be renamed to `stage-*` by closeout
 3. Compatibility contract
-	 - Decide whether a temporary `stacklane` shim exists
+	 - Decide whether a temporary `stage` shim exists
 	 - If yes, define exact forwarding behavior and sunset milestone up front
 4. Distribution contract
 	 - Decide which release, installer, checksum, and package surfaces change in this phase
@@ -119,7 +118,7 @@ Exit when:
 
 ### Gate B: Inventory Dry Run
 
-Purpose: locate every active `stacklane` reference and classify it before editing.
+Purpose: locate every active `stage` reference and classify it before editing.
 
 Exit when:
 
@@ -175,7 +174,7 @@ This workplan was checked against specialist planning patterns before being writ
 ### Agent Pattern Guidance Applied
 
 - Senior Project Manager pattern: use a gated hybrid plan instead of a story backlog, and require controlled change packets with explicit dry run, abort, and rollback fields.
-- Software Architect pattern: freeze the external contract and the final no-active-`stacklane` end state before implementation, and do not combine release mechanics with rename mechanics in the same change packet.
+- Software Architect pattern: freeze the external contract and the final no-active-`stage` end state before implementation, and do not combine release mechanics with rename mechanics in the same change packet.
 
 ### Recommended Skill And Agent Fit By Phase
 
@@ -201,7 +200,7 @@ This workplan was checked against specialist planning patterns before being writ
 
 #### RENAME-001 Contract ADR
 
-- Goal: lock the external rename contract and the final no-active-`stacklane` end state in one ADR.
+- Goal: lock the external rename contract and the final no-active-`stage` end state in one ADR.
 - Preconditions: none.
 - Dry run: review proposed contract against current repo docs, install flow, and runtime naming surfaces without editing implementation.
 - Real change: add the ADR that freezes naming, shim policy, non-goals, and sunset expectations.
@@ -225,7 +224,7 @@ This workplan was checked against specialist planning patterns before being writ
 
 #### RENAME-003 Active Surface Inventory
 
-- Goal: classify all active `stacklane` references before editing.
+- Goal: classify all active `stage` references before editing.
 - Preconditions: RENAME-001.
 - Dry run: search code, docs, specs, install, tests, CI, and release metadata and classify each hit.
 - Real change: record a disposition table in `inventory.md` for active references and explicit exclusions for archived material.
@@ -301,12 +300,12 @@ This workplan was checked against specialist planning patterns before being writ
 - Real change: update help banners, examples, and user-facing usage strings.
 - Validation: targeted command help checks.
 - Evidence: before and after help snapshots.
-- Abort if: any user-facing `stacklane` examples remain outside explicit compatibility notes.
+- Abort if: any user-facing `stage` examples remain outside explicit compatibility notes.
 - Rollback: restore prior help strings and reopen help sweep.
 
 #### RENAME-010 Optional Shim Change Packet
 
-- Goal: add the `stacklane` forwarding shim only if RENAME-007 proved it safe and the contract requires it.
+- Goal: add the `stage` forwarding shim only if RENAME-007 proved it safe and the contract requires it.
 - Preconditions: RENAME-007 and RENAME-008.
 - Dry run: confirm parity matrix still matches the implementation slice.
 - Real change: add shim and deprecation wording.
@@ -319,7 +318,7 @@ This workplan was checked against specialist planning patterns before being writ
 
 #### RENAME-011A Internal Naming Migration Packet
 
-- Goal: rename the remaining active internal `stacklane`-named surfaces after the public command cutover has been proven locally.
+- Goal: rename the remaining active internal `stage`-named surfaces after the public command cutover has been proven locally.
 - Preconditions: RENAME-009 and any dry-run evidence required for the affected internal slice.
 - Dry run: identify exact repository-owned env, state, runtime, path, and code names to change in this slice.
 - Real change: apply one narrow internal rename slice at a time.
@@ -336,7 +335,7 @@ This workplan was checked against specialist planning patterns before being writ
 - Real change: update README and active docs with `stage`, migration notes, and any shim timeline.
 - Validation: docs command-block audit using the updated command.
 - Evidence: list of audited command blocks and any exceptions.
-- Abort if: any active doc still depends on `stacklane` or another superseded internal name as canonical.
+- Abort if: any active doc still depends on `stage` or another superseded internal name as canonical.
 - Rollback: revert docs packet and reopen audit.
 
 #### RENAME-012 Normative Spec Alignment Packet
@@ -358,7 +357,7 @@ This workplan was checked against specialist planning patterns before being writ
 - Preconditions: Gates A through E green for rehearsal.
 - Dry run: run CI and smoke paths with the renamed command and isolated cache assumptions.
 - Real change: none until the rehearsal is green.
-- Validation: focused CI smoke steps succeed without depending on a stale `stacklane` binary.
+- Validation: focused CI smoke steps succeed without depending on a stale `stage` binary.
 - Evidence: CI rehearsal logs summary.
 - Abort if: cache reuse or old binary paths hide failures.
 - Rollback: keep CI and release changes blocked until the issue is isolated.
@@ -402,7 +401,7 @@ This workplan was checked against specialist planning patterns before being writ
 
 #### RENAME-017 Clean Machine Verification
 
-- Goal: prove the canonical `stage` journey works on a machine with no prior Stacklane install.
+- Goal: prove the canonical `stage` journey works on a machine with no prior StageServe install.
 - Preconditions: RENAME-015.
 - Dry run: verify the exact clean-machine script before running it.
 - Real change: execute the clean-machine validation matrix.
@@ -413,7 +412,7 @@ This workplan was checked against specialist planning patterns before being writ
 
 #### RENAME-018 Dirty Machine Verification
 
-- Goal: prove upgrade and coexistence behavior when an old `stacklane` binary or shell residue exists.
+- Goal: prove upgrade and coexistence behavior when an old `stage` binary or shell residue exists.
 - Preconditions: RENAME-015 and RENAME-017.
 - Dry run: prepare the dirty-machine state intentionally with old binaries, completions, and PATH conflicts.
 - Real change: execute the upgrade verification matrix.
@@ -441,7 +440,7 @@ This workplan was checked against specialist planning patterns before being writ
 - Real change: run the copy-paste audit and log failures.
 - Validation: all active command blocks execute or are explicitly marked as illustrative only.
 - Evidence: docs audit log.
-- Abort if: active docs still require `stacklane` or undocumented operator assumptions.
+- Abort if: active docs still require `stage` or undocumented operator assumptions.
 - Rollback: fix docs before release closeout.
 
 #### RENAME-020A Zero Active Reference Sweep
@@ -450,9 +449,9 @@ This workplan was checked against specialist planning patterns before being writ
 - Preconditions: RENAME-011A, RENAME-011, RENAME-012, and the main cutover packets complete.
 - Dry run: define the exact search scope for active code and maintained documentation.
 - Real change: run the final sweep, classify any remaining hits, and remove or relabel them.
-- Validation: all remaining `stacklane` hits are either historical, archival, or explicitly accepted migration history outside active operator guidance.
+- Validation: all remaining `stage` hits are either historical, archival, or explicitly accepted migration history outside active operator guidance.
 - Evidence: final search log and disposition table.
-- Abort if: any active code path, maintained doc, or normative spec still carries `stacklane` as a current surface.
+- Abort if: any active code path, maintained doc, or normative spec still carries `stage` as a current surface.
 - Rollback: fix or relabel the remaining hits before closeout.
 
 ### Phase 8: Rollback, Release, And Closeout
@@ -504,7 +503,7 @@ This workplan was checked against specialist planning patterns before being writ
 2. Build the active-surface inventory.
 3. Rehearse local build, install, PATH, completion, and optional shim behavior.
 4. Implement the external rename in narrow command and installer slices.
-5. Rename the remaining active internal `stacklane` surfaces in narrow slices.
+5. Rename the remaining active internal `stage` surfaces in narrow slices.
 6. Align active docs and normative specs.
 7. Rehearse CI, assets, installer retrieval, and rollback.
 8. Apply public-facing CI and release changes.
