@@ -96,4 +96,4 @@ Project `.env` is not a generic StageServe config surface.
 - `README.md` and `docs/runtime-contract.md` must describe the same lifecycle and naming contract.
 - Example env files must point operators to `.env.stageserve`.
 - If validation runs from a deployed stack copy instead of the repository working copy, operator docs and validation notes must call out the sync point under `$HOME/docker/20i-stack` explicitly.
-- Operator-facing docs must not describe `.stackenv` or `stage-` as the supported contract once this feature lands.
+- Operator-facing docs must not describe `.stackenv` or `stln-` as the supported contract once this feature lands.

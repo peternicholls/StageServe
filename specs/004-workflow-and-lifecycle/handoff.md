@@ -123,7 +123,7 @@ Spec 004 should absorb the workflow/lifecycle parts of that list. Release/distri
 The README now documents `.stackenv` and the new hook, but there is still no single operator handoff that explains:
 
 - stack config versus app config ownership
-- when to use `.stage-local` versus `.stackenv`
+- when to use `.env.stageserve` versus project `.env`
 - how to bootstrap a framework app after `up`
 - how to classify StageServe failures versus app failures during validation
 
