@@ -3,6 +3,8 @@ package commands
 import (
 	"bytes"
 	"errors"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -80,5 +82,26 @@ func TestDoctor_TextOutputShape(t *testing.T) {
 	out := buf.String()
 	if !strings.Contains(out, "Docker") {
 		t.Errorf("expected text output to mention 'Docker', got: %s", out)
+	}
+}
+
+// TestDoctor_UsesConfigResolvedStateDir verifies doctor honors the shared
+// config contract for state-dir resolution via --stack-home.
+func TestDoctor_UsesConfigResolvedStateDir(t *testing.T) {
+	stackHome := t.TempDir()
+	if err := os.WriteFile(filepath.Join(stackHome, "docker-compose.shared.yml"), []byte("services: {}\n"), 0o644); err != nil {
+		t.Fatalf("setup failed: %v", err)
+	}
+
+	root := NewRoot("test")
+	buf := &bytes.Buffer{}
+	root.SetOut(buf)
+	root.SetErr(buf)
+	root.SetArgs([]string{"--stack-home", stackHome, "doctor", "--json"})
+	_ = root.Execute()
+
+	want := filepath.Join(stackHome, ".stacklane-state")
+	if !strings.Contains(buf.String(), want) {
+		t.Fatalf("expected doctor output to reference config-resolved state dir %q, got: %s", want, buf.String())
 	}
 }

@@ -3,8 +3,6 @@ package commands
 
 import (
 	"fmt"
-	"os"
-	"path/filepath"
 
 	"github.com/peternicholls/stacklane/core/onboarding"
 	"github.com/spf13/cobra"
@@ -26,13 +24,9 @@ func NewDoctor(shared *SharedFlags) *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			mode := resolveOutputMode(f.JSON, f.NoTUI, false, f.NonInteractive)
 
-			stateDir := os.Getenv("STACKLANE_STATE_DIR")
-			if stateDir == "" {
-				home, err := os.UserHomeDir()
-				if err != nil {
-					return fmt.Errorf("cannot determine home directory: %w", err)
-				}
-				stateDir = filepath.Join(home, ".stacklane-state")
+			stateDir, err := resolveOnboardingStateDir(shared)
+			if err != nil {
+				return err
 			}
 
 			steps := []onboarding.StepResult{
