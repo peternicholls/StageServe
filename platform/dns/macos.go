@@ -64,8 +64,8 @@ func (p MacOSProvider) Bootstrap(s Settings) error {
 		return err
 	}
 	// Strip stale managed configs so duplicate global dnsmasq directives from
-	// previous StageServe / legacy 20i runs do not prevent dnsmasq from starting.
-	for _, pattern := range []string{"stage-*.conf", "stacklane-*.conf", "20i-*.conf"} {
+	// previous StageServe runs do not prevent dnsmasq from starting.
+	for _, pattern := range []string{"stage-*.conf"} {
 		matches, _ := filepath.Glob(filepath.Join(filepath.Dir(managed), pattern))
 		for _, m := range matches {
 			_ = os.Remove(m)

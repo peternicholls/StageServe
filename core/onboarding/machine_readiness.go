@@ -72,7 +72,7 @@ func CheckDockerDaemon() StepResult {
 	}
 }
 
-// CheckStateDir checks whether the StackLane state directory exists and is
+// CheckStateDir checks whether the StageServe state directory exists and is
 // accessible.
 func CheckStateDir(stateDir string) StepResult {
 	label := "State directory"

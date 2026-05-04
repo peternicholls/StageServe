@@ -1,8 +1,7 @@
 # Environment files
 .env
-.stacklane-local
+.stageserve-local
 .stageserve-state/
-.stacklane-state/
 .20i-local
 .20i-state/
 
@@ -58,7 +57,6 @@ previous-version-archive/
 
 # Go build artefacts
 /stage-bin
-/stacklane-bin
 /bin/
 *.test
 *.out
