@@ -1,10 +1,10 @@
 ---
-spec phase: 007 Version Management, Releases, and Update Workflows
+spec phase: 008 Version Management, Releases, and Update Workflows
 description: "Placeholder scope for versioning, release management, and update delivery"
 status: placeholder
 ---
 
-# 007: Version Management, Releases, and Update Workflows
+# 008: Version Management, Releases, and Update Workflows
 
 ## Purpose
 Define the versioning and release operating model for StageServe so builds, releases, downloads, and updates are predictable, testable, and easy to operate.

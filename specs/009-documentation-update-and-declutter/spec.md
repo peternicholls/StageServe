@@ -1,10 +1,10 @@
 ---
-spec phase: 008 Documentation Update and Declutter
+spec phase: 009 Documentation Update and Declutter
 description: "Placeholder scope for user-facing docs refresh, manual planning, and documentation reorganization"
 status: placeholder
 ---
 
-# 008: Documentation Update and Declutter
+# 009: Documentation Update and Declutter
 
 ## Purpose
 Reshape the documentation set so the repository leads with clear user-facing guidance, while contributor material and command reference content remain easy to find and maintain.
