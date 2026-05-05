@@ -52,18 +52,20 @@ stage
 Expected:
 
 - TUI opens in an interactive terminal.
-- It shows current context.
-- It offers one primary next action.
+- It shows the current context in a status header.
+- It shows a decision bar only when the user has a real choice.
+- It shows setup, diagnostics, and recovery as tool-owned work panels rather than peer menu choices.
 - It shows help/quit.
 - It does not show Docker implementation names on the first screen.
-- It uses user-goal labels such as "run this project", "create project settings", "stop this project", or "find issues" rather than command jargon.
+- It uses user-goal labels such as "run this project", "create project settings", "view project logs", or "stop this project" rather than command jargon.
+- It shows the active suffix, scheme, port when needed, and local URL before any run or write.
 
 Evidence to record:
 
 - command
 - exit code after quit
 - screenshot or concise output description
-- primary action shown
+- status header, highlighted default, visible defaults, and footer affordances shown
 
 ### 2. Non-interactive no-args does not hang
 
@@ -119,7 +121,7 @@ stage
 Expected:
 
 - TUI identifies project as configured and stopped.
-- Primary action is to run the project.
+- Highlighted default is to run the project.
 - Direct command equivalent is visible: `stage up`.
 - First-level label is "run this project".
 
@@ -131,10 +133,11 @@ stage
 
 Expected:
 
-- TUI offers status/logs/down/doctor.
+- TUI shows URL/status and defaults to a non-destructive action such as viewing logs.
 - Stop action confirms before running.
 - Stop preserves data and uses `stage down` semantics.
-- Action labels use plain language: "check project status", "view logs", "stop this project", "find issues", and "show commands".
+- Action labels use plain language: "view project logs" and "stop this project".
+- Direct commands and troubleshooting are discoverable through the footer rather than shown as peer actions.
 
 ### 7. Logs terminal behavior
 
@@ -265,7 +268,7 @@ stage > /tmp/stage-guidance.txt
 
 Expected:
 
-- text fallback includes the same situation, primary action, and direct command equivalent shown in the TUI
+- text fallback includes the same situation, highlighted default, visible defaults, and direct command equivalent shown in the TUI
 
 ### 15. Installer handoff
 
@@ -282,7 +285,7 @@ Capture the first screen, text fallback, first-run docs, and installer handoff c
 
 Expected:
 
-- primary actions describe user goals before command names
+- decision-bar actions describe user goals before command names
 - command equivalents remain discoverable through "show commands" or direct help
 - implementation terms appear only in advanced/troubleshooting copy unless needed for a concrete recovery step
 

@@ -31,6 +31,7 @@ The diagrams are deliberately text-only. They use ASCII screen mockups, indented
 - Plain language only. No `drift`, `gateway`, `compose`, `container`, `daemon`, `attach`, `detach`, `runtime`, `state`, `registry`, or `bootstrap` in any first-level user-visible text.
 - The tool drives. The user confirms. The user only chooses when there is a real alternative goal, not a real alternative tool action.
 - Defaults are visible. Every screen with a value shows that value before the user is asked to commit.
+- Local URLs are configuration-driven. Examples may use `.develop`, but real screens show the active suffix, scheme, and port from StageServe config and machine capabilities.
 - The user is never left at a dead end. Every screen has a documented next action, even when StageServe itself cannot decide.
 - `.env.stageserve` is the only user-editable StageServe config surface. Hidden artifacts under `.stageserve-state` exist for the power user to inspect, but no normal user flow requires touching them.
 - Docker, compose, and image vocabulary do not appear in any project directory or any first-level user message. They appear only in the optional advanced/troubleshooting view.

@@ -34,18 +34,18 @@ The eight required situations in [contracts/guided-tui-contract.md](./contracts/
 
 ## Revised Interaction Model
 
-### Three Surfaces, Not One Menu
+### Four Surfaces, Not One Menu
 
-Easy mode separates three concerns that the previous prototype merged into one menu:
+Easy mode separates four concerns that the previous prototype merged into one menu:
 
 | Surface | Owner | Purpose | Trigger |
 |---|---|---|---|
 | Status header | Tool | Tells the user where they are right now in plain language | Always present |
-| Decision bar | User | One primary action, at most one alternative meaningful choice | Only when a real user choice exists |
+| Decision bar | User | One highlighted default and at most two alternative goals | Only when a real user choice exists |
 | Tool work panel | Tool | Runs setup steps, shows progress, surfaces blockers with concrete next instructions | Driven by tool, not user navigation |
 | Footer (persistent) | Both | Quit, back, help, show commands, advanced/troubleshooting | Always available, never in the decision bar |
 
-`Find issues`, `Show commands`, `Edit project settings`, and `Advanced troubleshooting` are footer affordances. They are not peer actions to "Run this project".
+`Show commands` and `Advanced troubleshooting` are footer affordances. Diagnostics are tool-owned and appear inline when a blocker exists. `Edit project settings` appears in the decision bar only when it is a real alternative to the highlighted default, such as editing before running or writing settings.
 
 ### The Tool Drives, The User Confirms
 
@@ -77,13 +77,83 @@ The eight situations from the contract remain as planner output. They map to the
 The Ollama TUI shows the active default inline next to its action label (`Chat with a model (gemma4:31b)`). StageServe must do the same: every screen that has a sensible default must surface that default inline, before the user presses anything. This includes:
 
 - The currently-selected model on a chooser.
-- The proposed project route on the init preview (`pete-site.stage.local`).
-- The current docroot path (`./public_html`).
+- The proposed project route on the init preview (`pete-site.develop` in examples, or the active configured suffix).
+- The current web folder path (`./public_html`).
 - The active TLS source and trust state.
 - The currently-detected DNS resolver mode.
 - For decision bars: which action is highlighted as the default if the user just presses `enter`.
 
 A user must never have to drill into a sub-screen to discover what the tool is going to do for them. If the tool has a value to use, it shows that value on the screen where the choice is offered.
+
+### Easy Mode Requirement Stack
+
+Easy mode answers the user's questions in a fixed order:
+
+1. **Where am I?** Show the current folder, project name if known, and whether this is already a StageServe project.
+2. **Can this computer run StageServe projects?** Check machine readiness as an ordered tool-owned checklist.
+3. **What local address will I use?** Show the site name, suffix, scheme, port when needed, and complete URL before any write or run.
+4. **What will StageServe change?** Preview files, local DNS effects, and StageServe records before mutation.
+5. **What can I do now?** Offer the single safest default action and at most two real alternative goals.
+6. **How do I inspect or recover?** Keep details, direct commands, and troubleshooting in the footer/details path without making the user choose diagnostics first.
+
+These questions are the contract. A screen that asks the user to choose between subsystems, commands, or scenarios before answering them is not easy mode.
+
+### Local URL And DNS Requirements
+
+The TUI must not hard-code `.stage.local`, `.develop`, `.test`, `.dev`, `http`, `https`, or a port. It renders the effective URL from the same configuration and capability resolution used by direct commands.
+
+For documentation and first-run examples, use `.develop`, because that is the current product story: the local project should be reachable as `<project>.develop`. Existing projects may still use `.test`, `.dev`, `SITE_HOSTNAME`, or a custom suffix; easy mode must render those truthfully.
+
+The local address preview always includes:
+
+- site name or full hostname source
+- domain suffix, with "from your machine setting" or "from this project" when relevant
+- URL scheme (`http` or `https`)
+- port only when the browser must include it
+- local DNS state for that suffix
+
+DNS setup copy leads with the user outcome: "your computer can open URLs that end in `.develop`." Resolver files, `dnsmasq`, and service names appear only in details or advanced troubleshooting unless the user must approve a specific privileged file write.
+
+HTTPS certificate trust is required only when the selected local URL uses HTTPS. If the selected easy-mode URL is plain HTTP, certificate trust is shown as optional or advanced readiness rather than a blocker.
+
+### Project Settings Requirements
+
+Project setup is a preview-and-confirm flow, not a questionnaire that writes as the user answers. The preview must show:
+
+- target file: `<project>/.env.stageserve`
+- site name
+- web folder
+- domain suffix
+- local URL
+- stack kind, currently `20i`
+- any warnings about missing web folders, invalid names, suffix mismatch, or a full-hostname override
+
+Editing returns to the preview every time. The user must never wonder whether a field edit has already touched disk.
+
+Advanced settings such as PHP version, MySQL values, debug profiles, stack home, and post-up hooks stay out of the first project setup path unless already present in the project config. If present, they are summarized in a compact "Advanced settings already set" row with details behind the footer.
+
+### Custom Settings Boundary
+
+Easy mode supports customization without turning the first run into a server-admin interview:
+
+- First-level editable fields are limited to project name, web folder, and local address/suffix.
+- Existing custom values are never hidden. If `.env.stageserve` already contains PHP, MySQL, timeout, hostname, or post-up settings, the overview says "Advanced settings already set" and shows them in details.
+- Invalid custom values block mutation with a plain-language explanation and a direct path to edit or reset the value.
+- The TUI does not invent new project configuration keys. It reads and writes the same `.env.stageserve` contract used by direct commands.
+- Advanced users can reach direct commands, plain text output, and file paths through the footer, but normal users are not asked to pick stack internals before running a site.
+
+### Inspection And Troubleshooting Requirements
+
+Every normal screen gives the user a way to inspect what StageServe knows without making them leave the guided path:
+
+- current project path
+- local URL
+- web folder
+- current run state
+- what StageServe recommends next and why
+- equivalent direct command in the footer path
+
+Diagnostics are not a first-level user choice. When StageServe detects a blocker, it runs the relevant checks and shows the result inline. When the user asks for more, the footer offers direct commands and advanced troubleshooting.
 
 ## Screen Mockups (Ollama-Inspired)
 
@@ -102,10 +172,10 @@ Convention used in the mockups below:
 ```
 StageServe 0.7.0  /Users/pete/sites/pete-site
 
-▶ Run this project                       [pete-site.stage.local]
+▶ Run this project                       [http://pete-site.develop]
     Start the project and open it in your browser
 
-  Edit project settings                  [./public_html, suffix .stage.local]
+  Edit project settings                  [./public_html, suffix .develop]
     Change the site name, web folder, or domain suffix
 
   More…
@@ -116,7 +186,7 @@ StageServe 0.7.0  /Users/pete/sites/pete-site
 
 Notes:
 
-- The default route, docroot, and suffix appear inline so the user knows what `enter` will do.
+- The default route, web folder, and suffix appear inline so the user knows what `enter` will do.
 - `More…` hides power-user affordances (`Show direct commands`, `Advanced and troubleshooting`) until the user opts in. They are not peer actions in the primary list.
 - `Find issues` does not appear. The planner has determined the project is ready; if it were not, a different screen would be shown.
 
@@ -127,12 +197,12 @@ StageServe 0.7.0  Setting up your computer
 
   Docker Desktop                                            ✓ ready
   State folder                                              ✓ ready
-  Local DNS resolver                                        ✓ ready
-▶ Local HTTPS certificates                                  needs your approval
-    StageServe will install a local certificate authority so
-    https://*.stage.local works without browser warnings.
-    Default action on enter: install and trust the local CA.
+▶ Local DNS for .develop                                    needs your approval
+    StageServe will add a small resolver file so your browser can
+    open addresses like http://pete-site.develop.
+    Default action on enter: set up local DNS for .develop.
 
+  Local HTTPS certificates                                  optional for this URL
   Network ports 80 and 443                                  pending
 
   enter approve • s skip this step • → details • esc quit
@@ -143,7 +213,7 @@ Notes:
 - The tool drives the checklist and only stops on the first item that needs the user.
 - The default action on `enter` is spelled out in plain English on the active row.
 - Other rows show their state (`✓ ready`, `pending`, `needs your approval`) so the user can see progress and what is left.
-- No `Find issues` action appears: this screen *is* the find-issues experience.
+- No `Find issues` action appears: this screen is the diagnostic experience, owned by the tool.
 
 ### Screen: Machine Not Ready — Blocker Outside StageServe's Authority
 
@@ -179,8 +249,8 @@ StageServe 0.7.0  /Users/pete/sites/pete-site
 
   Site name           pete-site                       (default)
   Web folder          ./public_html                   (default)
-  Domain suffix       .stage.local                    (default)
-  Local URL           https://pete-site.stage.local   (preview)
+  Domain suffix       .develop                       (default)
+  Local URL           http://pete-site.develop        (preview)
 
 ▶ Use these settings
     Write .env.stageserve and continue
@@ -202,42 +272,42 @@ Notes:
 ```
 StageServe 0.7.0  pete-site is running
 
-  https://pete-site.stage.local                             ↗ open
+  http://pete-site.develop                                  ↗ open
   Started 4 minutes ago • Apache + PHP 8.3 • healthy
 
-▶ Stop this project
-    Free up the local URL and shut down the project
-
-  View project logs
+▶ View project logs
     Watch the live log stream until you press q
+
+  Stop this project
+    Free up the local URL and shut down the project
 
   More…
     Show direct commands, restart, advanced and troubleshooting
 
-  ↑/↓ navigate • enter run • → open in browser • esc quit
+  ↑/↓ navigate • enter open logs • → open in browser • esc quit
 ```
 
 Notes:
 
 - The live URL is shown at the top with the open hint.
-- The default action (`enter` stops) is the most likely user goal at this point and matches the highlighted row.
+- The default action is non-destructive. Pressing `enter` opens logs; stopping requires selecting `Stop this project` and confirming.
 - `Restart` is hidden under `More…` because it is rarely the right first instinct.
 
 ### Screen: Bare `stage` — Drift Detected
 
-`drift_detected` is a first-class planner situation, not an edge case. It fires when the recorded state, runtime state, DNS, gateway, or config disagree. The user must be able to see *what* disagrees, what StageServe thinks the safe next step is, and confirm or override that step. This screen exists for exactly that.
+`drift_detected` is a first-class planner situation, not an edge case. It fires when StageServe's record, the live project check, DNS, local address handling, or config disagree. The user must be able to see *what* disagrees, what StageServe thinks the safe next step is, and confirm or override that step. This screen exists for exactly that.
 
 ```
-StageServe 0.7.0  pete-site looks out of sync
+StageServe 0.7.0  pete-site does not match what StageServe expects
 
-  StageServe expected this project to be running, but the gateway
-  is not routing to it. The project's container is not listed.
+  StageServe expected this project to be running, but
+  http://pete-site.develop is not responding.
 
   What StageServe found
     Recorded as running          yes
-    Container present            no
-    Gateway route present        no
-    DNS for pete-site.stage.local resolved
+    Project service found        no
+    Local address connected      no
+    DNS for pete-site.develop resolved
 
   Safe next step (default on enter)
     Forget the recorded run and treat the project as stopped.
@@ -254,7 +324,7 @@ StageServe 0.7.0  pete-site looks out of sync
 
 Notes:
 
-- Drift is treated as a real situation with its own dedicated screen. It is not delegated to a generic `Find issues` action.
+- The internal `drift_detected` state is treated as a real situation with its own dedicated screen. It is not delegated to a generic `Find issues` action.
 - The default-on-enter action is the lowest-risk recovery and is named in the body before the user sees the action list.
 - `Show what disagreed in detail` is the user's escape hatch when the summary is not enough; it is *not* the default and is *not* required for the safe path.
 
@@ -265,7 +335,7 @@ StageServe 0.7.0  /Users/pete/Downloads
 
   This folder isn't a StageServe project yet.
 
-▶ Set up this folder as a project        [name: Downloads, suffix .stage.local]
+▶ Set up this folder as a project        [name: Downloads, suffix .develop]
     StageServe will create a .env.stageserve and propose a local URL
 
   Pick a different folder
@@ -343,8 +413,8 @@ Project ready
     esc                          -> exit
 
 Project running
-    enter (Stop this project)    -> confirm -> stage down -> re-detect (likely Project down)
     enter (View project logs)    -> log stream until q -> back to Project running
+    select Stop this project     -> confirm -> stage down -> re-detect (likely Project down)
     -> open in browser           -> launch URL -> stay on Project running
     More...                      -> footer screen
     esc                          -> exit (project keeps running)
@@ -356,7 +426,7 @@ Project down
     esc                          -> exit
 
 Drift screen
-    enter (Use the safe next step)        -> tool applies safe recovery -> re-detect
+    enter (Use the safe next step)        -> preview/confirm safe recovery -> re-detect
     enter (Try to start the project)      -> stage up -> re-detect
     Show what disagreed in detail         -> details screen -> back to Drift screen
     More...                               -> footer screen
@@ -400,9 +470,9 @@ The eight situations from [contracts/guided-tui-contract.md](./contracts/guided-
 | `project_ready_to_run` | "This project is ready to run." | Run this project / Edit settings first | hidden |
 | `project_running` | "This project is running at \<route\>." | View project logs / Stop this project | hidden |
 | `project_down` | "This project is stopped." | Run this project / Remove from StageServe | hidden |
-| `drift_detected` | "Something about this project does not match what StageServe expects." | hidden | tool runs diagnostics inline |
-| `not_project` | "This directory is not a StageServe project yet." | Set up this directory / Get setup help | hidden |
-| `unknown_error` | "StageServe could not safely choose a next step." | hidden | tool runs ordered recovery inline |
+| `drift_detected` | "This project does not match what StageServe expects." | Use the safe next step / Try to start it again / Show what does not match | comparison and safe-step preview |
+| `not_project` | "This directory is not a StageServe project yet." | Set up this directory / Pick a different folder | proposed defaults when available |
+| `unknown_error` | "StageServe could not safely choose a next step." | Run next recovery step / Show what went wrong / Stop here | ordered recovery list |
 
 Everywhere the decision bar is hidden, the user is watching the tool work and is offered cancel/back through the footer. They are never asked to pick `Find issues`.
 
@@ -412,7 +482,7 @@ Everywhere the decision bar is hidden, the user is watching the tool work and is
 - The "navigate to next scenario" action kind.
 - `Find issues` as a peer secondary action under every situation.
 - `Show commands` as an action ladder item.
-- `Edit project settings` as a peer action separate from the init preview.
+- `Edit project settings` as a permanent peer action regardless of context.
 - The completed-work trail (re-detection after each tool action gives the user a fresh, accurate status header instead).
 
 ## What This Preserves From The Spec
@@ -448,15 +518,15 @@ Checked against [recovery-plan.md](./recovery-plan.md) Phase C exit criteria:
 
 When this redesign is accepted, the following spec artifacts need a paired update:
 
-- [contracts/guided-tui-contract.md](./contracts/guided-tui-contract.md): replace the "Required Guided Situations" table's `Secondary Actions` column with the surface mapping above. The current column lists `find issues, show commands, quit` as peer secondaries, which is exactly the shape this redesign rejects.
-- [tasks.md](./tasks.md): T032, T038–T041, and T041d need to be reframed around the three-surface model rather than action lists.
-- [data-model.md](./data-model.md): `GuidedAction.Kind` should be narrowed to `confirm`, `choose`, `tool_step`, `inline_form`. The previous `navigate` kind disappears.
+- [contracts/guided-tui-contract.md](./contracts/guided-tui-contract.md): must keep the surface mapping as the authoritative contract and must not reintroduce peer `find issues` / `show commands` action lists.
+- [tasks.md](./tasks.md): T032, T038–T041, and T041d need to stay framed around surfaces, visible defaults, and non-destructive running-project defaults rather than generic action lists.
+- [data-model.md](./data-model.md): `GuidedAction.Kind` should stay narrowed to `confirm`, `choose`, `tool_step`, `inline_form`, `footer`, or `advanced`. The previous `navigate` kind disappears.
 - [prototype/](./prototype): the prototype should be deleted or rebuilt against this redesign. Its current shape now actively misleads design review.
 
-## Open Questions To Resolve Before Production Code
+## Resolved Flow Decisions
 
-1. Should the footer key for advanced/troubleshooting be `a` or `?`? `?` is more discoverable; `a` avoids colliding with help conventions.
-2. On the Drift screen, should the safe next step be applied immediately on `enter`, or should StageServe show a one-line preview of exactly what it will change first? The safer-by-default principle says preview; the Ollama-style brevity principle says inline-on-the-row description is enough.
-3. Should the inline init form support a "skip and use defaults" return without re-confirmation, or always re-show preview after edits? Preview-after-edit is closer to Fly Launch behavior.
+1. Footer help/details uses `?` for explanation and `More…` for direct commands, plain text output, and advanced troubleshooting. Advanced implementation detail is not a first-level key.
+2. Out-of-sync safe recovery always previews and confirms when it changes StageServe records. A one-line row description is not enough for a state mutation.
+3. Inline project-settings edits always return to the preview screen before writing. There is no write-on-edit path and no hidden "use defaults" write.
 
-These questions are explicitly deferred until this redesign is accepted in principle. Note: drift is a first-class planner situation defined in the spec, not an implementation detail to hand-wave; the open question above only concerns *how* the Drift screen confirms its safe step, not *whether* drift deserves a dedicated screen.
+These decisions remove the last interaction ambiguities before production implementation. Drift remains a first-class planner situation; the user-facing copy calls it "this project does not match what StageServe expects."

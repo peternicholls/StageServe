@@ -104,7 +104,8 @@ Recovery:
 - Primary path uses StageServe concepts.
 - Docker/gateway names move to advanced/troubleshooting.
 - Remediation starts with StageServe commands.
-- Guided TUI labels use everyday project language: run this project, stop this project, add this project to StageServe, remove this project from StageServe, check project status, view logs, find issues.
+- Guided TUI labels use everyday project language: run this project, stop this project, add this project to StageServe, remove this project from StageServe, check project status, and view project logs.
+- Diagnostics are tool-owned on blockers and available through footer/advanced paths; they are not a peer easy-mode action.
 - Direct command names stay visible through "show commands" and CLI help.
 
 ### 5. Spec Trail Integrity
@@ -133,7 +134,7 @@ Deliver:
 
 Exit criteria:
 
-- planner returns one primary action and direct command equivalents for all required situations
+- planner returns status header copy, visible defaults, decision items or tool-owned work items, footer affordances, and direct command equivalents for all required situations
 - planner has no terminal or Bubble Tea dependency
 
 ### Phase B: Root Routing

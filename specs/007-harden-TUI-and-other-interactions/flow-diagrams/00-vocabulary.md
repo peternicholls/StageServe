@@ -25,6 +25,8 @@ These words are accurate but useless to a normal user. They never appear in the 
 
 ## What We Say Instead
 
+Examples use `.develop`, but the real interface says whatever suffix, scheme, and port StageServe resolved for the current project. Copy must never hard-code `.develop` when the active project is configured for `.test`, `.dev`, a full hostname, or a custom suffix.
+
 | Concept | Plain-Language Phrase |
 |---|---|
 | `drift_detected` | "This project doesn't match what StageServe expects." |
@@ -38,7 +40,7 @@ These words are accurate but useless to a normal user. They never appear in the 
 | Docker Desktop missing | "StageServe needs Docker Desktop to run your sites." |
 | Docker daemon stopped | "Docker Desktop is installed but isn't running." |
 | Port 80 in use | "Something else on your computer is using port 80." |
-| DNS resolver missing | "Your computer can't yet open *.stage.local URLs." |
+| DNS resolver missing | "Your computer can't yet open *.develop URLs." |
 | mkcert root not installed | "Your browser doesn't trust StageServe's local HTTPS yet." |
 | Compose project name | not shown |
 | Container name | not shown |
@@ -85,7 +87,7 @@ StageServe will create:
 with these settings:
   Site name      pete-site
   Web folder     ./public_html
-  Local URL      https://pete-site.stage.local
+  Local URL      http://pete-site.develop
 
 ▶ Yes, create it    No, cancel
 

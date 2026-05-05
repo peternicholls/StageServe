@@ -16,11 +16,14 @@ The user must see these values on the first screen, before they decide:
 |---|---|---|
 | Site name | folder name, lowercased, hyphenated | `pete-site` |
 | Web folder | `./public_html` if it exists, else `./` | `./public_html` |
-| Domain suffix | machine-wide setting, default `.stage.local` | `.stage.local` |
-| Resulting URL | combined preview | `https://pete-site.stage.local` |
+| Domain suffix | machine-wide setting, `.develop` in examples | `.develop` |
+| Resulting URL | combined preview | `http://pete-site.develop` |
 | Target file | always `<project>/.env.stageserve` | `/Users/pete/sites/pete-site/.env.stageserve` |
+| Advanced settings summary | existing `.env.stageserve` values or proposed direct-command overrides | `none yet` or `PHP 8.4, custom database` |
 
 If any of these is missing or invalid (for example no `./public_html` folder), the screen shows what was found and how StageServe filled the gap.
+
+`.develop` is the example suffix for the easy-mode product story. The actual screen must render the suffix, URL scheme, and port from StageServe's effective config and machine capabilities.
 
 ## Top-Level Screen (Preview)
 
@@ -32,8 +35,9 @@ StageServe 0.7.0  /Users/pete/sites/pete-site
 
   Site name           pete-site                       (default: folder name)
   Web folder          ./public_html                   (default: found here)
-  Domain suffix       .stage.local                    (default: your machine setting)
-  Local URL           https://pete-site.stage.local   (this is what you'll visit)
+  Domain suffix       .develop                        (default: your machine setting)
+  Local URL           http://pete-site.develop        (this is what you'll visit)
+  Advanced settings   none yet
 
 ▶ Use these settings
     Write .env.stageserve and continue
@@ -67,11 +71,11 @@ StageServe 0.7.0  Edit project settings
     The folder StageServe should serve. Type a path relative to this project.
 
   Domain suffix
-    .stage.local
+    .develop
     Used to build the local URL. Most people leave this as is.
 
   Local URL preview
-    https://pete-site.stage.local
+    http://pete-site.develop
 
 ▶ Save and preview
     Go back to the confirmation screen with these values
@@ -101,8 +105,8 @@ StageServe 0.7.0  About to write project settings
   with these settings:
     Site name      pete-site
     Web folder     ./public_html
-    Domain suffix  .stage.local
-    Local URL      https://pete-site.stage.local
+    Domain suffix  .develop
+    Local URL      http://pete-site.develop
 
   StageServe will not change any other file in this folder.
 
@@ -126,7 +130,7 @@ StageServe 0.7.0  Project settings created
 
   ✓ Wrote /Users/pete/sites/pete-site/.env.stageserve
 
-  Next: run this project at https://pete-site.stage.local
+  Next: run this project at http://pete-site.develop
 
   press any key to continue
 ```

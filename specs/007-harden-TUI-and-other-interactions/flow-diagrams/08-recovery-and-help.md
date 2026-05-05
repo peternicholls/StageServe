@@ -1,6 +1,6 @@
 # Recovery And Help Flow
 
-This flow runs when the planner reports `cannot_decide` (the internal name is `unknown_error`). It happens when StageServe could not finish gathering context, or when an action failed in a way that doesn't fit any of the other states.
+This flow runs when the planner reports `unknown_error`. It happens when StageServe could not finish gathering context, or when an action failed in a way that doesn't fit any of the other states.
 
 The user-facing name is **"StageServe couldn't safely choose a next step"**. The user is never abandoned: even when the tool can't decide, the screen shows an ordered, named recovery path the user can follow one step at a time.
 

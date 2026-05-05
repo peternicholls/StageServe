@@ -171,7 +171,7 @@ README.md
 ### Phase 4 - Guided TUI Shell
 
 1. Add a minimal Bubble Tea model around the planner.
-2. Render a context summary, primary action, secondary actions, advanced actions, and help.
+2. Render the guided surfaces: status header, decision bar, tool work panel, details panel, and persistent footer.
 3. Add keyboard-first navigation and visible quit/cancel.
 4. Use Huh only for bounded forms and confirmations.
 5. Keep mutations behind explicit confirmation.
@@ -179,9 +179,9 @@ README.md
 
 ### Phase 5 - Action Execution
 
-1. Wire setup action through existing onboarding runtime/checks.
+1. Wire setup through the existing onboarding runtime/checks as a tool-owned checklist, not a peer menu action.
 2. Wire init action through existing project env module with preview.
-3. Wire up/attach/down/detach/status/logs/doctor actions through existing command/domain seams.
+3. Wire up/attach/down/detach/status/logs through existing command/domain seams, with doctor-style diagnostics available inline on blockers and through footer/advanced paths.
 4. Ensure Ctrl-C and cancel behavior remains coherent during long-running actions.
 5. Show result and next recommended action after each action.
 

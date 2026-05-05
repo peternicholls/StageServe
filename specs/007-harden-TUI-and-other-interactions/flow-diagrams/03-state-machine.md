@@ -14,10 +14,10 @@ This is the canonical list of planner situations and what causes them to transit
 | `project_ready_to_run` | "This project is ready to run." | User chooses |
 | `project_running` | "This project is running at \<URL\>." | User chooses |
 | `project_down` | "This project is stopped." | User chooses |
-| `out_of_sync` | "This project doesn't match what StageServe expects." | Tool, then user confirms |
-| `cannot_decide` | "StageServe couldn't safely choose a next step." | Tool, then user confirms |
+| `drift_detected` | "This project doesn't match what StageServe expects." | Tool, then user confirms |
+| `unknown_error` | "StageServe couldn't safely choose a next step." | Tool, then user confirms |
 
-`out_of_sync` and `cannot_decide` are the user-facing names for the planner's `drift_detected` and `unknown_error` situations. The internal names stay as they are in the spec; only the user-visible labels change.
+The internal names stay as they are in the spec. The user never sees `drift_detected` or `unknown_error`; they see the plain-language labels above.
 
 ## Initial Detection (One Run From Bare `stage`)
 
@@ -39,7 +39,7 @@ Check: is the machine ready?
                               |
                               +-- yes --> Check: do recorded state, runtime, DNS, gateway, and config agree?
                                             |
-                                            +-- no  --> out_of_sync
+                                            +-- no  --> drift_detected
                                             |
                                             +-- yes --> Check: is the project recorded as running?
                                                           |
@@ -50,7 +50,7 @@ Check: is the machine ready?
                                                           +-- not recorded --> project_ready_to_run
 
 If any check itself fails (planner can't reach Docker, can't read state, etc.):
-  --> cannot_decide
+  --> unknown_error
 ```
 
 Each "Check" line maps to an existing function in `core/onboarding`, `core/lifecycle`, or `observability/status`. The planner does not invent any new check.
@@ -68,14 +68,14 @@ These are the events that cause a re-detection.
 | `project_missing_config` | User chose "Use these settings" or finished editing | `project_ready_to_run` |
 | `project_missing_config` | User chose cancel | exit (no file written) |
 | `project_ready_to_run` | User chose "Run this project" | `project_running` (after `stage up` succeeds) |
-| `project_ready_to_run` | `stage up` failed | `out_of_sync` or `cannot_decide` depending on classification |
+| `project_ready_to_run` | `stage up` failed | `drift_detected` or `unknown_error` depending on classification |
 | `project_running` | User chose "Stop this project" and confirmed | `project_down` (after `stage down`) |
-| `project_running` | Project becomes unreachable mid-session | `out_of_sync` |
+| `project_running` | Project becomes unreachable mid-session | `drift_detected` |
 | `project_down` | User chose "Run this project" | `project_running` |
 | `project_down` | User chose "Remove this project from StageServe" | `not_project` (after detach) |
-| `out_of_sync` | User chose "Use the safe next step" | re-detect (typically `project_down` or `project_ready_to_run`) |
-| `out_of_sync` | User chose "Try to run it again" | re-detect (`project_running` or `cannot_decide`) |
-| `cannot_decide` | User followed a recovery step | re-detect |
+| `drift_detected` | User chose "Use the safe next step" and confirmed | re-detect (typically `project_down` or `project_ready_to_run`) |
+| `drift_detected` | User chose "Try to run it again" | re-detect (`project_running` or `unknown_error`) |
+| `unknown_error` | User followed a recovery step | re-detect |
 | any | User pressed esc at top of TUI | exit |
 
 ## Default Action Per State
@@ -88,10 +88,10 @@ This is the action that runs if the user simply presses enter at the first scree
 | `not_project` | Open the project setup preview with a name proposed from the folder name. |
 | `project_missing_config` | Use the proposed defaults and write `.env.stageserve` after one final confirmation. |
 | `project_ready_to_run` | Run this project. |
-| `project_running` | View the running URL details (no destructive default). |
+| `project_running` | View project logs (no destructive default). |
 | `project_down` | Run this project. |
-| `out_of_sync` | Apply the safe recovery, which is the lowest-risk reconciliation that does not delete user data. |
-| `cannot_decide` | Run the first recovery step in the recovery list (typically a read-only check). |
+| `drift_detected` | Preview the safe recovery, then ask for confirmation before changing StageServe records. |
+| `unknown_error` | Run the first recovery step in the recovery list (typically a read-only check). |
 
 The `project_running` default is intentionally non-destructive: pressing enter on a running project must not stop it. Stop is one keypress away but never the default.
 
@@ -103,7 +103,7 @@ The `project_running` default is intentionally non-destructive: pressing enter o
 - It does not pick the wording. It returns the internal situation name; the screen layer applies the plain-language label from [00-vocabulary.md](./00-vocabulary.md).
 - It does not throttle re-detection. The screen layer is responsible for not asking too often (typically only after a user action or at most once per second on a status screen).
 
-## What Triggers `out_of_sync` Specifically
+## What Triggers `drift_detected` Specifically
 
 The user-facing name for this state is "this project doesn't match what StageServe expects". It fires when any of the following are inconsistent:
 

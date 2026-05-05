@@ -11,7 +11,7 @@ This flow does not run lifecycle commands itself. It calls the existing `stage u
 On every screen in this flow, the user must see:
 
 - The project name.
-- The local URL (whether or not it is currently reachable).
+- The local URL, including scheme, suffix, and port when needed (whether or not it is currently reachable).
 - The web folder being served.
 - The current status, in plain words.
 - What enter will do, before they press it.
@@ -21,7 +21,7 @@ On every screen in this flow, the user must see:
 ```
 StageServe 0.7.0  pete-site
 
-  https://pete-site.stage.local                          (not running yet)
+  http://pete-site.develop                               (not running yet)
   Serving ./public_html
 
 ▶ Run this project
@@ -48,7 +48,7 @@ Notes:
 2. The existing `stage up` runs in the background.
 3. As progress comes in, the same screen updates one row at a time. The user does not see Docker output.
 4. When the project is running, the planner re-runs and the screen transitions to `project_running`.
-5. If `stage up` fails, the planner reports `out_of_sync` or `cannot_decide` and the relevant screen takes over.
+5. If `stage up` fails, the planner reports `drift_detected` or `unknown_error` and the relevant screen takes over.
 
 The transition is one continuous screen with status updates, not a separate "log dump". The user is never shown raw container output unless they explicitly chose to view logs.
 
@@ -57,7 +57,7 @@ The transition is one continuous screen with status updates, not a separate "log
 ```
 StageServe 0.7.0  pete-site is running
 
-  https://pete-site.stage.local                          ↗ open in browser
+  http://pete-site.develop                               ↗ open in browser
   Serving ./public_html
   Started 4 minutes ago • healthy
 
@@ -110,7 +110,7 @@ StageServe 0.7.0  Stop pete-site?
   StageServe will stop this project. Your files won't be touched.
 
   After stopping:
-    https://pete-site.stage.local will no longer respond.
+    http://pete-site.develop will no longer respond.
     You can run it again any time.
 
   ▶ Yes, stop it    No, keep it running
@@ -131,7 +131,7 @@ After confirming, StageServe runs `stage down`, the planner re-runs, and the use
 ```
 StageServe 0.7.0  pete-site is stopped
 
-  https://pete-site.stage.local                          (stopped)
+  http://pete-site.develop                               (stopped)
   Serving ./public_html
   Last stopped: just now
 
@@ -160,7 +160,7 @@ StageServe 0.7.0  Remove pete-site from StageServe?
   StageServe will forget about this project.
     .env.stageserve in this folder is left as it is.
     All your project files are left as they are.
-    StageServe will no longer route https://pete-site.stage.local.
+    StageServe will no longer route http://pete-site.develop.
 
   ▶ No, keep it    Yes, remove it
 
@@ -188,7 +188,7 @@ Notes:
 ## What This Flow Does Not Do
 
 - It does not show Docker output, container names, image names, network names, or volume names.
-- It does not show "find issues" as a peer action. If something goes wrong while running, the planner moves the user to `out_of_sync` or `cannot_decide` automatically.
+- It does not show "find issues" as a peer action. If something goes wrong while running, the planner moves the user to `drift_detected` or `unknown_error` automatically.
 - It does not delete project files. Stopping or removing a project never deletes anything the user authored.
 - It does not show advanced-only actions in the primary list. They live under `More…`.
 - It does not require the user to remember any command name to do any of the standard day-2 actions.

@@ -20,7 +20,7 @@ Interactive terminal:
 
 - Starts the guided TUI unless disabled.
 - Detects current context.
-- Shows one primary action, secondary actions, advanced actions, and quit/help.
+- Renders the current context through the guided surfaces: status header, decision bar when a real user choice exists, tool work panel when StageServe is doing setup or recovery work, and persistent footer affordances.
 
 Non-interactive terminal:
 
@@ -50,11 +50,13 @@ The guided TUI is the easy-mode surface. Its first-level labels must describe us
 
 Rules:
 
-- Primary and secondary action labels use plain user language.
+- Decision item labels use plain user language.
 - Direct command names appear in "show commands", direct-command help, or advanced/troubleshooting views.
 - First-level copy avoids implementation terms such as attach, detach, daemon, gateway, compose, container, registry, and runtime unless there is no clearer StageServe-level wording.
 - When an implementation term is unavoidable for recovery, the copy must pair it with the user action, for example "Start Docker Desktop, then run setup again."
 - Direct command equivalents remain available for every action.
+- `stage doctor` is not exposed as a peer first-level action. Equivalent checks run inline when StageServe detects a blocker, and the direct command appears through "show commands" or advanced troubleshooting.
+- Examples use `.develop` when no active configuration is being demonstrated, but renderers must show the configured suffix, URL scheme, and port from StageServe's effective config/capabilities.
 
 Recommended label mapping:
 
@@ -68,8 +70,8 @@ Recommended label mapping:
 | `logs` | View project logs | `stage logs` |
 | `down` | Stop this project | `stage down` |
 | `detach` | Remove this project from StageServe | `stage detach` |
-| `doctor` | Find issues | `stage doctor` |
-| `diagnose` | Find issues | `stage doctor` |
+| `doctor` | Troubleshoot this problem | `stage doctor` |
+| `diagnose` | Troubleshoot this problem | `stage doctor` |
 | `init_here` | Set up this directory as a project | `stage init` |
 | `setup_help` | Get setup help | `stage setup` |
 | `recovery_help` | Show recovery help | none |
@@ -79,22 +81,33 @@ Recommended label mapping:
 
 ## Required Guided Situations
 
-| Situation | Primary Action | Secondary Actions |
-|---|---|---|
-| `machine_not_ready` | Set up this computer | Find issues, show commands, quit |
-| `project_missing_config` | Create project settings | Edit settings, show commands, quit |
-| `project_ready_to_run` | Run this project | Check project status, edit settings, find issues, show commands, quit |
-| `project_running` | Check project status | View logs, stop this project, find issues, show commands, quit |
-| `project_down` | Run this project | Check project status, remove this project from StageServe, find issues, show commands, quit |
-| `drift_detected` | Find issues | Check project status, view logs, show commands, quit |
-| `not_project` | Set up this directory as a project | Get setup help, show commands, quit |
-| `unknown_error` | Show recovery help | Find issues when project context is available, show commands, quit |
+The situations below are planner outputs, not screens the user navigates between. Each situation maps to surfaces. Setup, diagnostics, and recovery are tool-owned work panels; direct commands and advanced details live in the footer path.
+
+| Situation | Status Header | Decision Bar | Tool Work Panel | Footer |
+|---|---|---|---|---|
+| `machine_not_ready` | "Your computer isn't ready yet." | Hidden while checklist is active | Ordered setup checklist; pauses only for approval or external blockers | Help, details, show direct commands, plain text output, quit |
+| `project_missing_config` | "This folder doesn't have StageServe settings yet." | Use these settings / Edit before writing | Config preview with target path, values, URL, and validation notes | Help, show direct commands, plain text output, quit |
+| `project_ready_to_run` | "This project is ready to run." | Run this project / Edit project settings | Hidden unless start fails, then progress or blocker panel | Help, show direct commands, advanced troubleshooting, quit |
+| `project_running` | "This project is running at <URL>." | View project logs / Stop this project | Hidden unless logs or progress are active | Open URL, help, show direct commands, advanced troubleshooting, quit |
+| `project_down` | "This project is stopped." | Run this project / Remove this project from StageServe | Hidden unless start/remove progress is active | Help, show direct commands, advanced troubleshooting, quit |
+| `drift_detected` | "This project doesn't match what StageServe expects." | Use the safe next step / Try to start it again / Show what doesn't match | Plain-language comparison and safe-step preview | Help, show direct commands, advanced troubleshooting, quit |
+| `not_project` | "This folder isn't a StageServe project yet." | Set up this folder as a project / Pick a different folder | Proposed defaults and path context when available | Help, show direct commands, plain text output, quit |
+| `unknown_error` | "StageServe couldn't safely choose a next step." | Run next recovery step / Show what went wrong / Stop here | Ordered recovery path from least invasive to most invasive | Help, show direct commands, advanced troubleshooting, quit |
 
 Situation semantics:
 
 - `project_ready_to_run`: project config exists and there is no retained down record or active runtime requiring special handling.
 - `project_down`: StageServe has a retained record for the project marked down.
 - `unknown_error`: planning/context collection failed and normal action cannot be chosen safely. The recovery panel must list a concrete ordered next-step sequence (typically `stage doctor`, `stage status`, `stage logs`) rather than generic guidance.
+
+## Visible Defaults And Local URL Rules
+
+- Every value StageServe will use must be visible before the user commits: site name, web folder, suffix, URL scheme, port when non-default, target `.env.stageserve` path, and selected stack.
+- First-level project setup edits are limited to project name, web folder, and local address/suffix. Existing PHP, MySQL, timeout, hostname, stack-home, or post-up custom settings are summarized and inspectable through details/advanced paths.
+- The renderer must not hard-code the example suffix. `.develop` is the easy-mode example suffix, while existing `.test`, `.dev`, full-hostname, or custom-suffix projects must render exactly as configured.
+- Local DNS copy must lead with the user outcome: "your computer can open `<project>.<suffix>`". Resolver files, `dnsmasq`, and service names are detail-view or advanced wording.
+- HTTPS/certificate copy appears as required only when the selected local URL is HTTPS. For plain HTTP `.develop` examples, certificate setup is optional or advanced unless another contract makes it required.
+- If `SITE_SUFFIX` and `LOCAL_DNS_SUFFIX` differ, the TUI must show the mismatch and recommend the lowest-risk correction before offering run/start actions.
 
 ## Action Execution Rules
 
@@ -106,6 +119,8 @@ Situation semantics:
 - Ctrl-C cancels the current session or action.
 - Cancellation before confirmation leaves no changes.
 - Ctrl-C during logs or long-running actions must leave the terminal usable and surface the safest next action.
+- Pressing `enter` on a running-project screen must not stop, remove, or rewrite anything unless the user has explicitly selected and confirmed that mutating action.
+- Out-of-sync recovery that changes StageServe records must confirm exactly what will and will not change.
 
 ## Output Rules
 

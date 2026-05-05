@@ -12,8 +12,8 @@ The checklist items come from `core/onboarding`. The flow does not invent any ch
 2. Docker Desktop running
 3. StageServe's working folder writable
 4. Network ports 80 and 443 free
-5. Local DNS resolver ready (so `*.stage.local` resolves)
-6. Local HTTPS certificates trusted (so the browser doesn't warn)
+5. Local DNS resolver ready (so `*.develop` resolves in examples, or the active configured suffix resolves in the real UI)
+6. Local HTTPS certificates trusted when the selected local URL uses HTTPS
 
 The order matters: each step depends on the previous one being satisfied.
 
@@ -26,12 +26,12 @@ StageServe 0.7.0  Setting up your computer
   Docker Desktop is running                               ✓ ready
   StageServe's working folder                             ✓ ready
   Network ports 80 and 443                                ✓ ready
-▶ Local DNS resolver                                      needs your approval
+▶ Local DNS for .develop                                  needs your approval
     StageServe will add a small file so your browser can open
-    URLs that end in .stage.local. This needs your password.
+    URLs that end in .develop. This needs your password.
     On enter: StageServe will ask your computer for permission.
 
-  Local HTTPS certificates                                pending
+  Local HTTPS certificates                                optional for this URL
 
   enter approve • s skip this step • → details • esc quit
 ```
@@ -40,6 +40,7 @@ Notes:
 
 - Each row shows its current state in plain words: `ready`, `pending`, `needs your approval`, `not installed`, or `skipped`.
 - The active row (marked `▶`) is the next thing the tool wants to do, with a one-line plain-language description of what enter will do.
+- `.develop` is the example suffix. The real row must render the active suffix from config or machine defaults.
 - `s skip this step` lets the user move on if a step is acceptable to defer (for example HTTPS trust). Skipped steps remain visible so the user knows what is missing.
 - `→ details` opens a longer plain-language explanation for the active row. It is opt-in.
 
@@ -78,12 +79,12 @@ Some steps require user permission but can be performed by StageServe directly. 
 ```
 StageServe 0.7.0  Setting up your computer
 
-  Local DNS resolver
+  Local DNS for .develop
 
     StageServe will write one small file so your browser can open
-    URLs that end in .stage.local. This file lives at:
+    URLs that end in .develop. This file lives at:
 
-      /etc/resolver/stage.local
+      /etc/resolver/develop
 
     Writing here needs your password. macOS will ask you next.
 
@@ -110,7 +111,7 @@ StageServe 0.7.0  Setup finished
   StageServe's working folder                 ✓ ready
   Network ports 80 and 443                    ✓ ready
   Local DNS resolver                          ✓ ready
-  Local HTTPS certificates                    skipped (you can finish this later)
+  Local HTTPS certificates                    optional for this URL
 
 ▶ Continue
     StageServe will look at the current folder next.
@@ -135,6 +136,6 @@ Notes:
 ## What This Flow Does Not Do
 
 - It does not show Docker, daemon, container, image, or volume names anywhere. The user never sees `dockerd`, `com.docker.docker`, `bridge network`, or anything like it.
-- It does not present a "Find issues" button. This screen *is* the find-issues experience, owned by the tool.
+- It does not present a "Find issues" button. This screen is the diagnostic experience, owned by the tool.
 - It does not show a multi-tab or tree menu. There is one active row, one blocker at a time.
 - It does not require the user to know what to do next. Even on hard blockers, the body text tells them physically what to do.

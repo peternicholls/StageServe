@@ -17,6 +17,7 @@ The following decisions are resolved for spec 007 and overrule earlier draft ass
 - Easy-mode labels use plain user-goal language. This overrules any prior use of command words such as `attach` and `detach` as first-level guided labels.
 - Spec 007 is still developer-only, so unreleased flag names may be cleaned up. This overrules any pressure to preserve pre-release TUI flag experiments for backward compatibility.
 - Terminal verification is the primary development gate for this spec run. This overrules the prior TDD-first default used in earlier spec runs.
+- Easy-mode URL examples use `.develop` because that is the current user-facing product story and README preference, but the TUI MUST render the effective configured suffix and scheme from StageServe config/capabilities instead of hard-coding any suffix.
 
 ## User Scenarios & Testing
 
@@ -26,7 +27,7 @@ A normal user runs `stage` from a terminal and gets a guided StageServe entrypoi
 
 **Why this priority**: This is the central gap. The original intention was that `stage` alone exposes the simple path; current behavior still requires the user to know subcommands first.
 
-**Independent Test**: Run `stage` in an interactive terminal from a project directory and verify it opens a guided TUI that detects context and offers a primary action without requiring Docker knowledge.
+**Independent Test**: Run `stage` in an interactive terminal from a project directory and verify it opens a guided TUI that detects context, shows the current safe default, and does not require Docker knowledge.
 
 **Acceptance Scenarios**:
 
@@ -47,10 +48,10 @@ A first-time user opens the guided TUI and is walked through machine readiness, 
 
 **Acceptance Scenarios**:
 
-1. **Given** machine readiness is incomplete, **When** the guided TUI starts, **Then** it shows the blocking readiness step and offers `stage setup` as the primary action.
+1. **Given** machine readiness is incomplete, **When** the guided TUI starts, **Then** it enters a tool-owned setup checklist, shows the blocking readiness step, and prompts only when the user must approve or perform a concrete external action.
 2. **Given** the project lacks `.env.stageserve`, **When** readiness is acceptable, **Then** the TUI proposes a starter config and lets the user confirm or edit values before writing.
 3. **Given** project config exists and the project is stopped, **When** the TUI starts, **Then** it offers to run the project.
-4. **Given** setup or init cannot complete automatically, **When** the TUI displays the issue, **Then** it gives a specific recovery path and the equivalent direct command.
+4. **Given** setup or init cannot complete automatically, **When** the TUI displays the issue, **Then** it gives one focused blocker, numbered next steps, and the equivalent direct command behind the footer or advanced view.
 
 ---
 
@@ -60,14 +61,14 @@ A user working on a configured project opens `stage` and can inspect status, fol
 
 **Why this priority**: The simple path must cover day-to-day use, not just first run.
 
-**Independent Test**: With a running project, run `stage` and verify the guided TUI offers user-goal actions such as check status, view logs, stop project, find issues, and show commands without exposing Docker, gateway, attach, or detach terminology as the primary model.
+**Independent Test**: With a running project, run `stage` and verify the guided TUI shows the project URL/status, makes the lowest-risk day-to-day action the default, and keeps logs, stop, direct commands, and troubleshooting discoverable without exposing Docker, gateway, attach, or detach terminology as the primary model.
 
 **Acceptance Scenarios**:
 
 1. **Given** the current project is running, **When** the TUI starts, **Then** the primary screen shows project identity, route/status summary, and common actions.
 2. **Given** the user chooses logs, **When** logs are followed, **Then** the UI provides a clear exit path and does not corrupt the terminal.
 3. **Given** the user chooses stop, **When** the stop action is confirmed, **Then** `stage down` semantics are used and project data is preserved.
-4. **Given** drift is detected, **When** the TUI presents recovery, **Then** the path starts with StageServe commands before advanced implementation detail.
+4. **Given** the project does not match what StageServe expects, **When** the TUI presents recovery, **Then** it shows what does not match, names the safe next step, and asks for confirmation before changing StageServe records.
 
 ---
 
@@ -97,11 +98,19 @@ A power user or script can bypass all TUI behavior and use direct commands, flag
 - machine setup requires privileged DNS work.
 - Docker is missing or daemon is stopped.
 - project is recorded as available through StageServe but runtime is missing.
+- selected local suffix differs from the built-in fallback or README examples.
+- `SITE_SUFFIX` and `LOCAL_DNS_SUFFIX` disagree.
+- DNS is configured for one suffix but the project preview uses another suffix.
+- local HTTPS is disabled, unavailable, or only available on a non-default port.
+- proposed site name, suffix, or resulting hostname is invalid or already used.
+- proposed web folder is missing, outside the project root, or ambiguous.
 - multiple projects are available through StageServe.
 - `NO_COLOR`, `STAGESERVE_NO_TUI`, `--notui`, or `--cli` is set.
 - command is run in CI or through redirected stdout.
 - an implementation command name is precise for power users but confusing as an easy-mode label.
 - when multiple projects are available through StageServe, the first implementation remains scoped to the current directory rather than adding a project switcher.
+- terminal is too narrow or short for the full screen.
+- generated project names or paths are long enough to wrap.
 
 ## Operational Impact
 
@@ -145,9 +154,10 @@ A power user or script can bypass all TUI behavior and use direct commands, flag
 - Easy-mode screens and text fallback describe goals and outcomes before commands.
 - First-level labels use words a front-end developer or hobbyist can understand without StageServe internals.
 - Direct command names remain available through "show commands" and direct CLI help.
-- `attach` means "add this project to StageServe" in easy mode.
-- `detach` means "remove this project from StageServe" in easy mode.
-- `down` means "stop this project" in easy mode.
+- `attach` is labelled "add this project to StageServe" in easy mode.
+- `detach` is labelled "remove this project from StageServe" in easy mode.
+- `down` is labelled "stop this project" in easy mode.
+- `doctor` is not a peer first-level action. StageServe runs equivalent checks inline when it detects a blocker, and exposes the direct command through "show commands" or advanced troubleshooting.
 - Runtime details such as Docker, daemon, gateway, compose, container, registry, and state are advanced/troubleshooting terms unless they are the only actionable recovery clue.
 
 ## Requirements
@@ -161,7 +171,7 @@ A power user or script can bypass all TUI behavior and use direct commands, flag
 - **FR-005**: The guided TUI MUST use a shared non-UI next-action planner to decide the current situation and recommended actions.
 - **FR-006**: The next-action planner MUST be terminal-verifiable through real `stage` invocations and may also have narrow package tests for deterministic decision rules.
 - **FR-007**: The guided TUI MUST detect exactly these canonical situations for the first implementation: `machine_not_ready`, `project_missing_config`, `project_ready_to_run`, `project_running`, `project_down`, `drift_detected`, `not_project`, and `unknown_error`.
-- **FR-008**: The guided TUI MUST present one primary recommended action and secondary actions for every supported situation.
+- **FR-008**: The guided TUI MUST present each supported situation through the four-surface model: status header, decision bar when a real user choice exists, tool work panel when StageServe is doing or diagnosing work, and persistent footer affordances.
 - **FR-009**: Any file write from the guided TUI MUST preview the target path and relevant values before confirmation.
 - **FR-010**: The guided TUI MUST write or update only `.env.stageserve` for user-editable StageServe config.
 - **FR-011**: The guided TUI MUST expose the equivalent direct command for each action it offers.
@@ -180,6 +190,21 @@ A power user or script can bypass all TUI behavior and use direct commands, flag
 - **FR-024**: StageServe MUST NOT expose a `--tui` flag in the final spec 007 command contract; TUI is the default easy-mode behavior and `--notui` / `--cli` are equivalent opt-outs.
 - **FR-025**: Guided TUI labels MUST use easy-mode user language for first-level actions. Internal/direct command names such as `attach` and `detach` may appear in "show commands" or advanced views, but the primary labels MUST describe the user outcome, such as "add this project to StageServe", "remove this project from StageServe", "run this project", or "stop this project".
 - **FR-026**: Text fallback, command help updated by this spec, README first-run copy, and installer handoff copy MUST follow the same plain-language rule as the guided TUI.
+- **FR-027**: The setup flow MUST be a tool-owned checklist, not a menu. StageServe MUST run readiness checks in order, show each check's status, stop only at the first item requiring user approval or external action, and continue after the user confirms or skips an explicitly skippable step.
+- **FR-028**: Every screen with a default value or default action MUST show that value or action inline before the user commits. This includes site name, web folder, local suffix, local URL, target config path, TLS/HTTP state, and what `enter` will do.
+- **FR-029**: The project setup flow MUST preview the target `.env.stageserve` path, site name, web folder, domain suffix, scheme, port when non-default, and resulting local URL before any write.
+- **FR-030**: The guided TUI MUST derive local URL examples from the effective StageServe configuration and machine capabilities. It MUST NOT hard-code `.develop`, `.test`, `.dev`, `.stage.local`, `http`, `https`, or a port in renderer logic.
+- **FR-031**: Easy mode MUST use `.develop` in user-facing examples unless the example specifically demonstrates another supported suffix or the active configuration renders a different suffix.
+- **FR-032**: Local DNS setup MUST explain the user-visible outcome ("your computer can open `<project>.<suffix>`") before mentioning resolver files, `dnsmasq`, or other implementation details.
+- **FR-033**: Local HTTPS/certificate setup MUST be presented as required only when the selected local URL uses HTTPS. If the active URL is plain HTTP, certificate work MUST be shown as optional or advanced rather than blocking first run.
+- **FR-034**: The running-project screen MUST make a non-destructive action the default. Pressing `enter` on a running project MUST NOT stop, detach, delete, or otherwise remove anything without an explicit prior selection and confirmation.
+- **FR-035**: Stopping a project, removing a project from StageServe, overwriting `.env.stageserve`, and applying out-of-sync recovery that changes StageServe records MUST each show a confirmation that says what will and will not change.
+- **FR-036**: The guided TUI MUST provide an always-visible way to inspect context: current project path, local URL, web folder, readiness state, and why StageServe recommends the current next step.
+- **FR-037**: The footer MUST be persistent and predictable across comparable screens, and MUST be the normal location for help, direct commands, plain text output, and advanced troubleshooting.
+- **FR-038**: The guided TUI MUST support inline editing for project settings without writing until the user returns to the preview and confirms.
+- **FR-039**: When StageServe cannot safely choose a normal state, the recovery flow MUST order steps from least invasive to most invasive, pause after each step, and re-run planning before offering another step.
+- **FR-040**: Primary screens MUST remain usable at constrained terminal sizes by truncating, wrapping, or moving details behind a detail view without hiding the current state, default action, or safe exit path.
+- **FR-041**: Easy-mode project setup MUST keep first-level editable fields limited to project name, web folder, and local address/suffix. Existing advanced custom settings MUST be summarized and inspectable, but not forced into the first-run decision path.
 
 ### Canonical Situation Semantics
 
@@ -200,6 +225,9 @@ A power user or script can bypass all TUI behavior and use direct commands, flag
 - **NFR-004**: Text fallback MUST contain the same core semantic guidance as the TUI.
 - **NFR-005**: Added abstractions MUST not duplicate lifecycle or config precedence logic.
 - **NFR-006**: First-level TUI copy SHOULD be understandable without prior Docker, Compose, gateway, attach/detach, or StageServe state-model knowledge.
+- **NFR-007**: First-level screens SHOULD be readable by a non-specialist in under ten seconds: one current-state sentence, one recommended next step, visible defaults, and no more than three decision-bar items.
+- **NFR-008**: Visual hierarchy SHOULD be calm and consistent: stable title/status line, aligned value rows, one highlighted default, subdued footer, and no decorative UI that competes with the task.
+- **NFR-009**: Error and blocker copy SHOULD name one problem at a time and include numbered physical actions when the fix happens outside StageServe.
 
 ### Out Of Scope
 
@@ -215,10 +243,12 @@ A power user or script can bypass all TUI behavior and use direct commands, flag
 ## Key Entities
 
 - **Guided Session**: One invocation of bare `stage`, including detected context, selected action, confirmations, and outcome.
-- **Next Action Plan**: Non-UI decision output describing situation, primary action, secondary actions, advanced actions, warnings, user-facing labels, and direct command equivalents.
-- **Guided Action**: A user-selectable operation such as set up this computer, create project settings, run this project, add this project to StageServe, check status, view logs, stop this project, remove this project from StageServe, find issues, edit project settings, show commands, or advanced command guidance.
+- **Next Action Plan**: Non-UI decision output describing situation, status header copy, decision items, tool-owned work items, footer affordances, warnings, user-facing labels, visible defaults, and direct command equivalents.
+- **Guided Surface**: One of the stable UI regions: status header, decision bar, tool work panel, details panel, or footer. Surfaces prevent setup, diagnostics, commands, and advanced options from collapsing into one undifferentiated menu.
+- **Guided Action**: A user-selectable operation such as create project settings, run this project, add this project to StageServe, view project logs, stop this project, remove this project from StageServe, edit project settings, or show direct commands. Setup checks and diagnostics may be represented as tool-owned work items rather than first-level actions.
 - **TUI Capability**: Runtime assessment of terminal suitability: stdin/stdout interactivity, color support, `NO_COLOR`, shell-only `STAGESERVE_NO_TUI`, and text fallback reason.
 - **Config Preview**: The `.env.stageserve` target path and values shown before writing.
+- **Local URL Preview**: The fully rendered address StageServe expects the browser to open, including scheme, hostname, suffix, and port when needed.
 - **Recovery Path**: A user-facing next step for a non-ready or failed state, with direct command equivalent.
 
 ## Success Criteria
@@ -230,7 +260,11 @@ A power user or script can bypass all TUI behavior and use direct commands, flag
 - **SC-005**: Direct commands and JSON modes follow the final spec 007 CLI contract without opening the guided TUI unexpectedly.
 - **SC-006**: Primary docs no longer require Docker/gateway implementation vocabulary before advanced/troubleshooting sections.
 - **SC-007**: Terminal verification evidence covers planner states, root no-args behavior, TUI-disable behavior, direct command behavior, and JSON purity.
-- **SC-008**: Easy-mode TUI and text fallback labels pass a plain-language review: primary actions describe user goals, and implementation terms appear only in show-commands or advanced/troubleshooting paths.
+- **SC-008**: Easy-mode TUI and text fallback labels pass a plain-language review: decision-bar actions describe user goals, and implementation terms appear only in show-commands or advanced/troubleshooting paths.
+- **SC-009**: A first-time user can see the proposed project name, web folder, local suffix, local URL, and `.env.stageserve` path before any project setup write.
+- **SC-010**: A first-time user can understand and complete local DNS setup for the configured suffix, using `.develop` examples when no other suffix is active, without needing to know what a resolver file or DNS service is.
+- **SC-011**: A running-project user can open the local URL, view logs, stop the project, and leave the TUI without any accidental destructive action.
+- **SC-012**: Out-of-sync and unknown-error flows explain what StageServe found, what it recommends, and what will change before any recovery mutation.
 
 ## Assumptions
 
@@ -240,3 +274,4 @@ A power user or script can bypass all TUI behavior and use direct commands, flag
 - The TUI may shell through existing command/domain seams for action execution as long as output and cancellation are handled coherently.
 - The first version should optimize for clarity over visual richness.
 - This spec run prioritizes terminal verification over TDD. Narrow automated tests are supporting evidence, not the primary development gate.
+- The preferred easy-mode suffix is `.develop`, but the implementation may still encounter existing `.test`, `.dev`, full-hostname, or custom-suffix projects and must render them truthfully.

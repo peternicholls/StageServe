@@ -6,6 +6,8 @@ This file states one rule that every other diagram in this folder must follow:
 
 The user must never have to drill down to discover what StageServe is going to do for them. If StageServe has a value, that value is on the screen. If `enter` will trigger an action, the screen says what that action is.
 
+Example screens use `.develop`, but the rule is configuration-driven: if the active project uses `.test`, `.dev`, a full hostname, HTTPS, or a non-default port, the screen shows that exact value.
+
 ## What "Default" Means In This TUI
 
 Two distinct things, both must always be visible:
@@ -24,8 +26,8 @@ When a row represents a value StageServe will use, the value appears next to its
 ```
   Site name           pete-site                       (default: folder name)
   Web folder          ./public_html                   (default: found here)
-  Domain suffix       .stage.local                    (default: your machine setting)
-  Local URL           https://pete-site.stage.local   (this is what you'll visit)
+  Domain suffix       .develop                        (default: your machine setting)
+  Local URL           http://pete-site.develop        (this is what you'll visit)
 ```
 
 The right column is always the value. The note in parentheses explains where the default came from, so the user knows why StageServe picked it.
@@ -64,7 +66,7 @@ For yes/no confirmations:
 |---|---|
 | Top-level routing | Not applicable (no screen). |
 | Machine setup | Each row's current state, the one active step's description, what `enter` will do, the file path or external action that step will trigger. |
-| Project setup | Site name, web folder, domain suffix, resulting URL, target file path, what "Use these settings" will write, what "Edit" will open. |
+| Project setup | Site name, web folder, domain suffix, URL scheme, port when needed, resulting URL, target file path, what "Use these settings" will write, what "Edit" will open. |
 | Run, stop, inspect | Project name, current URL, current status, what the highlighted action will do (the default is non-destructive). |
 | Out-of-sync | What StageServe found, what the safe next step is, what it will and will not change on disk. |
 | Recovery and help | The ordered list of recovery steps, which step is next, that step is read-only or names what it will change. |

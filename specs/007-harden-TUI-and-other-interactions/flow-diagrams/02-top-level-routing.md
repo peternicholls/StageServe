@@ -49,7 +49,7 @@ $ stage
 StageServe 0.7.0
 
 Your computer isn't ready yet.
-  StageServe needs Docker Desktop and a local DNS resolver.
+  StageServe needs Docker Desktop and a way to open local project addresses such as my-site.develop.
 
 Next step:
   Run: stage setup

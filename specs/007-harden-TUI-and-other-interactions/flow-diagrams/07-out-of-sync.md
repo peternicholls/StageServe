@@ -26,16 +26,18 @@ Before the user does anything, they must see:
 - The safe next step, named in advance.
 - What that step will and will not change on disk.
 
+The examples use `.develop`, but the screen must render the actual configured suffix and URL scheme for the project.
+
 ## Top-Level Screen
 
 ```
 StageServe 0.7.0  pete-site looks out of sync
 
-  https://pete-site.stage.local                          (not responding)
+  http://pete-site.develop                               (not responding)
 
   Here's what StageServe found:
     StageServe thinks this project is running, but
-    https://pete-site.stage.local isn't responding.
+    http://pete-site.develop isn't responding.
 
   Safe next step (the highlighted choice):
     Treat this project as stopped, then let you start it again
@@ -73,9 +75,9 @@ StageServe 0.7.0  What doesn't match for pete-site
   StageServe checks several things. Here's what each one says right now:
 
     Project record         StageServe thinks this is running.
-    Local URL response     https://pete-site.stage.local isn't responding.
-    DNS for stage.local    Working.
-    Local routing          No route is set up for pete-site.stage.local.
+    Local URL response     http://pete-site.develop isn't responding.
+    DNS for .develop       Working.
+    Local address link     Not connected for pete-site.develop.
 
   This usually happens when:
     • The project was stopped from outside StageServe.
@@ -115,7 +117,7 @@ Notes:
 
 ## Sub-Flow: Try To Start It Again
 
-This is the same as choosing "Run this project" from `project_ready_to_run`. StageServe runs `stage up` with the existing settings. If it succeeds, the user lands on `project_running`. If it fails again, the planner reports either `out_of_sync` again (with new details) or `cannot_decide` (covered in [08-recovery-and-help.md](./08-recovery-and-help.md)).
+This is the same as choosing "Run this project" from `project_ready_to_run`. StageServe runs `stage up` with the existing settings. If it succeeds, the user lands on `project_running`. If it fails again, the planner reports either `drift_detected` again (with new details) or `unknown_error` (covered in [08-recovery-and-help.md](./08-recovery-and-help.md)).
 
 ## State Transitions Out Of This Flow
 
@@ -123,7 +125,7 @@ This is the same as choosing "Run this project" from `project_ready_to_run`. Sta
 |---|---|
 | `Use the safe next step` confirmed | re-detect → typically `project_down` |
 | `Try to start it again` succeeded | `project_running` |
-| `Try to start it again` failed | re-detect → `out_of_sync` again or `cannot_decide` |
+| `Try to start it again` failed | re-detect → `drift_detected` again or `unknown_error` |
 | `Show what doesn't match in detail` | back to this screen |
 | `esc` | exit TUI; the situation is unchanged on disk |
 

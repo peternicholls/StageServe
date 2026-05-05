@@ -46,7 +46,7 @@ These tasks execute already-resolved spec 007 decisions. They are not open desig
 
 - [ ] T005 [P] Create `core/guidance/types.go` with `TUICapability`, `GuidedContext`, `NextActionPlan`, and `GuidedAction`.
 - [ ] T006 [P] Add terminal planner-inspection command or debug output so `machine_not_ready`, `project_missing_config`, `project_ready_to_run`, `project_running`, `project_down`, `drift_detected`, `not_project`, and `unknown_error` can be verified from real `stage` invocations.
-- [ ] T007 Implement `core/guidance/planner.go` to produce one primary easy-mode action label and direct command equivalent for each situation.
+- [ ] T007 Implement `core/guidance/planner.go` to produce status header copy, visible defaults, decision items, tool-owned work items, footer affordances, and direct command equivalents for each situation.
 - [ ] T008 Add cheap context collection seams in `core/guidance/context.go` without running long Docker checks before first render; include `stack_id` resolved from `STAGESERVE_STACK`.
 - [ ] T009 Add terminal verification steps proving planner collection does not write `.env.stageserve` or mutate `.stageserve-state`.
 - [ ] T009a [P] Add terminal planner verification proving first-level action labels use plain language while command names remain available through direct command equivalents.
@@ -100,17 +100,17 @@ These tasks execute already-resolved spec 007 decisions. They are not open desig
 
 ### Terminal Verification
 
-- [ ] T028 [P] [US2] Verify a machine-not-ready scenario shows "set up this computer" as the primary action.
-- [ ] T029 [P] [US2] Verify a project without `.env.stageserve` shows "create project settings" as the primary action.
+- [ ] T028 [P] [US2] Verify a machine-not-ready scenario enters the tool-owned setup checklist and pauses only on the first approval or external blocker.
+- [ ] T029 [P] [US2] Verify a project without `.env.stageserve` shows "create project settings" as the highlighted default.
 - [ ] T030 [P] [US2] Verify config preview shows `.env.stageserve` path and values before write.
 - [ ] T031 [P] [US2] Verify cancel-before-write leaves no `.env.stageserve` file.
 
 ### Implementation
 
-- [ ] T032 [US2] Implement first TUI landing screen with context summary, primary action, secondary actions, advanced actions, and quit/help.
+- [ ] T032 [US2] Implement the first TUI surfaces: status header, decision bar, tool work panel, and persistent footer, with diagnostics/direct commands kept out of the primary decision list.
 - [ ] T033 [US2] Wire setup action through existing onboarding setup checks and result projection.
 - [ ] T034 [US2] Wire init action through `core/onboarding.WriteProjectEnv` with preview and confirmation.
-- [ ] T035 [US2] Add Huh form or equivalent prompt for site name/docroot/suffix edits.
+- [ ] T035 [US2] Add Huh form or equivalent prompt for site name, web folder, suffix, and local URL preview edits.
 - [ ] T036 [US2] After init, recompute planner state and offer run action.
 - [ ] T037 [US2] Validate first-run TUI manually and record evidence in `quickstart.md`.
 
@@ -122,15 +122,16 @@ These tasks execute already-resolved spec 007 decisions. They are not open desig
 
 ### Terminal Verification
 
-- [ ] T038 [P] [US3] Verify a configured stopped project shows "run this project" as the primary action.
-- [ ] T039 [P] [US3] Verify a running project shows "check project status", "view logs", "stop this project", and "find issues" actions.
+- [ ] T038 [P] [US3] Verify a configured stopped project shows "run this project" as the highlighted default.
+- [ ] T039 [P] [US3] Verify a running project shows URL/status, defaults to a non-destructive action such as viewing logs, requires confirmation before stop, and keeps direct commands/troubleshooting behind the footer.
 - [ ] T040 [P] [US3] Verify stop action requires confirmation before running.
-- [ ] T041 [P] [US3] Verify down/status/doctor results lead to a clear next action.
+- [ ] T041 [P] [US3] Verify down/status/inline diagnostic results lead to a clear next action without showing `stage doctor` as a peer easy-mode choice.
 - [ ] T041a [P] [US3] Verify logs action exits cleanly and leaves the terminal usable.
 - [ ] T041b [P] [US3] Verify Ctrl-C cancellation before confirmation leaves no state/config changes.
 - [ ] T041c [P] [US3] Verify Ctrl-C during a long-running guided action surfaces the safest next action and does not corrupt terminal output.
 - [ ] T041d [P] [US3] Verify any guided add/remove actions are labeled "add this project to StageServe" and "remove this project from StageServe", with `attach`/`detach` visible only through show-commands or direct help.
 - [ ] T041e [P] [US3] Verify that when multiple projects are available through StageServe, the guided planner remains scoped to the current directory and records the first-version limitation rather than implying a cross-project switcher.
+- [ ] T041f [P] [US3] Verify local URL rendering uses the active suffix, scheme, and port from config/capabilities, with `.develop` used only as the example/default product copy.
 
 ### Implementation
 
@@ -191,8 +192,8 @@ These tasks execute already-resolved spec 007 decisions. They are not open desig
 - [ ] T066 Manually validate `STAGESERVE_NO_TUI=1 stage`.
 - [ ] T067 Manually validate JSON purity for `stage setup --json` and `stage doctor --json`.
 - [ ] T067a Manually validate first-screen render time is under the NFR-001 target or record measured exception and cause.
-- [ ] T067b Manually validate keyboard-only operation for all primary actions.
-- [ ] T067c Manually validate text fallback contains the same primary situation, primary action, and direct command equivalent as the TUI.
+- [ ] T067b Manually validate keyboard-only operation for all decision-bar actions and tool-owned work steps.
+- [ ] T067c Manually validate text fallback contains the same situation, highlighted default, visible defaults, and direct command equivalent as the TUI.
 - [ ] T067d Manually validate installer handoff output after a test-mode or local installer run.
 - [ ] T067e Manually validate easy-mode language with a front-end-dev/hobbyist lens: primary labels describe goals, not lifecycle mechanics, and command equivalents are still discoverable.
 - [ ] T068 Run supporting `go test ./core/guidance ./core/onboarding ./cmd/stage/commands ./core/config ./core/lifecycle ./observability/status ./infra/gateway`.
