@@ -70,6 +70,7 @@ Recommended label mapping:
 | `detach` | Remove this project from StageServe | `stage detach` |
 | `doctor` | Find issues | `stage doctor` |
 | `diagnose` | Find issues | `stage doctor` |
+| `init_here` | Set up this directory as a project | `stage init` |
 | `setup_help` | Get setup help | `stage setup` |
 | `recovery_help` | Show recovery help | none |
 | `edit_config` | Edit project settings | `.env.stageserve` |
@@ -86,14 +87,14 @@ Recommended label mapping:
 | `project_running` | Check project status | View logs, stop this project, find issues, show commands, quit |
 | `project_down` | Run this project | Check project status, remove this project from StageServe, find issues, show commands, quit |
 | `drift_detected` | Find issues | Check project status, view logs, show commands, quit |
-| `not_project` | Get setup help | Show commands, quit |
+| `not_project` | Set up this directory as a project | Get setup help, show commands, quit |
 | `unknown_error` | Show recovery help | Find issues when project context is available, show commands, quit |
 
 Situation semantics:
 
 - `project_ready_to_run`: project config exists and there is no retained down record or active runtime requiring special handling.
 - `project_down`: StageServe has a retained record for the project marked down.
-- `unknown_error`: planning/context collection failed and normal action cannot be chosen safely.
+- `unknown_error`: planning/context collection failed and normal action cannot be chosen safely. The recovery panel must list a concrete ordered next-step sequence (typically `stage doctor`, `stage status`, `stage logs`) rather than generic guidance.
 
 ## Action Execution Rules
 

@@ -128,7 +128,7 @@ Rules:
 - Advanced actions may reveal implementation details, but primary actions should not.
 - Direct command names are command equivalents, not first-level labels.
 - The TUI and text fallback must use the same `label` and `description` for the same action.
-- Planner-only ids such as `diagnose`, `setup_help`, and `recovery_help` may alias existing command/domain behavior through `internal_name` instead of introducing new command surfaces.
+- Planner-only ids such as `diagnose`, `setup_help`, `recovery_help`, and `init_here` may alias existing command/domain behavior through `internal_name` instead of introducing new command surfaces.
 
 Recommended easy-mode labels:
 
@@ -144,6 +144,7 @@ Recommended easy-mode labels:
 | `detach` | Remove this project from StageServe |
 | `doctor` | Find issues |
 | `diagnose` | Find issues |
+| `init_here` | Set up this directory as a project |
 | `setup_help` | Get setup help |
 | `recovery_help` | Show recovery help |
 | `edit_config` | Edit project settings |

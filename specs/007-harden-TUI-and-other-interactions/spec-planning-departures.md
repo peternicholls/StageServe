@@ -160,3 +160,12 @@ Spec 007 should not discard the work from 004 and 005. It should correct the abs
 - Build the missing first-level guided experience on top of those foundations.
 - Move implementation details into advanced/troubleshooting material.
 - Keep direct commands as stable power-user and automation surfaces.
+
+## Departure 5: Prototype-Driven Contract Refinements
+
+The guided TUI prototype under `specs/007-harden-TUI-and-other-interactions/prototype/` exists to test copy and flow before production. Two findings from that prototype are now reflected in the contract:
+
+- `not_project` primary action changed from `Get setup help` to `Set up this directory as a project` (`init_here` → `stage init`, navigates to `project_missing_config`). `Get setup help` is demoted to a secondary action. Rationale: a user who has run `stage` from a real project directory is more likely to want to convert that directory than to be redirected to machine setup. Machine setup remains one click away.
+- `unknown_error` recovery panel must surface a concrete ordered next-step sequence (`stage doctor`, `stage status`, `stage logs`) rather than placeholder copy. The primary action stays `Show recovery help`; the body becomes actionable. Rationale: the prototype showed that a recovery screen with no concrete next step dead-ends the user.
+
+These changes do not introduce new commands. `stage detach` is intentionally retained as the underlying CLI for `Remove this project from StageServe`; the contract's friendly-label-vs-command split absorbs the spec wording about not exposing `detach` as a top-level easy-mode label.
