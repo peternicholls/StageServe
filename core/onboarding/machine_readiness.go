@@ -172,19 +172,21 @@ func CheckPort(stepID string, port int) StepResult {
 
 func busyPortStep(stepID, label string, port int) StepResult {
 	message := fmt.Sprintf("port %d is already in use", port)
+	rem := fmt.Sprintf("lsof -nP -iTCP:%d -sTCP:LISTEN", port)
 	if owner := portOwnerLookup(port); owner != "" {
-		message = fmt.Sprintf("port %d is already in use by %s", port, owner)
 		if owner == "another process (owner hidden without sudo)" {
-			message = fmt.Sprintf("port %d is already in use by another process (run: sudo lsof -nP -iTCP:%d -sTCP:LISTEN to reveal the owner)", port, port)
+			message = fmt.Sprintf("port %d is already in use — owner requires sudo to identify", port)
+			rem = fmt.Sprintf("sudo lsof -nP -iTCP:%d -sTCP:LISTEN", port)
+		} else {
+			message = fmt.Sprintf("port %d is already in use by %s", port, owner)
 		}
 	}
-	rem := remediationPtr(fmt.Sprintf("Find and stop the process using port %d: lsof -nP -iTCP:%d -sTCP:LISTEN", port, port))
 	return StepResult{
 		ID:          stepID,
 		Label:       label,
 		Status:      StatusNeedsAction,
 		Message:     message,
-		Remediation: rem,
+		Remediation: remediationPtr(rem),
 	}
 }
 

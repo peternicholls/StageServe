@@ -102,7 +102,7 @@ func TestCheckPort_BusyPortHiddenOwnerSuggestsSudoLookup(t *testing.T) {
 	}
 
 	r := CheckPort("port.443", 443)
-	if !strings.Contains(r.Message, "sudo lsof -nP -iTCP:443 -sTCP:LISTEN") {
-		t.Fatalf("want sudo lookup hint in message, got %q", r.Message)
+	if r.Remediation == nil || !strings.Contains(*r.Remediation, "sudo lsof -nP -iTCP:443 -sTCP:LISTEN") {
+		t.Fatalf("want sudo lsof hint in remediation, got message=%q remediation=%v", r.Message, r.Remediation)
 	}
 }

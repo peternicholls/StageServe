@@ -64,10 +64,10 @@ func NewSetup(shared *SharedFlags) *cobra.Command {
 					return err
 				}
 			case onboarding.OutputModeTUI:
-				p := onboarding.TUIProjector{W: cmd.OutOrStdout()}
+				p := onboarding.TUIProjector{W: cmd.OutOrStdout(), Title: "StageServe Setup", Detailed: true}
 				p.Project(result)
 			default:
-				p := onboarding.TextProjector{W: cmd.OutOrStdout()}
+				p := onboarding.TextProjector{W: cmd.OutOrStdout(), Title: "StageServe Setup", Detailed: true}
 				p.Project(result)
 			}
 

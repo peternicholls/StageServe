@@ -30,7 +30,7 @@ func checkDNS(suffix string) StepResult {
 			Message: st.Message,
 		}
 	}
-	rem := remediationPtr("Run: stage setup (will bootstrap dnsmasq + /etc/resolver/" + suffix + ")")
+	rem := remediationPtr("stage setup")
 	return StepResult{
 		ID:          "dns.resolver",
 		Label:       label,
