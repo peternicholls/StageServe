@@ -3,6 +3,7 @@ package onboarding
 import (
 	"fmt"
 	"net"
+	"strings"
 	"syscall"
 	"testing"
 )
@@ -52,5 +53,35 @@ func TestCheckPort_PermissionDeniedThenBusyWildcard(t *testing.T) {
 	r := CheckPort("port.80", 80)
 	if r.Status != StatusNeedsAction {
 		t.Fatalf("want needs_action, got %s (%s)", r.Status, r.Message)
+	}
+}
+
+func TestCheckPort_BusyPortIncludesOwnerWhenAvailable(t *testing.T) {
+	originalListen := portListen
+	originalOwnerLookup := portOwnerLookup
+	defer func() {
+		portListen = originalListen
+		portOwnerLookup = originalOwnerLookup
+	}()
+
+	portListen = func(network, address string) (net.Listener, error) {
+		return nil, syscall.EADDRINUSE
+	}
+	portOwnerLookup = func(port int) string {
+		if port != 443 {
+			t.Fatalf("unexpected port %d", port)
+		}
+		return "tailscaled (pid 123)"
+	}
+
+	r := CheckPort("port.443", 443)
+	if r.Status != StatusNeedsAction {
+		t.Fatalf("want needs_action, got %s (%s)", r.Status, r.Message)
+	}
+	if !strings.Contains(r.Message, "tailscaled (pid 123)") {
+		t.Fatalf("want busy-port owner in message, got %q", r.Message)
+	}
+	if r.Remediation == nil || !strings.Contains(*r.Remediation, "lsof -nP -iTCP:443 -sTCP:LISTEN") {
+		t.Fatalf("want updated lsof remediation, got %#v", r.Remediation)
 	}
 }

@@ -12,58 +12,125 @@ import (
 	"github.com/mattn/go-isatty"
 )
 
-type actionKind string
+type situation string
 
 const (
-	actionNavigate actionKind = "navigate"
-	actionPreview  actionKind = "preview"
-	actionResult   actionKind = "result"
+	machineNotReady      situation = "machine_not_ready"
+	projectMissingConfig situation = "project_missing_config"
+	projectReadyToRun    situation = "project_ready_to_run"
+	projectRunning       situation = "project_running"
+	projectDown          situation = "project_down"
+	driftDetected        situation = "drift_detected"
+	notProject           situation = "not_project"
+	unknownError         situation = "unknown_error"
 )
 
-type action struct {
-	ID                   string
-	Label                string
-	Description          string
-	DirectCommand        string
-	RequiresConfirmation bool
-	Kind                 actionKind
-	NextScenario         string
-	ResultTitle          string
-	ResultBody           string
+type workStatus string
+
+const (
+	statusReady         workStatus = "ready"
+	statusNeedsApproval workStatus = "needs your approval"
+	statusNext          workStatus = "next safe step"
+	statusPending       workStatus = "pending"
+	statusOptional      workStatus = "optional for this URL"
+	statusNeedsUserWork workStatus = "not installed"
+)
+
+type viewMode int
+
+const (
+	modeMain viewMode = iota
+	modeConfirm
+	modeDetails
+	modeCommands
+	modeAdvanced
+	modeLogs
+	modeEdit
+)
+
+type defaultValue struct {
+	Label string
+	Value string
+	Note  string
 }
 
-type scenario struct {
-	ID           string
-	Title        string
-	Summary      string
-	Warnings     []string
-	ScopeNote    string
-	Primary      action
-	Secondary    []action
-	Advanced     []action
-	ConfigPath   string
-	ConfigValues []string
+type workItem struct {
+	Label       string
+	Status      workStatus
+	Description string
+	EnterAction string
+	Details     string
+	Skippable   bool
 }
 
-type flowStep struct {
-	ScenarioID       string
-	SelectedActionID string
+type decisionItem struct {
+	ID                string
+	Label             string
+	Description       string
+	DirectCommand     string
+	Mutates           bool
+	RequiresConfirm   bool
+	ConfirmYesDefault bool
+	ConfirmTitle      string
+	ConfirmBody       []string
+	Next              situation
+	ResultTitle       string
+	ResultBody        string
+	Opens             viewMode
+}
+
+type plan struct {
+	Situation       situation
+	StatusHeader    string
+	Context         string
+	Summary         string
+	Defaults        []defaultValue
+	WorkItems       []workItem
+	ActiveWorkIndex int
+	Decisions       []decisionItem
+	DetailsTitle    string
+	Details         []string
+	DirectCommands  []string
+	Advanced        []string
+	Footer          []string
+}
+
+type editValues struct {
+	SiteName  string
+	WebFolder string
+	Suffix    string
+}
+
+type pendingConfirmation struct {
+	Title             string
+	Body              []string
+	YesLabel          string
+	NoLabel           string
+	YesDefault        bool
+	ResultTitle       string
+	ResultBody        string
+	Next              situation
+	ReturnMode        viewMode
+	ConfirmedMutation bool
 }
 
 type model struct {
-	scenarios        map[string]scenario
-	order            []string
-	startScenario    string
-	currentScenario  string
-	cursor           int
-	showCommands     bool
-	resultTitle      string
-	resultBody       string
-	previewAction    action
-	previewActive    bool
-	flowStack        []flowStep
-	stackCheckpoints []int
-	completedWork    []string
+	plans          map[situation]plan
+	order          []situation
+	current        situation
+	cursor         int
+	mode           viewMode
+	width          int
+	height         int
+	resultTitle    string
+	resultBody     string
+	pending        pendingConfirmation
+	confirmYes     bool
+	editCursor     int
+	editValues     editValues
+	localDNSReady  bool
+	recoveryStep   int
+	lastScreenName string
 }
 
 func main() {
@@ -72,30 +139,31 @@ func main() {
 	var cli bool
 	var list bool
 
-	flag.StringVar(&scenarioID, "scenario", "machine_not_ready", "starting prototype scenario")
+	flag.StringVar(&scenarioID, "scenario", string(machineNotReady), "starting prototype scenario")
 	flag.BoolVar(&noTUI, "notui", false, "force text fallback")
 	flag.BoolVar(&cli, "cli", false, "alias for --notui")
 	flag.BoolVar(&list, "list-scenarios", false, "print supported prototype scenarios")
 	flag.Parse()
 
-	scenarios := scenarioFixtures()
+	plans := planFixtures()
 	if list {
-		printScenarios(os.Stdout, scenarios)
+		printScenarios(os.Stdout, plans)
 		return
 	}
-	if _, ok := scenarios[scenarioID]; !ok {
+
+	start := situation(scenarioID)
+	if _, ok := plans[start]; !ok {
 		fmt.Fprintf(os.Stderr, "unknown scenario %q\n", scenarioID)
-		printScenarios(os.Stderr, scenarios)
+		printScenarios(os.Stderr, plans)
 		os.Exit(2)
 	}
 
 	if noTUI || cli || !isInteractive(os.Stdin, os.Stdout) {
-		renderText(os.Stdout, scenarios[scenarioID])
+		renderText(os.Stdout, plans[start])
 		return
 	}
 
-	m := newModel(scenarios, scenarioID)
-	prog := tea.NewProgram(m, tea.WithAltScreen())
+	prog := tea.NewProgram(newModel(plans, start), tea.WithAltScreen())
 	if _, err := prog.Run(); err != nil {
 		fmt.Fprintf(os.Stderr, "prototype failed: %v\n", err)
 		os.Exit(1)
@@ -106,34 +174,30 @@ func isInteractive(stdin *os.File, stdout *os.File) bool {
 	return isatty.IsTerminal(stdin.Fd()) && isatty.IsTerminal(stdout.Fd())
 }
 
-func printScenarios(w io.Writer, scenarios map[string]scenario) {
-	ids := make([]string, 0, len(scenarios))
-	for id := range scenarios {
-		ids = append(ids, id)
+func printScenarios(w io.Writer, plans map[situation]plan) {
+	ids := make([]string, 0, len(plans))
+	for id := range plans {
+		ids = append(ids, string(id))
 	}
 	sort.Strings(ids)
 	for _, id := range ids {
-		fmt.Fprintf(w, "%s\n", id)
+		fmt.Fprintln(w, id)
 	}
 }
 
-func newModel(scenarios map[string]scenario, scenarioID string) model {
-	order := make([]string, 0, len(scenarios))
-	for id := range scenarios {
+func newModel(plans map[situation]plan, start situation) model {
+	order := make([]situation, 0, len(plans))
+	for id := range plans {
 		order = append(order, id)
 	}
-	sort.Strings(order)
+	sort.Slice(order, func(i, j int) bool { return order[i] < order[j] })
 	return model{
-		scenarios:       scenarios,
-		order:           order,
-		startScenario:   scenarioID,
-		currentScenario: scenarioID,
-		flowStack: []flowStep{
-			{ScenarioID: scenarioID},
-		},
-		stackCheckpoints: []int{
-			0,
-		},
+		plans:      plans,
+		order:      order,
+		current:    start,
+		width:      96,
+		height:     32,
+		editValues: editValues{SiteName: "pete-site", WebFolder: "./public_html", Suffix: ".develop"},
 	}
 }
 
@@ -143,571 +207,738 @@ func (m model) Init() tea.Cmd {
 
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
+	case tea.WindowSizeMsg:
+		m.width = msg.Width
+		m.height = msg.Height
+		return m, nil
 	case tea.KeyMsg:
-		if m.previewActive {
-			switch msg.String() {
-			case "ctrl+c", "q":
-				return m, tea.Quit
-			case "y", "enter":
-				m = m.applyPreview(true)
-			case "n", "esc":
-				m = m.applyPreview(false)
+		key := msg.String()
+		if key == "ctrl+c" {
+			return m, tea.Quit
+		}
+		switch m.mode {
+		case modeConfirm:
+			return m.updateConfirm(key)
+		case modeDetails, modeCommands, modeAdvanced:
+			if key == "esc" || key == "q" || key == "enter" || key == "?" || key == "m" {
+				m.mode = modeMain
 			}
 			return m, nil
-		}
-		switch msg.String() {
-		case "ctrl+c", "q":
-			return m, tea.Quit
-		case "b", "backspace", "esc":
-			m = m.goBack()
+		case modeLogs:
+			if key == "esc" || key == "q" {
+				m.mode = modeMain
+				m.resultTitle = "Closed project logs"
+				m.resultBody = "Returned to the running project. The project keeps running."
+			}
 			return m, nil
-		case "h":
-			m = m.goHome()
-			return m, nil
+		case modeEdit:
+			return m.updateEdit(key)
+		default:
+			return m.updateMain(key)
 		}
-		return m.updateScenario(msg)
 	}
 	return m, nil
 }
 
-func (m model) updateScenario(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
-	actions := m.visibleActions()
-	switch msg.String() {
+func (m model) updateMain(key string) (tea.Model, tea.Cmd) {
+	current := m.currentPlan()
+	switch key {
+	case "q":
+		return m, tea.Quit
 	case "up", "k":
 		if m.cursor > 0 {
 			m.cursor--
 		}
 	case "down", "j":
-		if m.cursor < len(actions)-1 {
+		if m.cursor < len(current.Decisions)-1 {
 			m.cursor++
 		}
-	case "c":
-		m.showCommands = !m.showCommands
+	case "?", "right", "l":
+		m.mode = modeDetails
+	case "m":
+		m.mode = modeCommands
+	case "a":
+		m.mode = modeAdvanced
+	case "tab":
+		m.nextScenario()
+	case "shift+tab":
+		m.previousScenario()
 	case "enter":
-		if len(actions) == 0 {
-			return m, nil
+		if len(current.Decisions) == 0 {
+			return m.handleWorkEnter(current), nil
 		}
-		m = m.applyAction(actions[m.cursor])
+		return m.handleDecision(current.Decisions[m.cursor]), nil
 	}
 	return m, nil
 }
 
-func (m model) applyAction(a action) model {
-	switch a.Kind {
-	case actionNavigate:
-		m.selectCurrentAction(a.ID)
-		m.recordCompletion(a, "Marked complete")
-		if a.NextScenario != "" {
-			m.pushScenario(a.NextScenario)
-			m.currentScenario = a.NextScenario
+func (m model) updateConfirm(key string) (tea.Model, tea.Cmd) {
+	switch key {
+	case "q":
+		return m, tea.Quit
+	case "left", "right", "h", "l", "tab":
+		m.confirmYes = !m.confirmYes
+	case "y":
+		m.confirmYes = true
+		return m.applyConfirmation(), nil
+	case "n", "esc":
+		m.confirmYes = false
+		return m.applyConfirmation(), nil
+	case "enter":
+		return m.applyConfirmation(), nil
+	}
+	return m, nil
+}
+
+func (m model) updateEdit(key string) (tea.Model, tea.Cmd) {
+	switch key {
+	case "q":
+		return m, tea.Quit
+	case "esc":
+		m.mode = modeMain
+		m.resultTitle = "Discarded edits"
+		m.resultBody = "Returned to the preview. No file was written."
+	case "up", "k":
+		if m.editCursor > 0 {
+			m.editCursor--
+		}
+	case "down", "j", "tab":
+		if m.editCursor < 2 {
+			m.editCursor++
+		}
+	case "enter":
+		m.cycleEditValue()
+	case "s":
+		m.mode = modeMain
+		m.resultTitle = "Saved edits to preview"
+		m.resultBody = "The preview now shows the edited values. No file has been written."
+	}
+	return m, nil
+}
+
+func (m *model) nextScenario() {
+	for i, id := range m.order {
+		if id == m.current {
+			m.current = m.order[(i+1)%len(m.order)]
 			m.cursor = 0
-			m.resultTitle = "Moved to next step"
-			m.resultBody = "Now focusing on: " + m.scenarios[a.NextScenario].Title
+			m.resultTitle = ""
+			m.resultBody = ""
+			return
 		}
-	case actionPreview:
-		m.selectCurrentAction(a.ID)
-		m.previewAction = a
-		m.previewActive = true
-	case actionResult:
-		m.selectCurrentAction(a.ID)
-		m.recordCompletion(a, "Reviewed")
-		m.resultTitle = a.ResultTitle
-		m.resultBody = a.ResultBody
 	}
-	return m
 }
 
-func (m model) applyPreview(confirm bool) model {
-	m.previewActive = false
-	if confirm {
-		m.recordCompletion(m.previewAction, "Confirmed")
-		m.resultTitle = "Preview confirmed"
-		m.resultBody = "Prototype only: this would write project .env.stageserve after confirmation. No file was written."
-		if m.previewAction.NextScenario != "" {
-			m.pushScenario(m.previewAction.NextScenario)
-			m.currentScenario = m.previewAction.NextScenario
-			m.resultBody += " Next step: " + m.scenarios[m.previewAction.NextScenario].Title
+func (m *model) previousScenario() {
+	for i, id := range m.order {
+		if id == m.current {
+			next := i - 1
+			if next < 0 {
+				next = len(m.order) - 1
+			}
+			m.current = m.order[next]
+			m.cursor = 0
+			m.resultTitle = ""
+			m.resultBody = ""
+			return
 		}
-	} else {
-		m.selectCurrentAction("")
-		m.resultTitle = "Preview cancelled"
-		m.resultBody = "Prototype only: cancellation returned to the current flow and left files unchanged."
 	}
-	m.cursor = 0
-	return m
 }
 
-func (m *model) pushScenario(next string) {
-	checkpoint := len(m.completedWork)
-	m.flowStack = append(m.flowStack, flowStep{ScenarioID: next})
-	m.stackCheckpoints = append(m.stackCheckpoints, checkpoint)
+func (m model) currentPlan() plan {
+	p := m.plans[m.current]
+	if p.Situation == projectMissingConfig || p.Situation == projectReadyToRun || p.Situation == projectRunning || p.Situation == projectDown || p.Situation == driftDetected {
+		p = m.withEditedDefaults(p)
+	}
+	if p.Situation == machineNotReady && m.localDNSReady {
+		p.WorkItems[p.ActiveWorkIndex].Status = statusReady
+		p.WorkItems[p.ActiveWorkIndex].Description = "Your computer can open addresses ending in .develop."
+	}
+	if p.Situation == unknownError && m.recoveryStep > 0 {
+		p.Summary = "StageServe ran a safe recovery step and re-checked what it knows."
+		p.WorkItems = []workItem{
+			{Label: "Step 1: look at this project's current state", Status: statusReady, Description: "Finished. StageServe found settings but the local URL is not responding."},
+			{Label: "Step 4: run this project from scratch", Status: statusNext, Description: "Suggested next step. This uses the current settings."},
+		}
+		p.ActiveWorkIndex = 1
+	}
+	return p
 }
 
-func (m model) goBack() model {
-	if len(m.flowStack) <= 1 {
-		m.resultTitle = "At main menu"
-		m.resultBody = "You are already at the first step of this flow."
+func (m model) withEditedDefaults(p plan) plan {
+	repl := map[string]string{
+		"Site name":     m.editValues.SiteName,
+		"Web folder":    m.editValues.WebFolder,
+		"Domain suffix": m.editValues.Suffix,
+		"Local URL":     "http://" + m.editValues.SiteName + m.editValues.Suffix,
+	}
+	for i := range p.Defaults {
+		if v, ok := repl[p.Defaults[i].Label]; ok {
+			p.Defaults[i].Value = v
+		}
+	}
+	return p
+}
+
+func (m *model) cycleEditValue() {
+	switch m.editCursor {
+	case 0:
+		if m.editValues.SiteName == "pete-site" {
+			m.editValues.SiteName = "client-demo"
+		} else {
+			m.editValues.SiteName = "pete-site"
+		}
+	case 1:
+		if m.editValues.WebFolder == "./public_html" {
+			m.editValues.WebFolder = "./web"
+		} else {
+			m.editValues.WebFolder = "./public_html"
+		}
+	case 2:
+		if m.editValues.Suffix == ".develop" {
+			m.editValues.Suffix = ".test"
+		} else {
+			m.editValues.Suffix = ".develop"
+		}
+	}
+}
+
+func (m model) handleWorkEnter(current plan) model {
+	if len(current.WorkItems) == 0 || current.ActiveWorkIndex >= len(current.WorkItems) {
 		return m
 	}
-	m.flowStack = m.flowStack[:len(m.flowStack)-1]
-	m.stackCheckpoints = m.stackCheckpoints[:len(m.stackCheckpoints)-1]
-	checkpoint := m.stackCheckpoints[len(m.stackCheckpoints)-1]
-	if checkpoint < len(m.completedWork) {
-		m.completedWork = m.completedWork[:checkpoint]
+	item := current.WorkItems[current.ActiveWorkIndex]
+	if item.Status == statusNeedsApproval {
+		m.pending = pendingConfirmation{
+			Title:       item.Label,
+			Body:        []string{item.Description, item.EnterAction, "Prototype only: no resolver file will be written."},
+			YesLabel:    "Yes, set this up",
+			NoLabel:     "No, skip for now",
+			YesDefault:  true,
+			ResultTitle: "Local DNS approved",
+			ResultBody:  "Prototype only: StageServe would set up local DNS for .develop, then re-check the project folder.",
+			Next:        projectMissingConfig,
+		}
+		m.confirmYes = true
+		m.mode = modeConfirm
+		return m
 	}
-	current := m.flowStack[len(m.flowStack)-1]
-	current.SelectedActionID = ""
-	m.flowStack[len(m.flowStack)-1] = current
-	m.currentScenario = current.ScenarioID
-	m.cursor = 0
-	m.previewActive = false
-	m.showCommands = false
-	m.resultTitle = "Went back one step"
-	m.resultBody = "Refolded progress to: " + m.scenarios[m.currentScenario].Title
+	m.resultTitle = item.Label
+	m.resultBody = item.Description
 	return m
 }
 
-func (m model) goHome() model {
-	m.currentScenario = m.startScenario
-	m.flowStack = []flowStep{{ScenarioID: m.startScenario}}
-	m.stackCheckpoints = []int{0}
-	m.completedWork = nil
-	m.cursor = 0
-	m.previewActive = false
-	m.showCommands = false
-	m.resultTitle = "Returned to main menu"
-	m.resultBody = "Cleared unfolded progress and returned to the first step."
+func (m model) handleDecision(item decisionItem) model {
+	if item.Opens != modeMain {
+		m.mode = item.Opens
+		return m
+	}
+	if item.RequiresConfirm {
+		m.pending = pendingConfirmation{
+			Title:             item.ConfirmTitle,
+			Body:              item.ConfirmBody,
+			YesLabel:          "Yes",
+			NoLabel:           "No",
+			YesDefault:        item.ConfirmYesDefault,
+			ResultTitle:       item.ResultTitle,
+			ResultBody:        item.ResultBody,
+			Next:              item.Next,
+			ConfirmedMutation: item.Mutates,
+		}
+		if m.pending.Title == "" {
+			m.pending.Title = item.Label
+		}
+		if len(m.pending.Body) == 0 {
+			m.pending.Body = []string{item.Description}
+		}
+		m.confirmYes = item.ConfirmYesDefault
+		m.mode = modeConfirm
+		return m
+	}
+	if item.Next != "" {
+		m.current = item.Next
+		m.cursor = 0
+	}
+	m.resultTitle = item.ResultTitle
+	m.resultBody = item.ResultBody
+	if m.resultTitle == "" {
+		m.resultTitle = item.Label
+	}
+	if m.resultBody == "" {
+		m.resultBody = item.Description
+	}
 	return m
 }
 
-func (m *model) selectCurrentAction(actionID string) {
-	if len(m.flowStack) == 0 {
-		return
+func (m model) applyConfirmation() model {
+	if m.confirmYes {
+		m.resultTitle = m.pending.ResultTitle
+		m.resultBody = m.pending.ResultBody
+		if m.pending.Next != "" {
+			m.current = m.pending.Next
+			m.cursor = 0
+		}
+		if m.pending.Title == "Local DNS for .develop" {
+			m.localDNSReady = true
+		}
+		if strings.Contains(m.pending.Title, "recovery") || strings.Contains(m.pending.Title, "safe next step") {
+			m.recoveryStep++
+		}
+	} else {
+		m.resultTitle = "No changes made"
+		m.resultBody = "Returned to the guided screen. Prototype did not write files or change StageServe records."
 	}
-	idx := len(m.flowStack) - 1
-	step := m.flowStack[idx]
-	step.SelectedActionID = actionID
-	m.flowStack[idx] = step
-}
-
-func (m *model) recordCompletion(a action, suffix string) {
-	entry := a.Label
-	if suffix != "" {
-		entry += " - " + suffix
-	}
-	if a.DirectCommand != "" {
-		entry += " (" + a.DirectCommand + ")"
-	}
-	m.completedWork = append(m.completedWork, entry)
-}
-
-func styleMuted(line string) string {
-	return "\033[90m" + line + "\033[0m"
-}
-
-func styleSelected(line string) string {
-	return "\033[32m" + line + "\033[0m"
-}
-
-func styleHeading(line string) string {
-	return "\033[1m" + line + "\033[0m"
-}
-
-func actionTier(index int, sc scenario) string {
-	if index == 0 {
-		return "PRIMARY"
-	}
-	if index <= len(sc.Secondary) {
-		return "OPTION"
-	}
-	return "ADVANCED"
-}
-
-func (m model) visibleActions() []action {
-	sc := m.scenarios[m.currentScenario]
-	actions := []action{sc.Primary}
-	actions = append(actions, sc.Secondary...)
-	actions = append(actions, sc.Advanced...)
-	return actions
+	m.mode = modeMain
+	m.pending = pendingConfirmation{}
+	return m
 }
 
 func (m model) View() string {
-	return m.renderScenario()
+	switch m.mode {
+	case modeConfirm:
+		return m.renderConfirm()
+	case modeDetails:
+		return m.renderDetails()
+	case modeCommands:
+		return m.renderCommands()
+	case modeAdvanced:
+		return m.renderAdvanced()
+	case modeLogs:
+		return m.renderLogs()
+	case modeEdit:
+		return m.renderEdit()
+	default:
+		return m.renderMain()
+	}
 }
 
-func (m model) renderScenario() string {
+func (m model) renderMain() string {
+	p := m.currentPlan()
 	var b strings.Builder
-	fmt.Fprintf(&b, "Spec 007 guided TUI prototype\n\n")
-	flowIDs := make([]string, 0, len(m.flowStack))
-	for _, step := range m.flowStack {
-		flowIDs = append(flowIDs, step.ScenarioID)
+	fmt.Fprintf(&b, "StageServe easy mode prototype  %s\n", dim("[tab switches canned situations]"))
+	fmt.Fprintf(&b, "%s  %s\n\n", bold("StageServe 0.7.0"), p.StatusHeader)
+	if p.Context != "" {
+		fmt.Fprintf(&b, "%s\n\n", p.Context)
 	}
-	fmt.Fprintf(&b, "Flow: %s\n\n", strings.Join(flowIDs, " -> "))
-
-	for stepIndex, step := range m.flowStack {
-		sc := m.scenarios[step.ScenarioID]
-		isCurrent := stepIndex == len(m.flowStack)-1
-		status := "completed"
-		if isCurrent {
-			status = "active"
-		}
-		fmt.Fprintf(&b, "%s\n", styleHeading(fmt.Sprintf("Step %d (%s): %s", stepIndex+1, status, sc.Title)))
-		fmt.Fprintf(&b, "%s\n", sc.Summary)
-		if sc.ScopeNote != "" {
-			fmt.Fprintf(&b, "Scope note: %s\n", sc.ScopeNote)
-		}
-		if len(sc.Warnings) > 0 {
-			fmt.Fprintf(&b, "Warnings:\n")
-			for _, w := range sc.Warnings {
-				fmt.Fprintf(&b, "- %s\n", w)
-			}
-		}
-		fmt.Fprintf(&b, "Actions:\n")
-		actions := []action{sc.Primary}
-		actions = append(actions, sc.Secondary...)
-		actions = append(actions, sc.Advanced...)
-		for i, a := range actions {
-			tier := actionTier(i, sc)
-			command := a.DirectCommand
-			if command == "" {
-				command = "no direct command"
-			}
-			if isCurrent {
-				cursor := " "
-				if i == m.cursor {
-					cursor = ">"
-				}
-				fmt.Fprintf(&b, "%s [%s] %s\n", cursor, tier, a.Label)
-				fmt.Fprintf(&b, "    what this does: %s\n", a.Description)
-				fmt.Fprintf(&b, "    direct command: %s\n", command)
-				continue
-			}
-
-			prefix := "  "
-			line := fmt.Sprintf("%s [%s] %s", prefix, tier, a.Label)
-			detail := fmt.Sprintf("    what this does: %s", a.Description)
-			cmdLine := fmt.Sprintf("    direct command: %s", command)
-			if a.ID == step.SelectedActionID {
-				line = styleSelected("  [DONE] " + a.Label)
-				detail = styleSelected(detail)
-				cmdLine = styleSelected(cmdLine)
-			} else {
-				line = styleMuted(line)
-				detail = styleMuted(detail)
-				cmdLine = styleMuted(cmdLine)
-			}
-			fmt.Fprintf(&b, "%s\n", line)
-			fmt.Fprintf(&b, "%s\n", detail)
-			fmt.Fprintf(&b, "%s\n", cmdLine)
-		}
-		fmt.Fprintf(&b, "\n")
+	if p.Summary != "" {
+		fmt.Fprintf(&b, "%s\n\n", p.Summary)
 	}
-
-	if m.previewActive {
-		sc := m.scenarios[m.currentScenario]
-		fmt.Fprintf(&b, "\nPreview\n")
-		fmt.Fprintf(&b, "Create project settings\n")
-		fmt.Fprintf(&b, "Target path: %s\n", sc.ConfigPath)
-		fmt.Fprintf(&b, "Sample values:\n")
-		for _, line := range sc.ConfigValues {
-			fmt.Fprintf(&b, "- %s\n", line)
-		}
-		fmt.Fprintf(&b, "Confirm preview write? y/enter = confirm, n/esc = cancel\n")
-	}
-
+	renderDefaults(&b, p.Defaults)
+	renderWorkPanel(&b, p)
+	renderDecisionBar(&b, p.Decisions, m.cursor)
 	if m.resultTitle != "" {
-		fmt.Fprintf(&b, "\nLatest outcome\n")
-		fmt.Fprintf(&b, "%s\n", m.resultTitle)
-		fmt.Fprintf(&b, "%s\n", m.resultBody)
-	}
-
-	if m.showCommands {
-		fmt.Fprintf(&b, "\nDirect commands\n")
-		for _, a := range m.visibleActions() {
-			if a.DirectCommand == "" {
-				continue
-			}
-			fmt.Fprintf(&b, "- %s -> %s\n", a.Label, a.DirectCommand)
+		fmt.Fprintf(&b, "\n%s\n%s\n", bold("Latest outcome"), m.resultTitle)
+		if m.resultBody != "" {
+			fmt.Fprintf(&b, "%s\n", m.resultBody)
 		}
 	}
-
-	if len(m.completedWork) > 0 {
-		fmt.Fprintf(&b, "\nCompleted in this run\n")
-		for i, step := range m.completedWork {
-			fmt.Fprintf(&b, "%d. %s\n", i+1, step)
-		}
-	}
-	fmt.Fprintf(&b, "\nControls: up/down move, enter choose, c toggle commands, b/esc back, h home, q quit\n")
+	fmt.Fprintf(&b, "\n%s\n", dim("↑/↓ navigate • enter use highlighted/default • ? details • m more • a advanced • tab next scenario • q quit"))
 	return b.String()
 }
 
-func renderText(w io.Writer, sc scenario) {
-	fmt.Fprintf(w, "Spec 007 guided TUI prototype\n\n")
-	fmt.Fprintf(w, "Scenario: %s\n", sc.ID)
-	fmt.Fprintf(w, "Title: %s\n", sc.Title)
-	fmt.Fprintf(w, "Summary: %s\n", sc.Summary)
-	if sc.ScopeNote != "" {
-		fmt.Fprintf(w, "Scope note: %s\n", sc.ScopeNote)
+func renderDefaults(b *strings.Builder, defaults []defaultValue) {
+	if len(defaults) == 0 {
+		return
 	}
-	fmt.Fprintf(w, "Primary action: %s\n", sc.Primary.Label)
-	if sc.Primary.DirectCommand != "" {
-		fmt.Fprintf(w, "Direct command: %s\n", sc.Primary.DirectCommand)
+	fmt.Fprintf(b, "%s\n", bold("Visible defaults"))
+	for _, item := range defaults {
+		note := ""
+		if item.Note != "" {
+			note = "  " + dim("("+item.Note+")")
+		}
+		fmt.Fprintf(b, "  %-18s %-34s%s\n", item.Label, item.Value, note)
 	}
-	if len(sc.Secondary) > 0 {
-		fmt.Fprintf(w, "Secondary actions:\n")
-		for _, a := range sc.Secondary {
-			line := a.Label
-			if a.DirectCommand != "" {
-				line += " -> " + a.DirectCommand
+	fmt.Fprintln(b)
+}
+
+func renderWorkPanel(b *strings.Builder, p plan) {
+	if len(p.WorkItems) == 0 {
+		return
+	}
+	fmt.Fprintf(b, "%s\n", bold("Tool work panel"))
+	for i, item := range p.WorkItems {
+		cursor := " "
+		if i == p.ActiveWorkIndex {
+			cursor = ">"
+		}
+		fmt.Fprintf(b, "%s %-34s %s\n", cursor, item.Label, item.Status)
+		if i == p.ActiveWorkIndex {
+			if item.Description != "" {
+				fmt.Fprintf(b, "    %s\n", item.Description)
 			}
-			fmt.Fprintf(w, "- %s\n", line)
+			if item.EnterAction != "" {
+				fmt.Fprintf(b, "    %s\n", item.EnterAction)
+			}
 		}
 	}
-	if len(sc.Advanced) > 0 {
-		fmt.Fprintf(w, "Advanced actions:\n")
-		for _, a := range sc.Advanced {
-			line := a.Label
-			if a.DirectCommand != "" {
-				line += " -> " + a.DirectCommand
+	fmt.Fprintln(b)
+}
+
+func renderDecisionBar(b *strings.Builder, decisions []decisionItem, cursor int) {
+	if len(decisions) == 0 {
+		return
+	}
+	fmt.Fprintf(b, "%s\n", bold("Decision bar"))
+	for i, item := range decisions {
+		prefix := " "
+		if i == cursor {
+			prefix = ">"
+		}
+		fmt.Fprintf(b, "%s %s\n", prefix, item.Label)
+		fmt.Fprintf(b, "    %s\n", item.Description)
+	}
+}
+
+func (m model) renderConfirm() string {
+	var b strings.Builder
+	fmt.Fprintf(&b, "%s\n\n", bold(m.pending.Title))
+	for _, line := range m.pending.Body {
+		fmt.Fprintf(&b, "  %s\n", line)
+	}
+	yesPrefix := " "
+	noPrefix := " "
+	if m.confirmYes {
+		yesPrefix = ">"
+	} else {
+		noPrefix = ">"
+	}
+	yes := m.pending.YesLabel
+	no := m.pending.NoLabel
+	if yes == "" {
+		yes = "Yes"
+	}
+	if no == "" {
+		no = "No"
+	}
+	fmt.Fprintf(&b, "\n%s %s    %s %s\n", yesPrefix, yes, noPrefix, no)
+	fmt.Fprintf(&b, "\n%s\n", dim("←/→ choose • enter confirm • y yes • n no • esc cancel • q quit"))
+	return b.String()
+}
+
+func (m model) renderDetails() string {
+	p := m.currentPlan()
+	var b strings.Builder
+	title := p.DetailsTitle
+	if title == "" {
+		title = "What StageServe knows"
+	}
+	fmt.Fprintf(&b, "%s\n\n", bold(title))
+	if len(p.Details) == 0 {
+		fmt.Fprintf(&b, "StageServe has no extra detail for this prototype screen.\n")
+	}
+	for _, line := range p.Details {
+		fmt.Fprintf(&b, "%s\n", line)
+	}
+	fmt.Fprintf(&b, "\n%s\n", dim("enter/esc/q back"))
+	return b.String()
+}
+
+func (m model) renderCommands() string {
+	p := m.currentPlan()
+	var b strings.Builder
+	fmt.Fprintf(&b, "%s\n\n", bold("More options for this screen"))
+	fmt.Fprintf(&b, "> Show direct commands\n")
+	for _, cmd := range p.DirectCommands {
+		fmt.Fprintf(&b, "    %s\n", cmd)
+	}
+	fmt.Fprintf(&b, "\n  Advanced and troubleshooting\n")
+	fmt.Fprintf(&b, "    Press a from the main screen for implementation detail.\n")
+	fmt.Fprintf(&b, "\n  Plain text output\n")
+	fmt.Fprintf(&b, "    go run ./specs/007-harden-TUI-and-other-interactions/prototype --notui --scenario %s\n", p.Situation)
+	fmt.Fprintf(&b, "\n%s\n", dim("enter/esc/q back"))
+	return b.String()
+}
+
+func (m model) renderAdvanced() string {
+	p := m.currentPlan()
+	var b strings.Builder
+	fmt.Fprintf(&b, "%s\n\n", bold("Advanced and troubleshooting"))
+	if len(p.Advanced) == 0 {
+		fmt.Fprintf(&b, "No advanced detail is needed for this prototype screen.\n")
+	}
+	for _, line := range p.Advanced {
+		fmt.Fprintf(&b, "%s\n", line)
+	}
+	fmt.Fprintf(&b, "\n%s\n", dim("enter/esc/q back"))
+	return b.String()
+}
+
+func (m model) renderLogs() string {
+	p := m.currentPlan()
+	var b strings.Builder
+	fmt.Fprintf(&b, "%s\n\n", bold("pete-site logs"))
+	fmt.Fprintf(&b, "10:42:13  GET /                  200  12ms\n")
+	fmt.Fprintf(&b, "10:42:14  GET /admin             200  21ms\n")
+	fmt.Fprintf(&b, "10:42:21  GET /favicon.ico       404  2ms\n")
+	fmt.Fprintf(&b, "10:42:26  %s is still running at %s\n", p.Defaults[0].Value, valueForDefault(p, "Local URL"))
+	fmt.Fprintf(&b, "\n%s\n", dim("q/esc exit logs"))
+	return b.String()
+}
+
+func (m model) renderEdit() string {
+	values := []defaultValue{
+		{Label: "Site name", Value: m.editValues.SiteName, Note: "used in the local URL"},
+		{Label: "Web folder", Value: m.editValues.WebFolder, Note: "relative to this project"},
+		{Label: "Domain suffix", Value: m.editValues.Suffix, Note: "most people leave this"},
+		{Label: "Local URL", Value: "http://" + m.editValues.SiteName + m.editValues.Suffix, Note: "preview only"},
+	}
+	var b strings.Builder
+	fmt.Fprintf(&b, "%s\n\n", bold("Edit project settings"))
+	for i, item := range values {
+		prefix := " "
+		if i == m.editCursor && i < 3 {
+			prefix = ">"
+		}
+		fmt.Fprintf(&b, "%s %-16s %-30s %s\n", prefix, item.Label, item.Value, dim("("+item.Note+")"))
+	}
+	fmt.Fprintf(&b, "\nThis prototype cycles sample values when you press enter. It does not write files.\n")
+	fmt.Fprintf(&b, "\n%s\n", dim("↑/↓ field • enter cycle value • s save to preview • esc discard • q quit"))
+	return b.String()
+}
+
+func valueForDefault(p plan, label string) string {
+	for _, item := range p.Defaults {
+		if item.Label == label {
+			return item.Value
+		}
+	}
+	return ""
+}
+
+func renderText(w io.Writer, p plan) {
+	fmt.Fprintf(w, "StageServe easy mode prototype\n\n")
+	fmt.Fprintf(w, "%s\n", p.StatusHeader)
+	if p.Context != "" {
+		fmt.Fprintf(w, "%s\n", p.Context)
+	}
+	if p.Summary != "" {
+		fmt.Fprintf(w, "\n%s\n", p.Summary)
+	}
+	if len(p.Defaults) > 0 {
+		fmt.Fprintf(w, "\nVisible defaults\n")
+		for _, item := range p.Defaults {
+			fmt.Fprintf(w, "  %s: %s", item.Label, item.Value)
+			if item.Note != "" {
+				fmt.Fprintf(w, " (%s)", item.Note)
 			}
-			fmt.Fprintf(w, "- %s\n", line)
+			fmt.Fprintln(w)
+		}
+	}
+	if len(p.WorkItems) > 0 {
+		fmt.Fprintf(w, "\nTool work panel\n")
+		for i, item := range p.WorkItems {
+			marker := " "
+			if i == p.ActiveWorkIndex {
+				marker = ">"
+			}
+			fmt.Fprintf(w, "%s %s: %s\n", marker, item.Label, item.Status)
+			if i == p.ActiveWorkIndex {
+				fmt.Fprintf(w, "  %s\n", item.Description)
+			}
+		}
+	}
+	if len(p.Decisions) > 0 {
+		fmt.Fprintf(w, "\nHighlighted default\n")
+		fmt.Fprintf(w, "  %s\n", p.Decisions[0].Label)
+		fmt.Fprintf(w, "\nDecision bar\n")
+		for _, item := range p.Decisions {
+			fmt.Fprintf(w, "- %s", item.Label)
+			if item.DirectCommand != "" {
+				fmt.Fprintf(w, " (%s)", item.DirectCommand)
+			}
+			fmt.Fprintln(w)
+		}
+	}
+	fmt.Fprintf(w, "\nFooter\n")
+	for _, item := range p.Footer {
+		fmt.Fprintf(w, "- %s\n", item)
+	}
+	if len(p.DirectCommands) > 0 {
+		fmt.Fprintf(w, "\nDirect commands\n")
+		for _, cmd := range p.DirectCommands {
+			fmt.Fprintf(w, "- %s\n", cmd)
 		}
 	}
 }
 
-func scenarioFixtures() map[string]scenario {
-	return map[string]scenario{
-		"machine_not_ready": {
-			ID:      "machine_not_ready",
-			Title:   "This computer needs setup",
-			Summary: "StageServe found a local setup problem before it can help with this project.",
-			Warnings: []string{
-				"Machine readiness is incomplete.",
-				"Start with StageServe setup before project actions.",
+func planFixtures() map[situation]plan {
+	baseFooter := []string{"? details", "m show direct commands", "a advanced and troubleshooting", "q quit"}
+	return map[situation]plan{
+		machineNotReady: {
+			Situation:    machineNotReady,
+			StatusHeader: "Setting up your computer",
+			Context:      "/Users/pete/sites/pete-site",
+			Summary:      "StageServe is checking the computer before it looks at the project.",
+			WorkItems: []workItem{
+				{Label: "Docker Desktop", Status: statusReady, Description: "Docker Desktop is installed."},
+				{Label: "StageServe working folder", Status: statusReady, Description: "StageServe can use its working folder."},
+				{Label: "Local DNS for .develop", Status: statusNeedsApproval, Description: "StageServe will add a small file so your browser can open addresses like http://pete-site.develop.", EnterAction: "On enter: ask for permission to set up local DNS for .develop.", Details: "The real command would explain /etc/resolver/develop only after the user asks for detail."},
+				{Label: "Local HTTPS certificates", Status: statusOptional, Description: "The example URL is plain HTTP, so certificates are not blocking first run."},
+				{Label: "Network ports 80 and 443", Status: statusPending, Description: "Checked after local DNS."},
 			},
-			Primary: action{
-				ID:            "setup",
-				Label:         "Set up this computer",
-				Description:   "Begin the guided machine setup checklist step by step.",
-				DirectCommand: "stage setup",
-				Kind:          actionNavigate,
-				NextScenario:  "machine_setup_docker",
+			ActiveWorkIndex: 2,
+			DetailsTitle:    "Why this computer needs setup",
+			Details: []string{
+				"StageServe prepares this computer once, then each project can run with a local address.",
+				"The main thing a normal user needs to know is the address they will open in the browser.",
+				"Advanced implementation names stay behind the advanced view.",
 			},
-			Secondary: []action{
-				{ID: "doctor", Label: "Find issues", Description: "Inspect readiness problems before changing anything.", DirectCommand: "stage doctor", Kind: actionResult, ResultTitle: "Machine diagnostics", ResultBody: "Prototype only: doctor would report Docker, DNS, and port readiness."},
-			},
-			Advanced: []action{
-				{ID: "show_commands", Label: "Show commands", Description: "See direct command equivalents.", Kind: actionResult, ResultTitle: "Direct commands", ResultBody: "Use stage setup or stage doctor from the direct CLI path."},
-			},
+			DirectCommands: []string{"stage setup", "stage doctor"},
+			Advanced:       []string{"Advanced checks would show Docker, DNS resolver, mkcert, ports, and working-folder details."},
+			Footer:         baseFooter,
 		},
-		"machine_setup_docker": {
-			ID:      "machine_setup_docker",
-			Title:   "Machine setup step 1 of 3: Docker Desktop",
-			Summary: "StageServe needs a working Docker runtime before any project can run.",
-			Primary: action{
-				ID:            "docker_ready",
-				Label:         "Confirm Docker Desktop is installed and running",
-				Description:   "Complete Docker startup, then continue to DNS and certificate setup.",
-				DirectCommand: "stage setup",
-				Kind:          actionNavigate,
-				NextScenario:  "machine_setup_dns",
+		projectMissingConfig: projectSetupPlan(baseFooter),
+		projectReadyToRun: {
+			Situation:    projectReadyToRun,
+			StatusHeader: "This project is ready to run.",
+			Context:      "/Users/pete/sites/pete-site",
+			Summary:      "StageServe has project settings and can start the local site.",
+			Defaults:     commonDefaults("pete-site", "./public_html", ".develop"),
+			Decisions: []decisionItem{
+				{ID: "up", Label: "Run this project", Description: "Start the project and open it in your browser.", DirectCommand: "stage up", Next: projectRunning, ResultTitle: "Project started", ResultBody: "Prototype only: StageServe would start the project at http://pete-site.develop."},
+				{ID: "edit", Label: "Edit project settings", Description: "Change site name, web folder, or suffix before running.", DirectCommand: "stage init", Opens: modeEdit},
 			},
-			Secondary: []action{
-				{ID: "doctor", Label: "Find issues", Description: "Check Docker readiness before moving to the next setup step.", DirectCommand: "stage doctor", Kind: actionResult, ResultTitle: "Docker readiness", ResultBody: "Prototype only: doctor would confirm Docker daemon reachability and version compatibility."},
-			},
-			Advanced: []action{
-				{ID: "show_commands", Label: "Show commands", Description: "See direct command equivalents.", Kind: actionResult, ResultTitle: "Direct commands", ResultBody: "Use stage setup to complete machine readiness checks."},
-			},
+			DetailsTitle:   "Project overview",
+			Details:        []string{"The project settings file exists.", "StageServe will use the visible defaults unless you edit them first."},
+			DirectCommands: []string{"stage up", "stage init --cli", "stage status"},
+			Advanced:       []string{"Advanced view would show PHP/MySQL overrides if the project file already had them."},
+			Footer:         baseFooter,
 		},
-		"machine_setup_dns": {
-			ID:      "machine_setup_dns",
-			Title:   "Machine setup step 2 of 3: DNS and certificates",
-			Summary: "StageServe needs local DNS routing and TLS certificates for project URLs.",
-			Primary: action{
-				ID:            "dns_tls_ready",
-				Label:         "Confirm local DNS and certificates are ready",
-				Description:   "Complete DNS and certificate checks, then continue to final machine validation.",
-				DirectCommand: "stage setup",
-				Kind:          actionNavigate,
-				NextScenario:  "machine_setup_validation",
+		projectRunning: {
+			Situation:    projectRunning,
+			StatusHeader: "pete-site is running",
+			Context:      "/Users/pete/sites/pete-site",
+			Summary:      "The local site is available. The highlighted default is non-destructive.",
+			Defaults: append(commonDefaults("pete-site", "./public_html", ".develop"),
+				defaultValue{Label: "Started", Value: "4 minutes ago", Note: "healthy"}),
+			Decisions: []decisionItem{
+				{ID: "logs", Label: "View project logs", Description: "Watch what your project is doing right now.", DirectCommand: "stage logs", Opens: modeLogs},
+				{ID: "down", Label: "Stop this project", Description: "Free up the local URL and shut down the project.", DirectCommand: "stage down", Mutates: true, RequiresConfirm: true, ConfirmYesDefault: true, ConfirmTitle: "Stop pete-site?", ConfirmBody: []string{"StageServe will stop this project. Your files will not be touched.", "http://pete-site.develop will no longer respond.", "You can run it again any time."}, Next: projectDown, ResultTitle: "Project stopped", ResultBody: "Prototype only: StageServe would run stage down and preserve project files."},
 			},
-			Secondary: []action{
-				{ID: "doctor", Label: "Find issues", Description: "Diagnose DNS and TLS setup issues before continuing.", DirectCommand: "stage doctor", Kind: actionResult, ResultTitle: "DNS and certificate diagnostics", ResultBody: "Prototype only: doctor would verify hosts routing and local certificate trust status."},
-			},
-			Advanced: []action{
-				{ID: "show_commands", Label: "Show commands", Description: "See direct command equivalents.", Kind: actionResult, ResultTitle: "Direct commands", ResultBody: "Use stage setup for DNS/TLS setup and stage doctor to inspect failures."},
-			},
+			DetailsTitle:   "Running project overview",
+			Details:        []string{"Local URL: http://pete-site.develop", "Web folder: ./public_html", "Status: healthy", "Default action: view logs."},
+			DirectCommands: []string{"stage status", "stage logs", "stage down"},
+			Advanced:       []string{"Advanced troubleshooting would show service names, route details, and state paths only here."},
+			Footer:         append([]string{"right open in browser"}, baseFooter...),
 		},
-		"machine_setup_validation": {
-			ID:      "machine_setup_validation",
-			Title:   "Machine setup step 3 of 3: final validation",
-			Summary: "Run final readiness checks so StageServe can safely move to project setup.",
-			Primary: action{
-				ID:            "machine_ready",
-				Label:         "Finish machine setup and continue",
-				Description:   "Complete final readiness validation and continue to project settings.",
-				DirectCommand: "stage setup",
-				Kind:          actionNavigate,
-				NextScenario:  "project_missing_config",
+		projectDown: {
+			Situation:    projectDown,
+			StatusHeader: "pete-site is stopped",
+			Context:      "/Users/pete/sites/pete-site",
+			Summary:      "StageServe still knows this project, but it is not running.",
+			Defaults:     commonDefaults("pete-site", "./public_html", ".develop"),
+			Decisions: []decisionItem{
+				{ID: "up", Label: "Run this project", Description: "Start the project again.", DirectCommand: "stage up", Next: projectRunning, ResultTitle: "Project started", ResultBody: "Prototype only: StageServe would start the stopped project."},
+				{ID: "detach", Label: "Remove this project from StageServe", Description: "Stop tracking this project. Your files will not be touched.", DirectCommand: "stage detach", Mutates: true, RequiresConfirm: true, ConfirmYesDefault: false, ConfirmTitle: "Remove pete-site from StageServe?", ConfirmBody: []string{"StageServe will forget about this project.", ".env.stageserve and your project files stay as they are.", "http://pete-site.develop will no longer be routed by StageServe."}, Next: notProject, ResultTitle: "Project removed from StageServe", ResultBody: "Prototype only: StageServe would forget the project record without deleting files."},
 			},
-			Secondary: []action{
-				{ID: "doctor", Label: "Find issues", Description: "Run a final machine diagnostic before continuing.", DirectCommand: "stage doctor", Kind: actionResult, ResultTitle: "Final machine diagnostics", ResultBody: "Prototype only: doctor would provide final readiness confirmation before project configuration."},
-			},
-			Advanced: []action{
-				{ID: "show_commands", Label: "Show commands", Description: "See direct command equivalents.", Kind: actionResult, ResultTitle: "Direct commands", ResultBody: "Use stage setup to validate machine readiness before stage init."},
-			},
+			DetailsTitle:   "Stopped project overview",
+			Details:        []string{"The project has retained settings.", "The safest default is to run it again."},
+			DirectCommands: []string{"stage up", "stage detach", "stage status"},
+			Advanced:       []string{"Advanced view would show retained records and route state."},
+			Footer:         baseFooter,
 		},
-		"project_missing_config": {
-			ID:         "project_missing_config",
-			Title:      "This project needs StageServe settings",
-			Summary:    "StageServe can help create a starter .env.stageserve for this project.",
-			ConfigPath: ".env.stageserve",
-			ConfigValues: []string{
-				"SITE_NAME=demo-site",
-				"DOCROOT=public_html",
-				"SITE_SUFFIX=develop",
+		driftDetected: {
+			Situation:    driftDetected,
+			StatusHeader: "pete-site does not match what StageServe expects",
+			Context:      "/Users/pete/sites/pete-site",
+			Summary:      "StageServe expected this project to be running, but http://pete-site.develop is not responding.",
+			Defaults: []defaultValue{
+				{Label: "Recorded as running", Value: "yes"},
+				{Label: "Project service found", Value: "no"},
+				{Label: "Local address connected", Value: "no"},
+				{Label: "DNS", Value: "pete-site.develop resolves"},
 			},
-			Primary: action{
-				ID:                   "init",
-				Label:                "Create project settings",
-				Description:          "Preview the starter .env.stageserve values before writing.",
-				DirectCommand:        "stage init",
-				RequiresConfirmation: true,
-				Kind:                 actionPreview,
-				NextScenario:         "project_ready_to_run",
+			Decisions: []decisionItem{
+				{ID: "safe", Label: "Use the safe next step", Description: "Treat this project as stopped. Nothing in your folder will be deleted.", Mutates: true, RequiresConfirm: true, ConfirmYesDefault: true, ConfirmTitle: "Confirm safe next step", ConfirmBody: []string{"StageServe will forget that this project is running.", ".env.stageserve and all project files stay as they are.", "After this, you can run the project again."}, Next: projectDown, ResultTitle: "Safe recovery applied", ResultBody: "Prototype only: StageServe would reset the running record and re-detect."},
+				{ID: "retry", Label: "Try to start it again", Description: "Run this project with its current settings.", DirectCommand: "stage up", Next: projectRunning, ResultTitle: "Project started", ResultBody: "Prototype only: StageServe would try stage up again."},
+				{ID: "details", Label: "Show what does not match", Description: "Read a longer plain-language explanation.", Opens: modeDetails},
 			},
-			Secondary: []action{
-				{ID: "edit_config", Label: "Edit project settings", Description: "Review the target path and sample values without writing.", DirectCommand: ".env.stageserve", Kind: actionResult, ResultTitle: "Project settings path", ResultBody: "Prototype only: edit project settings shows the .env.stageserve path and sample values without launching an editor."},
-			},
-			Advanced: []action{
-				{ID: "show_commands", Label: "Show commands", Description: "See direct command equivalents.", Kind: actionResult, ResultTitle: "Direct commands", ResultBody: "Use stage init for the direct CLI path."},
-			},
+			DetailsTitle:   "What does not match",
+			Details:        []string{"Project record: StageServe thinks this is running.", "Local URL response: http://pete-site.develop is not responding.", "DNS for .develop: working.", "This usually happens after a restart or a stop outside StageServe."},
+			DirectCommands: []string{"stage status", "stage doctor", "stage up"},
+			Advanced:       []string{"Advanced view would show the project record path and lower-level routing checks."},
+			Footer:         baseFooter,
 		},
-		"project_ready_to_run": {
-			ID:      "project_ready_to_run",
-			Title:   "This project is ready to run",
-			Summary: "Project settings exist and StageServe can start the project.",
-			Primary: action{
-				ID:            "up",
-				Label:         "Run this project",
-				Description:   "Start the project with the current StageServe settings.",
-				DirectCommand: "stage up",
-				Kind:          actionNavigate,
-				NextScenario:  "project_running",
+		notProject: {
+			Situation:    notProject,
+			StatusHeader: "This folder is not a StageServe project yet.",
+			Context:      "/Users/pete/Downloads",
+			Summary:      "StageServe can set up this folder, or you can point it at a different folder.",
+			Defaults: []defaultValue{
+				{Label: "Proposed name", Value: "downloads", Note: "from folder name"},
+				{Label: "Domain suffix", Value: ".develop", Note: "machine setting"},
+				{Label: "Local URL", Value: "http://downloads.develop", Note: "preview"},
 			},
-			Secondary: []action{
-				{ID: "status", Label: "Check project status", Description: "Inspect the current project state before starting.", DirectCommand: "stage status", Kind: actionResult, ResultTitle: "Project status", ResultBody: "Prototype only: status would show the current project summary."},
-				{ID: "doctor", Label: "Find issues", Description: "Check for problems before running.", DirectCommand: "stage doctor", Kind: actionResult, ResultTitle: "Project diagnostics", ResultBody: "Prototype only: doctor would inspect configuration and readiness issues."},
+			Decisions: []decisionItem{
+				{ID: "init_here", Label: "Set up this folder as a project", Description: "Create project settings here and continue.", DirectCommand: "stage init", Next: projectMissingConfig, ResultTitle: "Project setup preview opened", ResultBody: "Prototype only: StageServe would show the project setup preview."},
+				{ID: "pick_folder", Label: "Pick a different folder", Description: "Type a path to look at instead.", ResultTitle: "Different folder", ResultBody: "Prototype only: a path prompt would re-run detection in that folder."},
 			},
-			Advanced: []action{
-				{ID: "show_commands", Label: "Show commands", Description: "See direct command equivalents.", Kind: actionResult, ResultTitle: "Direct commands", ResultBody: "Use stage up, stage status, or stage doctor from the direct CLI path."},
-			},
+			DetailsTitle:   "Folder overview",
+			Details:        []string{"This prototype stays scoped to one current folder.", "A future version can add a project switcher, but spec 007 does not require it."},
+			DirectCommands: []string{"stage init", "stage setup"},
+			Advanced:       []string{"Advanced view would explain how StageServe finds project roots."},
+			Footer:         baseFooter,
 		},
-		"project_running": {
-			ID:      "project_running",
-			Title:   "This project is running",
-			Summary: "StageServe sees a running project and can help inspect, stop, or diagnose it.",
-			Primary: action{
-				ID:            "status",
-				Label:         "Check project status",
-				Description:   "Review the current project summary and route information.",
-				DirectCommand: "stage status",
-				Kind:          actionResult,
-				ResultTitle:   "Project status",
-				ResultBody:    "Prototype only: status would show route, health, and recorded state.",
+		unknownError: {
+			Situation:    unknownError,
+			StatusHeader: "StageServe could not safely choose a next step.",
+			Context:      "/Users/pete/sites/pete-site",
+			Summary:      "StageServe does not want to guess. It can walk through safe recovery steps in order.",
+			WorkItems: []workItem{
+				{Label: "Step 1: look at this project's current state", Status: statusNext, Description: "Read-only. Nothing on your computer will be changed.", EnterAction: "On enter: run the read-only recovery step."},
+				{Label: "Step 2: look at project logs", Status: statusPending, Description: "Read-only."},
+				{Label: "Step 3: stop and forget the running record", Status: statusPending, Description: "Requires confirmation before changing StageServe records."},
+				{Label: "Step 4: run this project from scratch", Status: statusPending, Description: "Uses existing settings."},
 			},
-			Secondary: []action{
-				{ID: "logs", Label: "View project logs", Description: "Open a logs-style flow with a clear exit path.", DirectCommand: "stage logs", Kind: actionResult, ResultTitle: "Project logs", ResultBody: "Prototype only: logs would stream output and allow a clean exit back to the guided UI."},
-				{ID: "down", Label: "Stop this project", Description: "Stop the project while preserving StageServe-managed data.", DirectCommand: "stage down", Kind: actionNavigate, NextScenario: "project_down"},
-				{ID: "doctor", Label: "Find issues", Description: "Diagnose drift or runtime problems.", DirectCommand: "stage doctor", Kind: actionResult, ResultTitle: "Running-project diagnostics", ResultBody: "Prototype only: doctor would inspect runtime, DNS, and config drift."},
+			ActiveWorkIndex: 0,
+			Decisions: []decisionItem{
+				{ID: "recover", Label: "Run next recovery step", Description: "Run the next least-invasive step.", DirectCommand: "stage doctor", ResultTitle: "Recovery step finished", ResultBody: "Prototype only: StageServe would run a read-only check, then re-plan."},
+				{ID: "details", Label: "Show what went wrong", Description: "Read a longer plain-language explanation.", Opens: modeDetails},
+				{ID: "stop", Label: "Stop here", Description: "Leave everything as it is and exit this recovery flow.", RequiresConfirm: true, ConfirmYesDefault: true, ConfirmTitle: "Stop recovery for now?", ConfirmBody: []string{"StageServe will leave this project as it is.", "Your files will not be touched.", "Run stage again to come back."}, ResultTitle: "Recovery stopped", ResultBody: "Prototype only: no changes were made."},
 			},
-			Advanced: []action{
-				{ID: "show_commands", Label: "Show commands", Description: "See direct command equivalents.", Kind: actionResult, ResultTitle: "Direct commands", ResultBody: "Use stage status, stage logs, stage down, or stage doctor from the direct CLI path."},
-			},
-		},
-		"project_down": {
-			ID:      "project_down",
-			Title:   "This project is stopped",
-			Summary: "StageServe still knows this project, but the runtime is intentionally down.",
-			Primary: action{
-				ID:            "up",
-				Label:         "Run this project",
-				Description:   "Start the project again from its known StageServe state.",
-				DirectCommand: "stage up",
-				Kind:          actionNavigate,
-				NextScenario:  "project_running",
-			},
-			Secondary: []action{
-				{ID: "status", Label: "Check project status", Description: "Inspect the retained project record.", DirectCommand: "stage status", Kind: actionResult, ResultTitle: "Stopped project status", ResultBody: "Prototype only: status would show the retained down state and project identity."},
-				{ID: "detach", Label: "Remove this project from StageServe", Description: "Remove the retained project record from StageServe.", DirectCommand: "stage detach", Kind: actionResult, ResultTitle: "Project removed", ResultBody: "Prototype only: detach would remove the retained project record."},
-				{ID: "doctor", Label: "Find issues", Description: "Diagnose why the project should remain down or be restarted.", DirectCommand: "stage doctor", Kind: actionResult, ResultTitle: "Down-state diagnostics", ResultBody: "Prototype only: doctor would inspect the stopped project and any drift."},
-			},
-			Advanced: []action{
-				{ID: "show_commands", Label: "Show commands", Description: "See direct command equivalents.", Kind: actionResult, ResultTitle: "Direct commands", ResultBody: "Use stage up, stage status, stage detach, or stage doctor from the direct CLI path."},
-			},
-		},
-		"drift_detected": {
-			ID:      "drift_detected",
-			Title:   "StageServe found a project mismatch",
-			Summary: "Something about the recorded project state and the local environment does not line up cleanly.",
-			Warnings: []string{
-				"Recovery should start with StageServe commands.",
-			},
-			Primary: action{
-				ID:            "diagnose",
-				Label:         "Find issues",
-				Description:   "Start with StageServe diagnostics before advanced troubleshooting.",
-				DirectCommand: "stage doctor",
-				Kind:          actionResult,
-				ResultTitle:   "Drift diagnostics",
-				ResultBody:    "Prototype only: doctor would explain the mismatch and suggest the safest recovery path.",
-			},
-			Secondary: []action{
-				{ID: "status", Label: "Check project status", Description: "Inspect the current recorded project view.", DirectCommand: "stage status", Kind: actionResult, ResultTitle: "Drift status", ResultBody: "Prototype only: status would show the current recorded and observed project state."},
-				{ID: "logs", Label: "View project logs", Description: "Inspect recent project output before deeper recovery steps.", DirectCommand: "stage logs", Kind: actionResult, ResultTitle: "Drift logs", ResultBody: "Prototype only: logs would provide project output for diagnosis."},
-			},
-			Advanced: []action{
-				{ID: "show_commands", Label: "Show commands", Description: "See direct command equivalents.", Kind: actionResult, ResultTitle: "Direct commands", ResultBody: "Use stage doctor, stage status, or stage logs from the direct CLI path."},
-			},
-		},
-		"not_project": {
-			ID:        "not_project",
-			Title:     "This directory is not set up as a StageServe project",
-			Summary:   "StageServe can set up this directory as a project, or point you at machine setup if that is the real gap.",
-			ScopeNote: "v1 stays scoped to the current directory. Use stage from inside the project you want to work on.",
-			Primary: action{
-				ID:            "init_here",
-				Label:         "Set up this directory as a project",
-				Description:   "Create starter project settings here and continue with project configuration.",
-				DirectCommand: "stage init",
-				Kind:          actionNavigate,
-				NextScenario:  "project_missing_config",
-			},
-			Secondary: []action{
-				{ID: "setup_help", Label: "Get setup help", Description: "See the quickest StageServe path if the machine itself needs setup.", DirectCommand: "stage setup", Kind: actionResult, ResultTitle: "Setup help", ResultBody: "Prototype only: the guided path would explain machine setup and project configuration from this directory."},
-			},
-			Advanced: []action{
-				{ID: "show_commands", Label: "Show commands", Description: "See direct command equivalents.", Kind: actionResult, ResultTitle: "Direct commands", ResultBody: "Use stage init to create project settings, or stage setup if the machine itself needs setup."},
-			},
-		},
-		"unknown_error": {
-			ID:      "unknown_error",
-			Title:   "StageServe could not classify this problem safely",
-			Summary: "The safest next step is to start with StageServe recovery guidance rather than guessing.",
-			Primary: action{
-				ID:          "recovery_help",
-				Label:       "Show recovery help",
-				Description: "See the safest next action without assuming a specific failure type.",
-				Kind:        actionResult,
-				ResultTitle: "Recovery help",
-				ResultBody:  "Try in this order:\n  1. Run `stage doctor` to collect diagnostics.\n  2. Run `stage status` to compare recorded and observed project state.\n  3. Run `stage logs` for recent project output.\nIf the problem persists, capture doctor output before any reset or remove action.",
-			},
-			Secondary: []action{
-				{ID: "doctor", Label: "Find issues", Description: "Run StageServe diagnostics when project context is available.", DirectCommand: "stage doctor", Kind: actionResult, ResultTitle: "Diagnostics", ResultBody: "Prototype only: doctor would collect more detail before recovery."},
-			},
-			Advanced: []action{
-				{ID: "show_commands", Label: "Show commands", Description: "See direct command equivalents.", Kind: actionResult, ResultTitle: "Direct commands", ResultBody: "Use stage doctor when project context is available."},
-			},
+			DetailsTitle:   "What went wrong",
+			Details:        []string{"StageServe was checking this project and got an answer it could not classify safely.", "The recovery list starts read-only and pauses after each step."},
+			DirectCommands: []string{"stage doctor", "stage status", "stage logs"},
+			Advanced:       []string{"Advanced view would include raw command output and lower-level error names."},
+			Footer:         baseFooter,
 		},
 	}
+}
+
+func projectSetupPlan(baseFooter []string) plan {
+	return plan{
+		Situation:    projectMissingConfig,
+		StatusHeader: "This folder doesn't have StageServe settings yet.",
+		Context:      "/Users/pete/sites/pete-site",
+		Summary:      "StageServe will create one file only: .env.stageserve.",
+		Defaults: append(commonDefaults("pete-site", "./public_html", ".develop"),
+			defaultValue{Label: "Target file", Value: ".env.stageserve", Note: "will be created in this folder"},
+			defaultValue{Label: "Stack", Value: "20i", Note: "current supported stack"},
+			defaultValue{Label: "Advanced settings", Value: "none yet", Note: "details stay out of first run"}),
+		Decisions: []decisionItem{
+			{ID: "init", Label: "Use these settings", Description: "Write .env.stageserve and continue.", DirectCommand: "stage init", Mutates: true, RequiresConfirm: true, ConfirmYesDefault: true, ConfirmTitle: "About to write project settings", ConfirmBody: []string{"StageServe will create .env.stageserve in this folder.", "Site name: pete-site", "Web folder: ./public_html", "Local URL: http://pete-site.develop", "StageServe will not change any other file."}, Next: projectReadyToRun, ResultTitle: "Project settings created", ResultBody: "Prototype only: StageServe would write .env.stageserve, then re-detect."},
+			{ID: "edit", Label: "Edit before writing", Description: "Change site name, web folder, or suffix first.", Opens: modeEdit},
+		},
+		DetailsTitle:   "Project setup overview",
+		Details:        []string{"The preview shows every value before any write.", "Edits return to the preview. They do not write immediately.", "Advanced settings are summarized instead of forced into first-run setup."},
+		DirectCommands: []string{"stage init", "stage init --cli", "stage init --json"},
+		Advanced:       []string{"Advanced settings such as PHP, MySQL, timeout, and post-up commands remain in .env.stageserve and direct CLI docs."},
+		Footer:         baseFooter,
+	}
+}
+
+func commonDefaults(site, webFolder, suffix string) []defaultValue {
+	return []defaultValue{
+		{Label: "Site name", Value: site, Note: "from folder name"},
+		{Label: "Web folder", Value: webFolder, Note: "found here"},
+		{Label: "Domain suffix", Value: suffix, Note: "machine setting"},
+		{Label: "Local URL", Value: "http://" + site + suffix, Note: "what you'll visit"},
+	}
+}
+
+func bold(s string) string {
+	return "\033[1m" + s + "\033[0m"
+}
+
+func dim(s string) string {
+	return "\033[90m" + s + "\033[0m"
 }

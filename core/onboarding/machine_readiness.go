@@ -6,11 +6,13 @@ import (
 	"net"
 	"os"
 	"os/exec"
+	"strconv"
 	"strings"
 	"syscall"
 )
 
 var portListen = net.Listen
+var portOwnerLookup = lookupBusyPortOwner
 
 // CheckDockerBinary checks whether the Docker CLI binary exists at path.
 // Pass an empty string to auto-detect via PATH.
@@ -135,14 +137,7 @@ func CheckPort(stepID string, port int) StepResult {
 					Message: fmt.Sprintf("port %d is available", port),
 				}
 			case isAddrInUse(wildcardErr):
-				rem := remediationPtr(fmt.Sprintf("Find and stop the process using port %d: lsof -i :%d", port, port))
-				return StepResult{
-					ID:          stepID,
-					Label:       label,
-					Status:      StatusNeedsAction,
-					Message:     fmt.Sprintf("port %d is already in use", port),
-					Remediation: rem,
-				}
+				return busyPortStep(stepID, label, port)
 			default:
 				rem := remediationPtr(fmt.Sprintf("Check local networking permissions while probing port %d: %v", port, wildcardErr))
 				return StepResult{
@@ -155,14 +150,7 @@ func CheckPort(stepID string, port int) StepResult {
 			}
 		}
 		if isAddrInUse(err) {
-			rem := remediationPtr(fmt.Sprintf("Find and stop the process using port %d: lsof -i :%d", port, port))
-			return StepResult{
-				ID:          stepID,
-				Label:       label,
-				Status:      StatusNeedsAction,
-				Message:     fmt.Sprintf("port %d is already in use", port),
-				Remediation: rem,
-			}
+			return busyPortStep(stepID, label, port)
 		}
 		rem := remediationPtr(fmt.Sprintf("Check local networking permissions while probing port %d: %v", port, err))
 		return StepResult{
@@ -180,6 +168,59 @@ func CheckPort(stepID string, port int) StepResult {
 		Status:  StatusReady,
 		Message: fmt.Sprintf("port %d is available", port),
 	}
+}
+
+func busyPortStep(stepID, label string, port int) StepResult {
+	message := fmt.Sprintf("port %d is already in use", port)
+	if owner := portOwnerLookup(port); owner != "" {
+		message = fmt.Sprintf("port %d is already in use by %s", port, owner)
+	}
+	rem := remediationPtr(fmt.Sprintf("Find and stop the process using port %d: lsof -nP -iTCP:%d -sTCP:LISTEN", port, port))
+	return StepResult{
+		ID:          stepID,
+		Label:       label,
+		Status:      StatusNeedsAction,
+		Message:     message,
+		Remediation: rem,
+	}
+}
+
+func lookupBusyPortOwner(port int) string {
+	args := []string{"-nP", fmt.Sprintf("-iTCP:%d", port), "-sTCP:LISTEN"}
+	if owner := parseBusyPortOwnerOutput(mustCombinedOutput(exec.Command("lsof", args...))); owner != "" {
+		return owner
+	}
+	privilegedOut := mustCombinedOutput(exec.Command("sudo", append([]string{"-n", "lsof"}, args...)...))
+	if owner := parseBusyPortOwnerOutput(privilegedOut); owner != "" {
+		return owner
+	}
+	if strings.Contains(strings.ToLower(string(privilegedOut)), "password is required") {
+		return "another process (owner hidden without sudo)"
+	}
+	return ""
+}
+
+func mustCombinedOutput(cmd *exec.Cmd) []byte {
+	out, _ := cmd.CombinedOutput()
+	return out
+}
+
+func parseBusyPortOwnerOutput(out []byte) string {
+	for _, line := range strings.Split(strings.TrimSpace(string(out)), "\n") {
+		line = strings.TrimSpace(line)
+		if line == "" || strings.HasPrefix(line, "COMMAND ") {
+			continue
+		}
+		fields := strings.Fields(line)
+		if len(fields) < 2 {
+			continue
+		}
+		if _, err := strconv.Atoi(fields[1]); err != nil {
+			continue
+		}
+		return fmt.Sprintf("%s (pid %s)", fields[0], fields[1])
+	}
+	return ""
 }
 
 func isAddrInUse(err error) bool {
