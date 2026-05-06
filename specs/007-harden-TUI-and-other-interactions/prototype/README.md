@@ -1,6 +1,8 @@
-# Guided TUI Prototype
+# Guided Easy Mode Prototype
 
-This is a tracked, non-production prototype for spec 007. It is intentionally separate from the shipped `stage` command and exists only to test flows, copy, and assumptions before production implementation.
+This is a tracked, non-production prototype for spec 007. It exists to test the easy-mode flow, copy, keyboard model, and visible-default rules before production implementation.
+
+The prototype is fixture-only. It does not read real StageServe state, run Docker, touch local DNS, or write `.env.stageserve`.
 
 ## Run
 
@@ -8,43 +10,57 @@ This is a tracked, non-production prototype for spec 007. It is intentionally se
 go run ./specs/007-harden-TUI-and-other-interactions/prototype --list-scenarios
 go run ./specs/007-harden-TUI-and-other-interactions/prototype
 go run ./specs/007-harden-TUI-and-other-interactions/prototype --scenario project_running
-go run ./specs/007-harden-TUI-and-other-interactions/prototype --notui --scenario machine_not_ready
+go run ./specs/007-harden-TUI-and-other-interactions/prototype --notui --scenario project_missing_config
 go run ./specs/007-harden-TUI-and-other-interactions/prototype --cli --scenario drift_detected
 ```
 
+## What It Demonstrates
+
+- Four surfaces: status header, decision bar, tool work panel, persistent footer.
+- Machine setup as a tool-owned checklist, not a menu.
+- `.develop` local URL examples with visible site name, web folder, suffix, and URL before any write.
+- Project settings preview and confirmation before `.env.stageserve` would be written.
+- Running-project default is non-destructive: `enter` opens logs, not stop.
+- Out-of-sync recovery previews the safe step and confirms before changing records.
+- Direct commands and advanced troubleshooting live behind footer paths.
+
 ## Controls
 
-- `up` / `down`: move between actions
-- `enter`: choose action
-- `c`: show commands
-- `esc`: go back
-- `q`: quit
+- `up` / `down`: move through decision items.
+- `enter`: run the highlighted/default item.
+- `?`: show plain-language detail.
+- `m`: show direct command equivalents.
+- `a`: show advanced/troubleshooting detail.
+- `tab` / `shift+tab`: switch between canned scenarios.
+- `q`: quit.
 
-## Terminal Verification Loop
+Project edit screen:
 
-Run these commands while refining the prototype:
+- `up` / `down`: choose field.
+- `enter`: cycle sample values.
+- `s`: save edits back to preview.
+- `esc`: discard edits.
+
+Logs screen:
+
+- `q` / `esc`: exit logs and return to the running-project screen.
+
+## Verification
 
 ```bash
-go run ./specs/007-harden-TUI-and-other-interactions/prototype --list-scenarios
+go test ./specs/007-harden-TUI-and-other-interactions/prototype
 go run ./specs/007-harden-TUI-and-other-interactions/prototype --notui --scenario machine_not_ready
 go run ./specs/007-harden-TUI-and-other-interactions/prototype --notui --scenario project_missing_config
 go run ./specs/007-harden-TUI-and-other-interactions/prototype --notui --scenario project_running
 go run ./specs/007-harden-TUI-and-other-interactions/prototype --notui --scenario drift_detected
-go test ./specs/007-harden-TUI-and-other-interactions/prototype
+go run ./specs/007-harden-TUI-and-other-interactions/prototype --notui --scenario unknown_error
 ```
 
 Manual TTY checks:
 
-- Start at `machine_not_ready` and confirm the primary action is `Set up this computer`
-- Move through config preview and confirmation without writing files
-- Start at `project_running` and check status, logs, stop, and command escape paths
-- Start at `drift_detected` and `unknown_error` and judge recovery wording
-- Confirm `attach` and `detach` never appear as first-level labels
-- Confirm `show commands` exposes the CLI equivalents
-- Confirm `not_project` and multi-project scope notes do not imply a project switcher
-
-## Notes
-
-- The prototype uses canned fixtures only.
-- It does not read real state, run Docker, or write `.env.stageserve`.
-- `edit project settings` shows a path and sample content only.
+- Start at `machine_not_ready`; confirm setup is a checklist and `Find issues` is not a decision item.
+- Start at `project_missing_config`; confirm defaults and local URL are visible before confirmation.
+- Use `Edit before writing`; confirm edits return to the preview and do not write.
+- Start at `project_running`; confirm `enter` opens logs and stop requires confirmation.
+- Start at `drift_detected`; confirm the safe step previews what changes before applying.
+- Press `m`; confirm direct commands are discoverable but not mixed into the decision bar.
