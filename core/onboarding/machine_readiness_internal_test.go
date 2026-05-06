@@ -85,3 +85,24 @@ func TestCheckPort_BusyPortIncludesOwnerWhenAvailable(t *testing.T) {
 		t.Fatalf("want updated lsof remediation, got %#v", r.Remediation)
 	}
 }
+
+func TestCheckPort_BusyPortHiddenOwnerSuggestsSudoLookup(t *testing.T) {
+	originalListen := portListen
+	originalOwnerLookup := portOwnerLookup
+	defer func() {
+		portListen = originalListen
+		portOwnerLookup = originalOwnerLookup
+	}()
+
+	portListen = func(network, address string) (net.Listener, error) {
+		return nil, syscall.EADDRINUSE
+	}
+	portOwnerLookup = func(port int) string {
+		return "another process (owner hidden without sudo)"
+	}
+
+	r := CheckPort("port.443", 443)
+	if !strings.Contains(r.Message, "sudo lsof -nP -iTCP:443 -sTCP:LISTEN") {
+		t.Fatalf("want sudo lookup hint in message, got %q", r.Message)
+	}
+}
