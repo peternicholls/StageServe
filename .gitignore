@@ -4,6 +4,7 @@
 .stageserve-state/
 .20i-local
 .20i-state/
+.env.stageserve
 
 # Docker volumes
 db_data/
