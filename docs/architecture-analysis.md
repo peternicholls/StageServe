@@ -129,4 +129,3 @@
     
     The architecture is fundamentally sound and well-thought-out. The main issues are duplication that crept in during active development and some boundary violations where helper functions stayed in the orchestrator instead of being placed in their owning packages.
     
-    Want me to dive deeper into any of these, or start applying fixes?
