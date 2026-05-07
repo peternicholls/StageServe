@@ -604,11 +604,15 @@ func renderVerdict(b *strings.Builder, text string) {
 	fmt.Fprintf(b, "\n%s\n", text)
 }
 
-func renderActionList(b *strings.Builder, decisions []decisionItem, cursor int) {
+func renderActionList(b *strings.Builder, title string, decisions []decisionItem, cursor int) {
 	if len(decisions) == 0 {
 		return
 	}
-	fmt.Fprintln(b)
+	if title != "" {
+		fmt.Fprintf(b, "\n%s\n", bold(title))
+	} else {
+		fmt.Fprintln(b)
+	}
 	for i, item := range decisions {
 		prefix := " "
 		if i == cursor {
@@ -663,6 +667,7 @@ func (m model) renderMain() string {
 	p := m.currentPlan()
 	var b strings.Builder
 	renderScreenHeader(&b, "StageServe", p.StatusHeader)
+	fmt.Fprintf(&b, "%s\n", dim("prototype - tab switches canned situations"))
 	if p.Context != "" {
 		fmt.Fprintf(&b, "%s\n", dim(p.Context))
 	}
@@ -671,9 +676,9 @@ func (m model) renderMain() string {
 	if p.AssistanceTitle != "" {
 		fmt.Fprintf(&b, "\n%s\n", bold(p.AssistanceTitle))
 	}
-	renderFactRows(&b, "Key facts", p.Defaults)
+	renderDefaultFacts(&b, "Key facts", p.Defaults)
 	renderWorkPanel(&b, p)
-	renderActionList(&b, p.Decisions, m.cursor)
+	renderActionList(&b, "Actions", p.Decisions, m.cursor)
 	if m.resultTitle != "" {
 		fmt.Fprintf(&b, "\n%s\n%s\n", bold("Latest outcome"), m.resultTitle)
 		if m.resultBody != "" {
@@ -684,7 +689,7 @@ func (m model) renderMain() string {
 	return b.String()
 }
 
-func renderFactRows(b *strings.Builder, title string, defaults []defaultValue) {
+func renderDefaultFacts(b *strings.Builder, title string, defaults []defaultValue) {
 	if len(defaults) == 0 {
 		return
 	}
@@ -834,7 +839,7 @@ func (m model) renderAssist() string {
 	renderVerdict(&b, "Something else on your computer is using port 443.")
 	fmt.Fprintf(&b, "\nStageServe can check which process owns the port. Your computer\n")
 	fmt.Fprintf(&b, "will ask for your password because macOS hides this detail by default.\n")
-	renderActionList(&b, []decisionItem{
+	renderActionList(&b, "", []decisionItem{
 		{Label: "Check with sudo", Description: "Run a read-only command to identify the process."},
 		{Label: "Skip this issue", Description: "Leave port 443 unresolved for now."},
 	}, 0)
