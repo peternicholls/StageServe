@@ -16,6 +16,7 @@ func TestFixturesContainCanonicalPlannerSituations(t *testing.T) {
 		driftDetected,
 		notProject,
 		unknownError,
+		doctorReportNeedsHelp,
 	}
 	for _, id := range required {
 		if _, ok := plans[id]; !ok {
@@ -143,6 +144,60 @@ func TestTextFallbackUsesSurfaceLanguage(t *testing.T) {
 	}
 	if strings.Contains(text, "Primary action") || strings.Contains(text, "Secondary actions") {
 		t.Fatalf("text fallback uses old action model:\n%s", text)
+	}
+}
+
+func TestDoctorReportOffersAssistanceWithoutHidingCommands(t *testing.T) {
+	plans := planFixtures()
+	plan, ok := plans[doctorReportNeedsHelp]
+	if !ok {
+		t.Fatal("missing doctor report assistance scenario")
+	}
+
+	var b strings.Builder
+	renderText(&b, plan)
+	text := b.String()
+
+	for _, want := range []string{
+		"StageServe Doctor",
+		"Not ready - 2 of 7 checks need attention.",
+		"Needs fixing",
+		"Port 443",
+		"To fix: sudo lsof -nP -iTCP:443 -sTCP:LISTEN",
+		"Local DNS resolver",
+		"To fix: stage setup",
+		"Assistance",
+		"Help me fix these",
+		"Walk through each issue one at a time.",
+		"Leave it here",
+	} {
+		if !strings.Contains(text, want) {
+			t.Fatalf("doctor assistance fallback missing %q:\n%s", want, text)
+		}
+	}
+}
+
+func TestAssistedDoctorFlowStartsWithOneFocusedBlocker(t *testing.T) {
+	m := newModel(planFixtures(), doctorReportNeedsHelp)
+	next := m.handleDecision(m.currentPlan().Decisions[0])
+
+	if next.mode != modeAssist {
+		t.Fatalf("mode=%v want modeAssist", next.mode)
+	}
+	view := next.View()
+	for _, want := range []string{
+		"Port 443",
+		"Something else on your computer is using port 443.",
+		"Check with sudo",
+		"Run a read-only command to identify the process.",
+		"Skip this issue",
+	} {
+		if !strings.Contains(view, want) {
+			t.Fatalf("assist view missing %q:\n%s", want, view)
+		}
+	}
+	if strings.Contains(view, "Local DNS resolver") {
+		t.Fatalf("assist view should focus on one blocker at a time:\n%s", view)
 	}
 }
 

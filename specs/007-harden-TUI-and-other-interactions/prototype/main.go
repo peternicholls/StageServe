@@ -15,14 +15,15 @@ import (
 type situation string
 
 const (
-	machineNotReady      situation = "machine_not_ready"
-	projectMissingConfig situation = "project_missing_config"
-	projectReadyToRun    situation = "project_ready_to_run"
-	projectRunning       situation = "project_running"
-	projectDown          situation = "project_down"
-	driftDetected        situation = "drift_detected"
-	notProject           situation = "not_project"
-	unknownError         situation = "unknown_error"
+	machineNotReady       situation = "machine_not_ready"
+	projectMissingConfig  situation = "project_missing_config"
+	projectReadyToRun     situation = "project_ready_to_run"
+	projectRunning        situation = "project_running"
+	projectDown           situation = "project_down"
+	driftDetected         situation = "drift_detected"
+	notProject            situation = "not_project"
+	unknownError          situation = "unknown_error"
+	doctorReportNeedsHelp situation = "doctor_report_needs_help"
 )
 
 type workStatus string
@@ -46,6 +47,7 @@ const (
 	modeAdvanced
 	modeLogs
 	modeEdit
+	modeAssist
 )
 
 type defaultValue struct {
@@ -61,6 +63,15 @@ type workItem struct {
 	EnterAction string
 	Details     string
 	Skippable   bool
+}
+
+type reportItem struct {
+	Label       string
+	Description string
+	Message     string
+	Command     string
+	Ready       bool
+	Status      workStatus
 }
 
 type decisionItem struct {
@@ -86,6 +97,9 @@ type plan struct {
 	Summary         string
 	Defaults        []defaultValue
 	WorkItems       []workItem
+	ReportAttention []reportItem
+	ReportReady     []reportItem
+	AssistanceTitle string
 	ActiveWorkIndex int
 	Decisions       []decisionItem
 	DetailsTitle    string
@@ -131,6 +145,7 @@ type model struct {
 	localDNSReady  bool
 	recoveryStep   int
 	lastScreenName string
+	assistIndex    int
 }
 
 type projectValues struct {
@@ -248,6 +263,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		case modeEdit:
 			return m.updateEdit(key)
+		case modeAssist:
+			return m.updateAssist(key)
 		default:
 			return m.updateMain(key)
 		}
@@ -327,6 +344,24 @@ func (m model) updateEdit(key string) (tea.Model, tea.Cmd) {
 		m.mode = modeMain
 		m.resultTitle = "Saved edits to preview"
 		m.resultBody = "The preview now shows the edited values. No file has been written."
+	}
+	return m, nil
+}
+
+func (m model) updateAssist(key string) (tea.Model, tea.Cmd) {
+	switch key {
+	case "q":
+		return m, tea.Quit
+	case "esc":
+		m.mode = modeMain
+	case "enter":
+		m.resultTitle = "Read-only check selected"
+		m.resultBody = "Prototype only: StageServe would ask before running sudo lsof to identify the process using port 443."
+		m.mode = modeMain
+	case "s":
+		m.resultTitle = "Skipped Port 443"
+		m.resultBody = "StageServe left this issue unresolved and would continue to the next blocker."
+		m.mode = modeMain
 	}
 	return m, nil
 }
@@ -467,6 +502,11 @@ func (m model) handleWorkEnter(current plan) model {
 }
 
 func (m model) handleDecision(item decisionItem) model {
+	if item.Opens == modeAssist {
+		m.mode = modeAssist
+		m.assistIndex = 0
+		return m
+	}
 	if item.Opens != modeMain {
 		m.mode = item.Opens
 		return m
@@ -545,8 +585,77 @@ func (m model) View() string {
 		return m.renderLogs()
 	case modeEdit:
 		return m.renderEdit()
+	case modeAssist:
+		return m.renderAssist()
 	default:
 		return m.renderMain()
+	}
+}
+
+func renderScreenHeader(b *strings.Builder, title, surface string) {
+	if surface == "" {
+		fmt.Fprintf(b, "%s  %s\n", cyan("◆"), bold(title))
+		return
+	}
+	fmt.Fprintf(b, "%s  %-32s %s\n", cyan("◆"), bold(title), dim(surface))
+}
+
+func renderVerdict(b *strings.Builder, text string) {
+	if strings.TrimSpace(text) == "" {
+		return
+	}
+	fmt.Fprintf(b, "\n%s\n", text)
+}
+
+func renderActionList(b *strings.Builder, decisions []decisionItem, cursor int) {
+	if len(decisions) == 0 {
+		return
+	}
+	fmt.Fprintln(b)
+	for i, item := range decisions {
+		prefix := " "
+		if i == cursor {
+			prefix = yellow("▶")
+		}
+		fmt.Fprintf(b, "%s %s\n", prefix, item.Label)
+		if item.Description != "" {
+			fmt.Fprintf(b, "    %s\n", item.Description)
+		}
+	}
+}
+
+func renderFooterHelp(b *strings.Builder, text string) {
+	if text == "" {
+		return
+	}
+	fmt.Fprintf(b, "\n%s\n", dim(text))
+}
+
+func renderReportSections(b *strings.Builder, attention, ready []reportItem) {
+	if len(attention) > 0 {
+		fmt.Fprintf(b, "\n%s\n", bold("Needs fixing"))
+		for i, item := range attention {
+			fmt.Fprintf(b, "\n  %s  %s\n", yellow(fmt.Sprintf("%d", i+1)), bold(item.Label))
+			if item.Description != "" {
+				fmt.Fprintf(b, "     %s\n", item.Description)
+			}
+			if item.Message != "" {
+				fmt.Fprintf(b, "\n     %s\n", dim(item.Message))
+			}
+			if item.Command != "" {
+				fmt.Fprintf(b, "     %s %s\n", bold("To fix:"), cyan(item.Command))
+			}
+		}
+	}
+	if len(ready) > 0 {
+		fmt.Fprintf(b, "\n%s\n", bold("All clear"))
+		for _, item := range ready {
+			status := string(item.Status)
+			if status == "" {
+				status = item.Message
+			}
+			fmt.Fprintf(b, "  %s  %-18s %s\n", green("✓"), item.Label, dim(status))
+		}
 	}
 }
 
@@ -560,6 +669,10 @@ func (m model) renderMain() string {
 	}
 	if p.Summary != "" {
 		fmt.Fprintf(&b, "%s\n\n", p.Summary)
+	}
+	renderReportSections(&b, p.ReportAttention, p.ReportReady)
+	if p.AssistanceTitle != "" {
+		fmt.Fprintf(&b, "\n%s\n", bold(p.AssistanceTitle))
 	}
 	renderDefaults(&b, p.Defaults)
 	renderWorkPanel(&b, p)
@@ -734,6 +847,20 @@ func (m model) renderEdit() string {
 	return b.String()
 }
 
+func (m model) renderAssist() string {
+	var b strings.Builder
+	renderScreenHeader(&b, "StageServe", "Port 443")
+	renderVerdict(&b, "Something else on your computer is using port 443.")
+	fmt.Fprintf(&b, "\nStageServe can check which process owns the port. Your computer\n")
+	fmt.Fprintf(&b, "will ask for your password because macOS hides this detail by default.\n")
+	renderActionList(&b, []decisionItem{
+		{Label: "Check with sudo", Description: "Run a read-only command to identify the process."},
+		{Label: "Skip this issue", Description: "Leave port 443 unresolved for now."},
+	}, 0)
+	renderFooterHelp(&b, "enter check • s skip • esc back • q quit")
+	return b.String()
+}
+
 func valueForDefault(p plan, label string) string {
 	for _, item := range p.Defaults {
 		if item.Label == label {
@@ -751,6 +878,34 @@ func renderText(w io.Writer, p plan) {
 	}
 	if p.Summary != "" {
 		fmt.Fprintf(w, "\n%s\n", p.Summary)
+	}
+	if len(p.ReportAttention) > 0 || len(p.ReportReady) > 0 {
+		fmt.Fprintf(w, "\nNeeds fixing\n")
+		for i, item := range p.ReportAttention {
+			fmt.Fprintf(w, "\n%d. %s\n", i+1, item.Label)
+			if item.Description != "" {
+				fmt.Fprintf(w, "   %s\n", item.Description)
+			}
+			if item.Message != "" {
+				fmt.Fprintf(w, "   %s\n", item.Message)
+			}
+			if item.Command != "" {
+				fmt.Fprintf(w, "   To fix: %s\n", item.Command)
+			}
+		}
+		if len(p.ReportReady) > 0 {
+			fmt.Fprintf(w, "\nAll clear\n")
+			for _, item := range p.ReportReady {
+				status := item.Message
+				if status == "" {
+					status = string(item.Status)
+				}
+				fmt.Fprintf(w, "- %s: %s\n", item.Label, status)
+			}
+		}
+	}
+	if p.AssistanceTitle != "" {
+		fmt.Fprintf(w, "\n%s\n", p.AssistanceTitle)
 	}
 	if len(p.Defaults) > 0 {
 		fmt.Fprintf(w, "\nVisible defaults\n")
@@ -785,6 +940,9 @@ func renderText(w io.Writer, p plan) {
 				fmt.Fprintf(w, " (%s)", item.DirectCommand)
 			}
 			fmt.Fprintln(w)
+			if item.Description != "" {
+				fmt.Fprintf(w, "  %s\n", item.Description)
+			}
 		}
 	}
 	fmt.Fprintf(w, "\nFooter\n")
@@ -849,6 +1007,43 @@ func planFixtures() map[situation]plan {
 			Details:        []string{"This prototype stays scoped to one current folder.", "A future version can add a project switcher, but spec 007 does not require it."},
 			DirectCommands: []string{"stage init", "stage setup"},
 			Advanced:       []string{"Advanced view would explain how StageServe finds project roots."},
+			Footer:         baseFooter,
+		},
+		doctorReportNeedsHelp: {
+			Situation:    doctorReportNeedsHelp,
+			StatusHeader: "StageServe Doctor",
+			Context:      "Read-only machine check",
+			Summary:      "Not ready - 2 of 7 checks need attention.",
+			ReportAttention: []reportItem{
+				{
+					Label:       "Port 443",
+					Description: "Port 443 must be free for the local HTTPS gateway to bind to it.",
+					Message:     "Owner requires sudo to identify.",
+					Command:     "sudo lsof -nP -iTCP:443 -sTCP:LISTEN",
+				},
+				{
+					Label:       "Local DNS resolver",
+					Description: "Your computer cannot yet open local project URLs.",
+					Message:     "dnsmasq config missing",
+					Command:     "stage setup",
+				},
+			},
+			ReportReady: []reportItem{
+				{Label: "Docker CLI", Status: statusReady, Message: "docker found at /usr/local/bin/docker"},
+				{Label: "Docker Desktop", Status: statusReady, Message: "running"},
+				{Label: "State directory", Status: statusReady, Message: "exists"},
+				{Label: "Port 80", Status: statusReady, Message: "available"},
+				{Label: "mkcert local CA", Status: statusReady, Message: "installed"},
+			},
+			AssistanceTitle: "Assistance",
+			Decisions: []decisionItem{
+				{ID: "assist", Label: "Help me fix these", Description: "Walk through each issue one at a time.", Opens: modeAssist},
+				{ID: "leave", Label: "Leave it here", Description: "Exit without changing anything.", ResultTitle: "No changes made", ResultBody: "Prototype only: StageServe would exit without changing anything."},
+			},
+			DetailsTitle:   "Doctor report overview",
+			Details:        []string{"StageServe shows the report first so commands remain copy-pasteable.", "Guided help starts only when the user asks for it."},
+			DirectCommands: []string{"sudo lsof -nP -iTCP:443 -sTCP:LISTEN", "stage setup", "stage doctor"},
+			Advanced:       []string{"Advanced view would include internal check IDs and raw command output."},
 			Footer:         baseFooter,
 		},
 		unknownError: {
@@ -1039,4 +1234,16 @@ func bold(s string) string {
 
 func dim(s string) string {
 	return "\033[90m" + s + "\033[0m"
+}
+
+func cyan(s string) string {
+	return "\033[36m" + s + "\033[0m"
+}
+
+func green(s string) string {
+	return "\033[32m" + s + "\033[0m"
+}
+
+func yellow(s string) string {
+	return "\033[33m" + s + "\033[0m"
 }
