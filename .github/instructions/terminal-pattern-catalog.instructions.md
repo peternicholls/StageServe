@@ -146,6 +146,80 @@ Each reusable pattern should include:
 
 **Rules demonstrated:** orientation before detail, ordered path, direct commands.
 
+### Guided Interactive Screen
+
+**Context:** Bare `stage` opens an interactive flow, or a command report hands off into guided help.
+
+**User state:** The user wants StageServe to show the next safe action without needing to remember command names.
+
+**Output sketch:**
+
+```text
+  ◆  StageServe                         Project
+  --------------------------------------
+
+  This project is ready to run.
+
+-- Key facts ---------------------------
+
+  Local URL       http://pete-site.develop
+  Web folder      ./public_html
+  Status          not running yet
+
+▶ Run this project
+    Start the project and open it in your browser.
+
+  Edit project settings
+    Change site name, web folder, or domain suffix first.
+
+  ↑/↓ navigate • enter run • ? details • esc quit
+```
+
+**Why it works:** The verdict appears before choices. Default values and the default action are visible before commitment. Secondary choices stay small and user-goal oriented.
+
+**Rules demonstrated:** visible defaults, lowest-risk default action, plain language, semantic hierarchy, context-specific footer.
+
+### Report To Assisted Help
+
+**Context:** `stage doctor` or another command report finds issues in an interactive terminal.
+
+**User state:** The user may understand the report, but may prefer StageServe to walk through the issues one at a time.
+
+**Output sketch:**
+
+```text
+  ◆  StageServe Doctor
+  --------------------------------------
+
+  ✗  Not ready - 2 of 7 checks need attention.
+
+-- Needs fixing ------------------------
+
+  1  Port 443
+     Something else on your computer is using port 443.
+
+     To fix:  sudo lsof -nP -iTCP:443 -sTCP:LISTEN
+
+  2  Local DNS resolver
+     Your computer cannot yet open local project URLs.
+
+     To fix:  stage setup
+
+-- Assistance --------------------------
+
+  StageServe can help with the issues above.
+
+▶ Help me fix these
+    Walk through each issue one at a time.
+
+  Leave it here
+    Exit without changing anything.
+```
+
+**Why it works:** The command remains useful as a report, but interactive users get a safe handoff into guided help. The wording avoids promising that StageServe can fix every blocker automatically.
+
+**Rules demonstrated:** report-first design, progressive disclosure, no hidden mutation, assistance without noisy menus.
+
 ### Multiple Valid Fix Paths
 
 **Context:** A blocked check can be fixed in more than one reasonable way.
