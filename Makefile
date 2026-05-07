@@ -1,7 +1,9 @@
-.PHONY: build test test-short lint vet fmt tidy clean release
+.PHONY: build test test-short lint vet fmt tidy clean release prototype prototype-list prototype-text prototype-test
 
 BINARY := stage-bin
 PKG := ./...
+PROTOTYPE_PKG := ./specs/007-harden-TUI-and-other-interactions/prototype
+PROTOTYPE_SCENARIO ?= machine_not_ready
 
 build:
 	go build -o $(BINARY) ./cmd/stage
@@ -28,6 +30,18 @@ tidy:
 
 clean:
 	rm -f $(BINARY) coverage.out
+
+prototype:
+	go run $(PROTOTYPE_PKG)
+
+prototype-list:
+	go run $(PROTOTYPE_PKG) --list-scenarios
+
+prototype-text:
+	go run $(PROTOTYPE_PKG) --notui --scenario $(PROTOTYPE_SCENARIO)
+
+prototype-test:
+	go test $(PROTOTYPE_PKG)
 
 # Release: deferred to follow-up spec; placeholder so the target exists.
 release:

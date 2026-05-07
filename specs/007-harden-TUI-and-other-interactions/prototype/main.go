@@ -133,6 +133,21 @@ type model struct {
 	lastScreenName string
 }
 
+type projectValues struct {
+	Root       string
+	SiteName   string
+	WebFolder  string
+	Suffix     string
+	Host       string
+	URL        string
+	ConfigPath string
+}
+
+const (
+	prototypeProjectDir    = "/Users/pete/sites/pete-site"
+	prototypeNonProjectDir = "/Users/pete/Downloads"
+)
+
 func main() {
 	var scenarioID string
 	var noTUI bool
@@ -197,7 +212,7 @@ func newModel(plans map[situation]plan, start situation) model {
 		current:    start,
 		width:      96,
 		height:     32,
-		editValues: editValues{SiteName: "pete-site", WebFolder: "./public_html", Suffix: ".develop"},
+		editValues: defaultEditValues(),
 	}
 }
 
@@ -346,12 +361,22 @@ func (m *model) previousScenario() {
 
 func (m model) currentPlan() plan {
 	p := m.plans[m.current]
-	if p.Situation == projectMissingConfig || p.Situation == projectReadyToRun || p.Situation == projectRunning || p.Situation == projectDown || p.Situation == driftDetected {
-		p = m.withEditedDefaults(p)
+	footer := prototypeFooter()
+	switch m.current {
+	case projectMissingConfig:
+		p = projectSetupPlan(footer, m.editValues)
+	case projectReadyToRun:
+		p = projectReadyToRunPlan(footer, m.editValues)
+	case projectRunning:
+		p = projectRunningPlan(footer, m.editValues)
+	case projectDown:
+		p = projectDownPlan(footer, m.editValues)
+	case driftDetected:
+		p = driftDetectedPlan(footer, m.editValues)
 	}
 	if p.Situation == machineNotReady && m.localDNSReady {
 		p.WorkItems[p.ActiveWorkIndex].Status = statusReady
-		p.WorkItems[p.ActiveWorkIndex].Description = "Your computer can open addresses ending in .develop."
+		p.WorkItems[p.ActiveWorkIndex].Description = fmt.Sprintf("Your computer can open addresses ending in %s.", m.currentProjectValues().Suffix)
 	}
 	if p.Situation == unknownError && m.recoveryStep > 0 {
 		p.Summary = "StageServe ran a safe recovery step and re-checked what it knows."
@@ -364,19 +389,33 @@ func (m model) currentPlan() plan {
 	return p
 }
 
-func (m model) withEditedDefaults(p plan) plan {
-	repl := map[string]string{
-		"Site name":     m.editValues.SiteName,
-		"Web folder":    m.editValues.WebFolder,
-		"Domain suffix": m.editValues.Suffix,
-		"Local URL":     "http://" + m.editValues.SiteName + m.editValues.Suffix,
+func (m model) currentProjectValues() projectValues {
+	defaults := defaultEditValues()
+	siteName := strings.TrimSpace(m.editValues.SiteName)
+	if siteName == "" {
+		siteName = defaults.SiteName
 	}
-	for i := range p.Defaults {
-		if v, ok := repl[p.Defaults[i].Label]; ok {
-			p.Defaults[i].Value = v
-		}
+	webFolder := strings.TrimSpace(m.editValues.WebFolder)
+	if webFolder == "" {
+		webFolder = defaults.WebFolder
 	}
-	return p
+	suffix := strings.TrimSpace(m.editValues.Suffix)
+	if suffix == "" {
+		suffix = defaults.Suffix
+	}
+	if !strings.HasPrefix(suffix, ".") {
+		suffix = "." + suffix
+	}
+	host := siteName + suffix
+	return projectValues{
+		Root:       prototypeProjectDir,
+		SiteName:   siteName,
+		WebFolder:  webFolder,
+		Suffix:     suffix,
+		Host:       host,
+		URL:        "http://" + host,
+		ConfigPath: prototypeProjectDir + "/.env.stageserve",
+	}
 }
 
 func (m *model) cycleEditValue() {
@@ -665,7 +704,7 @@ func (m model) renderAdvanced() string {
 func (m model) renderLogs() string {
 	p := m.currentPlan()
 	var b strings.Builder
-	fmt.Fprintf(&b, "%s\n\n", bold("pete-site logs"))
+	fmt.Fprintf(&b, "%s\n\n", bold(valueForDefault(p, "Site name")+" logs"))
 	fmt.Fprintf(&b, "10:42:13  GET /                  200  12ms\n")
 	fmt.Fprintf(&b, "10:42:14  GET /admin             200  21ms\n")
 	fmt.Fprintf(&b, "10:42:21  GET /favicon.ico       404  2ms\n")
@@ -761,12 +800,13 @@ func renderText(w io.Writer, p plan) {
 }
 
 func planFixtures() map[situation]plan {
-	baseFooter := []string{"? details", "m show direct commands", "a advanced and troubleshooting", "q quit"}
+	baseFooter := prototypeFooter()
+	defaults := defaultEditValues()
 	return map[situation]plan{
 		machineNotReady: {
 			Situation:    machineNotReady,
 			StatusHeader: "Setting up your computer",
-			Context:      "/Users/pete/sites/pete-site",
+			Context:      prototypeProjectDir,
 			Summary:      "StageServe is checking the computer before it looks at the project.",
 			WorkItems: []workItem{
 				{Label: "Docker Desktop", Status: statusReady, Description: "Docker Desktop is installed."},
@@ -786,82 +826,15 @@ func planFixtures() map[situation]plan {
 			Advanced:       []string{"Advanced checks would show Docker, DNS resolver, mkcert, ports, and working-folder details."},
 			Footer:         baseFooter,
 		},
-		projectMissingConfig: projectSetupPlan(baseFooter),
-		projectReadyToRun: {
-			Situation:    projectReadyToRun,
-			StatusHeader: "This project is ready to run.",
-			Context:      "/Users/pete/sites/pete-site",
-			Summary:      "StageServe has project settings and can start the local site.",
-			Defaults:     commonDefaults("pete-site", "./public_html", ".develop"),
-			Decisions: []decisionItem{
-				{ID: "up", Label: "Run this project", Description: "Start the project and open it in your browser.", DirectCommand: "stage up", Next: projectRunning, ResultTitle: "Project started", ResultBody: "Prototype only: StageServe would start the project at http://pete-site.develop."},
-				{ID: "edit", Label: "Edit project settings", Description: "Change site name, web folder, or suffix before running.", DirectCommand: "stage init", Opens: modeEdit},
-			},
-			DetailsTitle:   "Project overview",
-			Details:        []string{"The project settings file exists.", "StageServe will use the visible defaults unless you edit them first."},
-			DirectCommands: []string{"stage up", "stage init --cli", "stage status"},
-			Advanced:       []string{"Advanced view would show PHP/MySQL overrides if the project file already had them."},
-			Footer:         baseFooter,
-		},
-		projectRunning: {
-			Situation:    projectRunning,
-			StatusHeader: "pete-site is running",
-			Context:      "/Users/pete/sites/pete-site",
-			Summary:      "The local site is available. The highlighted default is non-destructive.",
-			Defaults: append(commonDefaults("pete-site", "./public_html", ".develop"),
-				defaultValue{Label: "Started", Value: "4 minutes ago", Note: "healthy"}),
-			Decisions: []decisionItem{
-				{ID: "logs", Label: "View project logs", Description: "Watch what your project is doing right now.", DirectCommand: "stage logs", Opens: modeLogs},
-				{ID: "down", Label: "Stop this project", Description: "Free up the local URL and shut down the project.", DirectCommand: "stage down", Mutates: true, RequiresConfirm: true, ConfirmYesDefault: true, ConfirmTitle: "Stop pete-site?", ConfirmBody: []string{"StageServe will stop this project. Your files will not be touched.", "http://pete-site.develop will no longer respond.", "You can run it again any time."}, Next: projectDown, ResultTitle: "Project stopped", ResultBody: "Prototype only: StageServe would run stage down and preserve project files."},
-			},
-			DetailsTitle:   "Running project overview",
-			Details:        []string{"Local URL: http://pete-site.develop", "Web folder: ./public_html", "Status: healthy", "Default action: view logs."},
-			DirectCommands: []string{"stage status", "stage logs", "stage down"},
-			Advanced:       []string{"Advanced troubleshooting would show service names, route details, and state paths only here."},
-			Footer:         append([]string{"right open in browser"}, baseFooter...),
-		},
-		projectDown: {
-			Situation:    projectDown,
-			StatusHeader: "pete-site is stopped",
-			Context:      "/Users/pete/sites/pete-site",
-			Summary:      "StageServe still knows this project, but it is not running.",
-			Defaults:     commonDefaults("pete-site", "./public_html", ".develop"),
-			Decisions: []decisionItem{
-				{ID: "up", Label: "Run this project", Description: "Start the project again.", DirectCommand: "stage up", Next: projectRunning, ResultTitle: "Project started", ResultBody: "Prototype only: StageServe would start the stopped project."},
-				{ID: "detach", Label: "Remove this project from StageServe", Description: "Stop tracking this project. Your files will not be touched.", DirectCommand: "stage detach", Mutates: true, RequiresConfirm: true, ConfirmYesDefault: false, ConfirmTitle: "Remove pete-site from StageServe?", ConfirmBody: []string{"StageServe will forget about this project.", ".env.stageserve and your project files stay as they are.", "http://pete-site.develop will no longer be routed by StageServe."}, Next: notProject, ResultTitle: "Project removed from StageServe", ResultBody: "Prototype only: StageServe would forget the project record without deleting files."},
-			},
-			DetailsTitle:   "Stopped project overview",
-			Details:        []string{"The project has retained settings.", "The safest default is to run it again."},
-			DirectCommands: []string{"stage up", "stage detach", "stage status"},
-			Advanced:       []string{"Advanced view would show retained records and route state."},
-			Footer:         baseFooter,
-		},
-		driftDetected: {
-			Situation:    driftDetected,
-			StatusHeader: "pete-site does not match what StageServe expects",
-			Context:      "/Users/pete/sites/pete-site",
-			Summary:      "StageServe expected this project to be running, but http://pete-site.develop is not responding.",
-			Defaults: []defaultValue{
-				{Label: "Recorded as running", Value: "yes"},
-				{Label: "Project service found", Value: "no"},
-				{Label: "Local address connected", Value: "no"},
-				{Label: "DNS", Value: "pete-site.develop resolves"},
-			},
-			Decisions: []decisionItem{
-				{ID: "safe", Label: "Use the safe next step", Description: "Treat this project as stopped. Nothing in your folder will be deleted.", Mutates: true, RequiresConfirm: true, ConfirmYesDefault: true, ConfirmTitle: "Confirm safe next step", ConfirmBody: []string{"StageServe will forget that this project is running.", ".env.stageserve and all project files stay as they are.", "After this, you can run the project again."}, Next: projectDown, ResultTitle: "Safe recovery applied", ResultBody: "Prototype only: StageServe would reset the running record and re-detect."},
-				{ID: "retry", Label: "Try to start it again", Description: "Run this project with its current settings.", DirectCommand: "stage up", Next: projectRunning, ResultTitle: "Project started", ResultBody: "Prototype only: StageServe would try stage up again."},
-				{ID: "details", Label: "Show what does not match", Description: "Read a longer plain-language explanation.", Opens: modeDetails},
-			},
-			DetailsTitle:   "What does not match",
-			Details:        []string{"Project record: StageServe thinks this is running.", "Local URL response: http://pete-site.develop is not responding.", "DNS for .develop: working.", "This usually happens after a restart or a stop outside StageServe."},
-			DirectCommands: []string{"stage status", "stage doctor", "stage up"},
-			Advanced:       []string{"Advanced view would show the project record path and lower-level routing checks."},
-			Footer:         baseFooter,
-		},
+		projectMissingConfig: projectSetupPlan(baseFooter, defaults),
+		projectReadyToRun:    projectReadyToRunPlan(baseFooter, defaults),
+		projectRunning:       projectRunningPlan(baseFooter, defaults),
+		projectDown:          projectDownPlan(baseFooter, defaults),
+		driftDetected:        driftDetectedPlan(baseFooter, defaults),
 		notProject: {
 			Situation:    notProject,
 			StatusHeader: "This folder is not a StageServe project yet.",
-			Context:      "/Users/pete/Downloads",
+			Context:      prototypeNonProjectDir,
 			Summary:      "StageServe can set up this folder, or you can point it at a different folder.",
 			Defaults: []defaultValue{
 				{Label: "Proposed name", Value: "downloads", Note: "from folder name"},
@@ -881,7 +854,7 @@ func planFixtures() map[situation]plan {
 		unknownError: {
 			Situation:    unknownError,
 			StatusHeader: "StageServe could not safely choose a next step.",
-			Context:      "/Users/pete/sites/pete-site",
+			Context:      prototypeProjectDir,
 			Summary:      "StageServe does not want to guess. It can walk through safe recovery steps in order.",
 			WorkItems: []workItem{
 				{Label: "Step 1: look at this project's current state", Status: statusNext, Description: "Read-only. Nothing on your computer will be changed.", EnterAction: "On enter: run the read-only recovery step."},
@@ -904,34 +877,159 @@ func planFixtures() map[situation]plan {
 	}
 }
 
-func projectSetupPlan(baseFooter []string) plan {
+func defaultEditValues() editValues {
+	return editValues{SiteName: "pete-site", WebFolder: "./public_html", Suffix: ".develop"}
+}
+
+func prototypeFooter() []string {
+	return []string{"? details", "m show direct commands", "a advanced and troubleshooting", "q quit"}
+}
+
+func newProjectValues(values editValues) projectValues {
+	defaults := defaultEditValues()
+	siteName := strings.TrimSpace(values.SiteName)
+	if siteName == "" {
+		siteName = defaults.SiteName
+	}
+	webFolder := strings.TrimSpace(values.WebFolder)
+	if webFolder == "" {
+		webFolder = defaults.WebFolder
+	}
+	suffix := strings.TrimSpace(values.Suffix)
+	if suffix == "" {
+		suffix = defaults.Suffix
+	}
+	if !strings.HasPrefix(suffix, ".") {
+		suffix = "." + suffix
+	}
+	host := siteName + suffix
+	return projectValues{
+		Root:       prototypeProjectDir,
+		SiteName:   siteName,
+		WebFolder:  webFolder,
+		Suffix:     suffix,
+		Host:       host,
+		URL:        "http://" + host,
+		ConfigPath: prototypeProjectDir + "/.env.stageserve",
+	}
+}
+
+func projectSetupPlan(baseFooter []string, values editValues) plan {
+	current := newProjectValues(values)
 	return plan{
 		Situation:    projectMissingConfig,
 		StatusHeader: "This folder doesn't have StageServe settings yet.",
-		Context:      "/Users/pete/sites/pete-site",
+		Context:      current.Root,
 		Summary:      "StageServe will create one file only: .env.stageserve.",
-		Defaults: append(commonDefaults("pete-site", "./public_html", ".develop"),
-			defaultValue{Label: "Target file", Value: ".env.stageserve", Note: "will be created in this folder"},
+		Defaults: append(commonDefaults(current),
+			defaultValue{Label: "Target file", Value: current.ConfigPath, Note: "will be created in this folder"},
 			defaultValue{Label: "Stack", Value: "20i", Note: "current supported stack"},
 			defaultValue{Label: "Advanced settings", Value: "none yet", Note: "details stay out of first run"}),
 		Decisions: []decisionItem{
-			{ID: "init", Label: "Use these settings", Description: "Write .env.stageserve and continue.", DirectCommand: "stage init", Mutates: true, RequiresConfirm: true, ConfirmYesDefault: true, ConfirmTitle: "About to write project settings", ConfirmBody: []string{"StageServe will create .env.stageserve in this folder.", "Site name: pete-site", "Web folder: ./public_html", "Local URL: http://pete-site.develop", "StageServe will not change any other file."}, Next: projectReadyToRun, ResultTitle: "Project settings created", ResultBody: "Prototype only: StageServe would write .env.stageserve, then re-detect."},
+			{ID: "init", Label: "Use these settings", Description: "Write .env.stageserve and continue.", DirectCommand: "stage init", Mutates: true, RequiresConfirm: true, ConfirmYesDefault: true, ConfirmTitle: "About to write project settings", ConfirmBody: []string{fmt.Sprintf("StageServe will create %s.", current.ConfigPath), fmt.Sprintf("Site name: %s", current.SiteName), fmt.Sprintf("Web folder: %s", current.WebFolder), fmt.Sprintf("Domain suffix: %s", current.Suffix), fmt.Sprintf("Local URL: %s", current.URL), "StageServe will not change any other file."}, Next: projectReadyToRun, ResultTitle: "Project settings created", ResultBody: fmt.Sprintf("Prototype only: StageServe would write %s, then re-detect.", current.ConfigPath)},
 			{ID: "edit", Label: "Edit before writing", Description: "Change site name, web folder, or suffix first.", Opens: modeEdit},
 		},
 		DetailsTitle:   "Project setup overview",
-		Details:        []string{"The preview shows every value before any write.", "Edits return to the preview. They do not write immediately.", "Advanced settings are summarized instead of forced into first-run setup."},
+		Details:        []string{fmt.Sprintf("Target file: %s", current.ConfigPath), "The preview shows every value before any write.", "Edits return to the preview. They do not write immediately.", "Advanced settings are summarized instead of forced into first-run setup."},
 		DirectCommands: []string{"stage init", "stage init --cli", "stage init --json"},
 		Advanced:       []string{"Advanced settings such as PHP, MySQL, timeout, and post-up commands remain in .env.stageserve and direct CLI docs."},
 		Footer:         baseFooter,
 	}
 }
 
-func commonDefaults(site, webFolder, suffix string) []defaultValue {
+func projectReadyToRunPlan(baseFooter []string, values editValues) plan {
+	current := newProjectValues(values)
+	return plan{
+		Situation:    projectReadyToRun,
+		StatusHeader: "This project is ready to run.",
+		Context:      current.Root,
+		Summary:      "StageServe has project settings and can start the local site.",
+		Defaults:     commonDefaults(current),
+		Decisions: []decisionItem{
+			{ID: "up", Label: "Run this project", Description: "Start the project and open it in your browser.", DirectCommand: "stage up", Next: projectRunning, ResultTitle: "Project started", ResultBody: fmt.Sprintf("Prototype only: StageServe would start the project at %s.", current.URL)},
+			{ID: "edit", Label: "Edit project settings", Description: "Change site name, web folder, or suffix before running.", DirectCommand: "stage init", Opens: modeEdit},
+		},
+		DetailsTitle:   "Project overview",
+		Details:        []string{fmt.Sprintf("Target file: %s", current.ConfigPath), "The project settings file exists.", "StageServe will use the visible defaults unless you edit them first."},
+		DirectCommands: []string{"stage up", "stage init --cli", "stage status"},
+		Advanced:       []string{"Advanced view would show PHP/MySQL overrides if the project file already had them."},
+		Footer:         baseFooter,
+	}
+}
+
+func projectRunningPlan(baseFooter []string, values editValues) plan {
+	current := newProjectValues(values)
+	return plan{
+		Situation:    projectRunning,
+		StatusHeader: fmt.Sprintf("%s is running", current.SiteName),
+		Context:      current.Root,
+		Summary:      "The local site is available. The highlighted default is non-destructive.",
+		Defaults: append(commonDefaults(current),
+			defaultValue{Label: "Started", Value: "4 minutes ago", Note: "healthy"}),
+		Decisions: []decisionItem{
+			{ID: "logs", Label: "View project logs", Description: "Watch what your project is doing right now.", DirectCommand: "stage logs", Opens: modeLogs},
+			{ID: "down", Label: "Stop this project", Description: "Free up the local URL and shut down the project.", DirectCommand: "stage down", Mutates: true, RequiresConfirm: true, ConfirmYesDefault: true, ConfirmTitle: fmt.Sprintf("Stop %s?", current.SiteName), ConfirmBody: []string{fmt.Sprintf("StageServe will stop %s. Your files will not be touched.", current.SiteName), fmt.Sprintf("%s will no longer respond.", current.URL), "You can run it again any time."}, Next: projectDown, ResultTitle: "Project stopped", ResultBody: fmt.Sprintf("Prototype only: StageServe would stop %s and preserve project files.", current.SiteName)},
+		},
+		DetailsTitle:   "Running project overview",
+		Details:        []string{fmt.Sprintf("Local URL: %s", current.URL), fmt.Sprintf("Web folder: %s", current.WebFolder), "Status: healthy", "Default action: view logs."},
+		DirectCommands: []string{"stage status", "stage logs", "stage down"},
+		Advanced:       []string{"Advanced troubleshooting would show service names, route details, and state paths only here."},
+		Footer:         append([]string{"right open in browser"}, baseFooter...),
+	}
+}
+
+func projectDownPlan(baseFooter []string, values editValues) plan {
+	current := newProjectValues(values)
+	return plan{
+		Situation:    projectDown,
+		StatusHeader: fmt.Sprintf("%s is stopped", current.SiteName),
+		Context:      current.Root,
+		Summary:      "StageServe still knows this project, but it is not running.",
+		Defaults:     commonDefaults(current),
+		Decisions: []decisionItem{
+			{ID: "up", Label: "Run this project", Description: "Start the project again.", DirectCommand: "stage up", Next: projectRunning, ResultTitle: "Project started", ResultBody: fmt.Sprintf("Prototype only: StageServe would start %s again.", current.SiteName)},
+			{ID: "detach", Label: "Remove this project from StageServe", Description: "Stop tracking this project. Your files will not be touched.", DirectCommand: "stage detach", Mutates: true, RequiresConfirm: true, ConfirmYesDefault: false, ConfirmTitle: fmt.Sprintf("Remove %s from StageServe?", current.SiteName), ConfirmBody: []string{fmt.Sprintf("StageServe will forget about %s.", current.SiteName), fmt.Sprintf("%s stays as it is.", current.ConfigPath), "All your project files stay as they are.", fmt.Sprintf("%s will no longer be routed by StageServe.", current.URL)}, Next: notProject, ResultTitle: "Project removed from StageServe", ResultBody: fmt.Sprintf("Prototype only: StageServe would forget %s without deleting files.", current.SiteName)},
+		},
+		DetailsTitle:   "Stopped project overview",
+		Details:        []string{fmt.Sprintf("Local URL: %s", current.URL), "The project has retained settings.", "The safest default is to run it again."},
+		DirectCommands: []string{"stage up", "stage detach", "stage status"},
+		Advanced:       []string{"Advanced view would show retained records and route state."},
+		Footer:         baseFooter,
+	}
+}
+
+func driftDetectedPlan(baseFooter []string, values editValues) plan {
+	current := newProjectValues(values)
+	return plan{
+		Situation:    driftDetected,
+		StatusHeader: fmt.Sprintf("%s does not match what StageServe expects", current.SiteName),
+		Context:      current.Root,
+		Summary:      fmt.Sprintf("StageServe expected %s to be running, but %s is not responding.", current.SiteName, current.URL),
+		Defaults: []defaultValue{
+			{Label: "Recorded as running", Value: "yes"},
+			{Label: "Project service found", Value: "no"},
+			{Label: "Local address connected", Value: "no"},
+			{Label: "DNS", Value: current.Host + " resolves"},
+		},
+		Decisions: []decisionItem{
+			{ID: "safe", Label: "Use the safe next step", Description: "Treat this project as stopped. Nothing in your folder will be deleted.", Mutates: true, RequiresConfirm: true, ConfirmYesDefault: true, ConfirmTitle: fmt.Sprintf("Reset %s's running record?", current.SiteName), ConfirmBody: []string{fmt.Sprintf("StageServe will forget that %s is running.", current.SiteName), fmt.Sprintf("%s stays as it is.", current.ConfigPath), "All your project files stay as they are.", fmt.Sprintf("After this, you can choose 'Run this project' to start %s again.", current.SiteName)}, Next: projectDown, ResultTitle: "Safe recovery applied", ResultBody: fmt.Sprintf("Prototype only: StageServe would reset %s's running record and re-detect.", current.SiteName)},
+			{ID: "retry", Label: "Try to start it again", Description: "Run this project with its current settings.", DirectCommand: "stage up", Next: projectRunning, ResultTitle: "Project started", ResultBody: fmt.Sprintf("Prototype only: StageServe would try stage up again for %s.", current.SiteName)},
+			{ID: "details", Label: "Show what does not match", Description: "Read a longer plain-language explanation.", Opens: modeDetails},
+		},
+		DetailsTitle:   "What does not match",
+		Details:        []string{"Project record: StageServe thinks this is running.", fmt.Sprintf("Local URL response: %s is not responding.", current.URL), fmt.Sprintf("DNS for %s: working.", current.Suffix), fmt.Sprintf("Local address link: not connected for %s.", current.Host), "This usually happens after a restart or a stop outside StageServe."},
+		DirectCommands: []string{"stage status", "stage doctor", "stage up"},
+		Advanced:       []string{"Advanced view would show the project record path and lower-level routing checks."},
+		Footer:         baseFooter,
+	}
+}
+
+func commonDefaults(values projectValues) []defaultValue {
 	return []defaultValue{
-		{Label: "Site name", Value: site, Note: "from folder name"},
-		{Label: "Web folder", Value: webFolder, Note: "found here"},
-		{Label: "Domain suffix", Value: suffix, Note: "machine setting"},
-		{Label: "Local URL", Value: "http://" + site + suffix, Note: "what you'll visit"},
+		{Label: "Site name", Value: values.SiteName, Note: "from folder name"},
+		{Label: "Web folder", Value: values.WebFolder, Note: "found here"},
+		{Label: "Domain suffix", Value: values.Suffix, Note: "machine setting"},
+		{Label: "Local URL", Value: values.URL, Note: "what you'll visit"},
 	}
 }
 

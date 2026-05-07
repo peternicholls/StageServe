@@ -53,7 +53,58 @@ func TestProjectSetupShowsVisibleDefaultsBeforeWrite(t *testing.T) {
 	assertContainsDefault(t, plan, "Web folder", "./public_html")
 	assertContainsDefault(t, plan, "Domain suffix", ".develop")
 	assertContainsDefault(t, plan, "Local URL", "http://pete-site.develop")
-	assertContainsDefault(t, plan, "Target file", ".env.stageserve")
+	assertContainsDefault(t, plan, "Target file", prototypeProjectDir+"/.env.stageserve")
+}
+
+func TestEditedValuesCarryThroughProjectWorkflowCopy(t *testing.T) {
+	values := editValues{SiteName: "client-demo", WebFolder: "./web", Suffix: ".test"}
+
+	setup := projectSetupPlan(prototypeFooter(), values)
+	assertContainsDefault(t, setup, "Site name", "client-demo")
+	assertContainsDefault(t, setup, "Web folder", "./web")
+	assertContainsDefault(t, setup, "Domain suffix", ".test")
+	assertContainsDefault(t, setup, "Local URL", "http://client-demo.test")
+	setupConfirm := strings.Join(setup.Decisions[0].ConfirmBody, "\n")
+	for _, want := range []string{
+		"Site name: client-demo",
+		"Web folder: ./web",
+		"Domain suffix: .test",
+		"Local URL: http://client-demo.test",
+		prototypeProjectDir + "/.env.stageserve",
+	} {
+		if !strings.Contains(setupConfirm, want) {
+			t.Fatalf("setup confirmation missing %q:\n%s", want, setupConfirm)
+		}
+	}
+
+	running := projectRunningPlan(prototypeFooter(), values)
+	if running.StatusHeader != "client-demo is running" {
+		t.Fatalf("running status header=%q", running.StatusHeader)
+	}
+	stopConfirm := strings.Join(running.Decisions[1].ConfirmBody, "\n")
+	for _, want := range []string{"Stop client-demo?", "http://client-demo.test"} {
+		if strings.Contains(stopConfirm, want) {
+			continue
+		}
+		if want == "Stop client-demo?" {
+			if running.Decisions[1].ConfirmTitle != want {
+				t.Fatalf("running confirm title=%q want %q", running.Decisions[1].ConfirmTitle, want)
+			}
+			continue
+		}
+		t.Fatalf("running stop confirmation missing %q:\n%s", want, stopConfirm)
+	}
+	if !strings.Contains(strings.Join(running.Details, "\n"), "./web") {
+		t.Fatalf("running details missing edited web folder: %v", running.Details)
+	}
+
+	drift := driftDetectedPlan(prototypeFooter(), values)
+	if !strings.Contains(drift.Summary, "http://client-demo.test") {
+		t.Fatalf("drift summary missing edited URL: %s", drift.Summary)
+	}
+	if !strings.Contains(strings.Join(drift.Details, "\n"), "client-demo.test") {
+		t.Fatalf("drift details missing edited host: %v", drift.Details)
+	}
 }
 
 func TestRunningProjectDefaultIsNonDestructive(t *testing.T) {

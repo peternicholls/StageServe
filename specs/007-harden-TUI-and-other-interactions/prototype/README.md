@@ -7,6 +7,9 @@ The prototype is fixture-only. It does not read real StageServe state, run Docke
 ## Run
 
 ```bash
+make prototype-list
+make prototype
+make prototype-text PROTOTYPE_SCENARIO=project_running
 go run ./specs/007-harden-TUI-and-other-interactions/prototype --list-scenarios
 go run ./specs/007-harden-TUI-and-other-interactions/prototype
 go run ./specs/007-harden-TUI-and-other-interactions/prototype --scenario project_running
@@ -48,6 +51,13 @@ Logs screen:
 ## Verification
 
 ```bash
+make prototype-test
+make prototype-list
+make prototype-text PROTOTYPE_SCENARIO=machine_not_ready
+make prototype-text PROTOTYPE_SCENARIO=project_missing_config
+make prototype-text PROTOTYPE_SCENARIO=project_running
+make prototype-text PROTOTYPE_SCENARIO=drift_detected
+make prototype-text PROTOTYPE_SCENARIO=unknown_error
 go test ./specs/007-harden-TUI-and-other-interactions/prototype
 go run ./specs/007-harden-TUI-and-other-interactions/prototype --notui --scenario machine_not_ready
 go run ./specs/007-harden-TUI-and-other-interactions/prototype --notui --scenario project_missing_config
