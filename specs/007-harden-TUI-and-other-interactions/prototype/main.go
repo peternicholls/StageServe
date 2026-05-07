@@ -78,6 +78,7 @@ type decisionItem struct {
 	Label             string
 	Description       string
 	DirectCommand     string
+	Quits             bool
 	Mutates           bool
 	RequiresConfirm   bool
 	ConfirmYesDefault bool
@@ -91,6 +92,7 @@ type decisionItem struct {
 
 type plan struct {
 	Situation       situation
+	Surface         string
 	StatusHeader    string
 	Context         string
 	Summary         string
@@ -297,7 +299,12 @@ func (m model) updateMain(key string) (tea.Model, tea.Cmd) {
 		if len(current.Decisions) == 0 {
 			return m.handleWorkEnter(current), nil
 		}
-		return m.handleDecision(current.Decisions[m.cursor]), nil
+		item := current.Decisions[m.cursor]
+		next := m.handleDecision(item)
+		if item.Quits {
+			return next, tea.Quit
+		}
+		return next, nil
 	}
 	return m, nil
 }
@@ -353,9 +360,18 @@ func (m model) updateAssist(key string) (tea.Model, tea.Cmd) {
 	case "esc":
 		m.mode = modeMain
 	case "enter":
-		m.resultTitle = "Read-only check selected"
-		m.resultBody = "Prototype only: StageServe would ask before running sudo lsof to identify the process using port 443."
-		m.mode = modeMain
+		m.pending = pendingConfirmation{
+			Title:       "Check port 443 with sudo?",
+			Body:        []string{"StageServe will run a read-only command to identify what is using port 443.", "Your computer will ask for your password because macOS hides this detail by default.", "Command: sudo lsof -nP -iTCP:443 -sTCP:LISTEN", "Prototype only: no command will be run."},
+			YesLabel:    "Yes, check with sudo",
+			NoLabel:     "No, go back",
+			YesDefault:  true,
+			ResultTitle: "Read-only check approved",
+			ResultBody:  "Prototype only: StageServe would run sudo lsof to identify the process using port 443.",
+			ReturnMode:  modeAssist,
+		}
+		m.confirmYes = true
+		m.mode = modeConfirm
 	case "s":
 		m.resultTitle = "Skipped Port 443"
 		m.resultBody = "StageServe left this issue unresolved and would continue to the next blocker."
@@ -564,6 +580,9 @@ func (m model) applyConfirmation() model {
 		m.resultBody = "Returned to the guided screen. Prototype did not write files or change StageServe records."
 	}
 	m.mode = modeMain
+	if !m.confirmYes && m.pending.ReturnMode != modeMain {
+		m.mode = m.pending.ReturnMode
+	}
 	m.pending = pendingConfirmation{}
 	return m
 }
@@ -666,12 +685,15 @@ func reportReadySummary(item reportItem) string {
 func (m model) renderMain() string {
 	p := m.currentPlan()
 	var b strings.Builder
-	renderScreenHeader(&b, "StageServe", p.StatusHeader)
+	renderScreenHeader(&b, "StageServe", surfaceForPlan(p))
 	fmt.Fprintf(&b, "%s\n", dim("prototype - tab switches canned situations"))
 	if p.Context != "" {
 		fmt.Fprintf(&b, "%s\n", dim(p.Context))
 	}
-	renderVerdict(&b, p.Summary)
+	renderVerdict(&b, p.StatusHeader)
+	if p.Summary != "" {
+		fmt.Fprintf(&b, "\n%s\n", p.Summary)
+	}
 	renderReportSections(&b, p.ReportAttention, p.ReportReady)
 	if p.AssistanceTitle != "" {
 		fmt.Fprintf(&b, "\n%s\n", bold(p.AssistanceTitle))
@@ -685,8 +707,35 @@ func (m model) renderMain() string {
 			fmt.Fprintf(&b, "%s\n", m.resultBody)
 		}
 	}
-	renderFooterHelp(&b, "↑/↓ navigate • enter use highlighted • ? details • m more • a advanced • tab next scenario • q quit")
+	renderFooterHelp(&b, footerText(p))
 	return b.String()
+}
+
+func surfaceForPlan(p plan) string {
+	if p.Surface != "" {
+		return p.Surface
+	}
+	switch p.Situation {
+	case machineNotReady:
+		return "Setup"
+	case projectMissingConfig, notProject:
+		return "Project setup"
+	case projectReadyToRun, projectRunning, projectDown:
+		return "Project"
+	case driftDetected, unknownError:
+		return "Recovery"
+	case doctorReportNeedsHelp:
+		return "Doctor"
+	default:
+		return ""
+	}
+}
+
+func footerText(p plan) string {
+	parts := []string{"↑/↓ navigate", "enter use highlighted"}
+	parts = append(parts, p.Footer...)
+	parts = append(parts, "tab next scenario")
+	return strings.Join(parts, " • ")
 }
 
 func renderDefaultFacts(b *strings.Builder, title string, defaults []defaultValue) {
@@ -857,7 +906,11 @@ func valueForDefault(p plan, label string) string {
 }
 
 func renderText(w io.Writer, p plan) {
-	fmt.Fprintf(w, "StageServe easy mode prototype\n\n")
+	if p.Surface != "" {
+		fmt.Fprintf(w, "StageServe %s\n\n", p.Surface)
+	} else {
+		fmt.Fprintf(w, "StageServe easy mode prototype\n\n")
+	}
 	fmt.Fprintf(w, "%s\n", p.StatusHeader)
 	if p.Context != "" {
 		fmt.Fprintf(w, "%s\n", p.Context)
@@ -886,9 +939,6 @@ func renderText(w io.Writer, p plan) {
 			fmt.Fprintf(w, "- %s: %s\n", item.Label, reportReadySummary(item))
 		}
 	}
-	if p.AssistanceTitle != "" {
-		fmt.Fprintf(w, "\n%s\n", p.AssistanceTitle)
-	}
 	if len(p.Defaults) > 0 {
 		fmt.Fprintf(w, "\nVisible defaults\n")
 		for _, item := range p.Defaults {
@@ -912,7 +962,19 @@ func renderText(w io.Writer, p plan) {
 			}
 		}
 	}
-	if len(p.Decisions) > 0 {
+	if p.AssistanceTitle != "" && len(p.Decisions) > 0 {
+		fmt.Fprintf(w, "\n%s\n", p.AssistanceTitle)
+		for i, item := range p.Decisions {
+			prefix := "-"
+			if i == 0 {
+				prefix = ">"
+			}
+			fmt.Fprintf(w, "\n%s %s\n", prefix, item.Label)
+			if item.Description != "" {
+				fmt.Fprintf(w, "  %s\n", item.Description)
+			}
+		}
+	} else if len(p.Decisions) > 0 {
 		fmt.Fprintf(w, "\nHighlighted default\n")
 		fmt.Fprintf(w, "  %s\n", p.Decisions[0].Label)
 		fmt.Fprintf(w, "\nDecision bar\n")
@@ -993,20 +1055,20 @@ func planFixtures() map[situation]plan {
 		},
 		doctorReportNeedsHelp: {
 			Situation:    doctorReportNeedsHelp,
-			StatusHeader: "StageServe Doctor",
+			Surface:      "Doctor",
+			StatusHeader: "Not ready - 2 of 7 checks need attention.",
 			Context:      "Read-only machine check",
-			Summary:      "Not ready - 2 of 7 checks need attention.",
 			ReportAttention: []reportItem{
 				{
 					Label:       "Port 443",
-					Description: "Port 443 must be free for the local HTTPS gateway to bind to it.",
-					Message:     "Owner requires sudo to identify.",
+					Description: "Something else on your computer is using port 443.",
+					Message:     "StageServe needs elevated permission to identify the process.",
 					Command:     "sudo lsof -nP -iTCP:443 -sTCP:LISTEN",
 				},
 				{
 					Label:       "Local DNS resolver",
 					Description: "Your computer cannot yet open local project URLs.",
-					Message:     "dnsmasq config missing",
+					Message:     "Local DNS is not set up yet.",
 					Command:     "stage setup",
 				},
 			},
@@ -1020,7 +1082,7 @@ func planFixtures() map[situation]plan {
 			AssistanceTitle: "Assistance",
 			Decisions: []decisionItem{
 				{ID: "assist", Label: "Help me fix these", Description: "Walk through each issue one at a time.", Opens: modeAssist},
-				{ID: "leave", Label: "Leave it here", Description: "Exit without changing anything.", ResultTitle: "No changes made", ResultBody: "Prototype only: StageServe would exit without changing anything."},
+				{ID: "leave", Label: "Leave it here", Description: "Exit without changing anything.", Quits: true, ResultTitle: "No changes made", ResultBody: "Prototype only: StageServe would exit without changing anything."},
 			},
 			DetailsTitle:   "Doctor report overview",
 			Details:        []string{"StageServe shows the report first so commands remain copy-pasteable.", "Guided help starts only when the user asks for it."},

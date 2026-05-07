@@ -77,5 +77,6 @@ Manual TTY checks:
 - Start at `drift_detected`; confirm the safe step previews what changes before applying.
 - Start at `doctor_report_needs_help`; confirm the passive report appears before assistance choices.
 - Choose `Help me fix these`; confirm the next screen focuses only on Port 443 and explains the read-only sudo check.
-- Confirm `Leave it here` exits the assistance path without implying a change was made.
+- Choose `Check with sudo`; confirm StageServe shows a read-only sudo confirmation before any result copy.
+- Confirm `Leave it here` exits the prototype without implying a change was made.
 - Press `m`; confirm direct commands are discoverable but not mixed into the decision bar.

@@ -3,6 +3,8 @@ package main
 import (
 	"strings"
 	"testing"
+
+	tea "github.com/charmbracelet/bubbletea"
 )
 
 func TestFixturesContainCanonicalPlannerSituations(t *testing.T) {
@@ -163,8 +165,12 @@ func TestDoctorReportOffersAssistanceWithoutHidingCommands(t *testing.T) {
 		"Not ready - 2 of 7 checks need attention.",
 		"Needs fixing",
 		"Port 443",
+		"Something else on your computer is using port 443.",
+		"StageServe needs elevated permission to identify the process.",
 		"To fix: sudo lsof -nP -iTCP:443 -sTCP:LISTEN",
 		"Local DNS resolver",
+		"Your computer cannot yet open local project URLs.",
+		"Local DNS is not set up yet.",
 		"To fix: stage setup",
 		"Assistance",
 		"Help me fix these",
@@ -173,6 +179,11 @@ func TestDoctorReportOffersAssistanceWithoutHidingCommands(t *testing.T) {
 	} {
 		if !strings.Contains(text, want) {
 			t.Fatalf("doctor assistance fallback missing %q:\n%s", want, text)
+		}
+	}
+	for _, unwanted := range []string{"Highlighted default", "Decision bar"} {
+		if strings.Contains(text, unwanted) {
+			t.Fatalf("doctor assistance fallback should omit %q:\n%s", unwanted, text)
 		}
 	}
 }
@@ -198,6 +209,77 @@ func TestAssistedDoctorFlowStartsWithOneFocusedBlocker(t *testing.T) {
 	}
 	if strings.Contains(view, "Local DNS resolver") {
 		t.Fatalf("assist view should focus on one blocker at a time:\n%s", view)
+	}
+}
+
+func TestDoctorLeaveItHereReturnsQuitCommand(t *testing.T) {
+	m := newModel(planFixtures(), doctorReportNeedsHelp)
+	m.cursor = 1
+
+	updated, cmd := m.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	if cmd == nil {
+		t.Fatal("leave decision should return a quit command")
+	}
+	next, ok := updated.(model)
+	if !ok {
+		t.Fatalf("updated model has unexpected type %T", updated)
+	}
+	if !next.currentPlan().Decisions[1].Quits {
+		t.Fatal("leave decision should be marked as quitting")
+	}
+	if msg := cmd(); msg == nil {
+		t.Fatal("quit command should return a quit message")
+	} else if _, ok := msg.(tea.QuitMsg); !ok {
+		t.Fatalf("quit command returned %T want tea.QuitMsg", msg)
+	}
+}
+
+func TestAssistEnterOpensReadOnlySudoConfirmation(t *testing.T) {
+	m := newModel(planFixtures(), doctorReportNeedsHelp)
+	m.mode = modeAssist
+
+	updated, cmd := m.updateAssist("enter")
+	if cmd != nil {
+		t.Fatalf("assist enter returned unexpected command %v", cmd)
+	}
+	next, ok := updated.(model)
+	if !ok {
+		t.Fatalf("updated model has unexpected type %T", updated)
+	}
+	if next.mode != modeConfirm {
+		t.Fatalf("mode=%v want modeConfirm", next.mode)
+	}
+	if !next.confirmYes {
+		t.Fatal("sudo confirmation should default to yes")
+	}
+	if next.pending.Title != "Check port 443 with sudo?" {
+		t.Fatalf("title=%q", next.pending.Title)
+	}
+	if next.pending.YesLabel != "Yes, check with sudo" {
+		t.Fatalf("yes label=%q", next.pending.YesLabel)
+	}
+	if next.pending.NoLabel != "No, go back" {
+		t.Fatalf("no label=%q", next.pending.NoLabel)
+	}
+	if !next.pending.YesDefault {
+		t.Fatal("yes default should be true")
+	}
+	if next.pending.ResultTitle != "Read-only check approved" {
+		t.Fatalf("result title=%q", next.pending.ResultTitle)
+	}
+	if next.pending.ResultBody != "Prototype only: StageServe would run sudo lsof to identify the process using port 443." {
+		t.Fatalf("result body=%q", next.pending.ResultBody)
+	}
+	body := strings.Join(next.pending.Body, "\n")
+	for _, want := range []string{
+		"StageServe will run a read-only command to identify what is using port 443.",
+		"Your computer will ask for your password because macOS hides this detail by default.",
+		"Command: sudo lsof -nP -iTCP:443 -sTCP:LISTEN",
+		"Prototype only: no command will be run.",
+	} {
+		if !strings.Contains(body, want) {
+			t.Fatalf("confirmation body missing %q:\n%s", want, body)
+		}
 	}
 }
 
@@ -237,6 +319,37 @@ func TestRenderTextOmitsNeedsFixingWhenOnlyReadyChecksExist(t *testing.T) {
 	}
 	if !strings.Contains(text, "All clear") {
 		t.Fatalf("text output missing All clear section:\n%s", text)
+	}
+}
+
+func TestRenderMainKeepsProjectVerdictOutOfHeaderChrome(t *testing.T) {
+	plan := planFixtures()[projectReadyToRun]
+	view := newModel(planFixtures(), projectReadyToRun).renderMain()
+	lines := strings.Split(view, "\n")
+	if len(lines) == 0 {
+		t.Fatal("renderMain returned no lines")
+	}
+	if strings.Contains(lines[0], plan.StatusHeader) {
+		t.Fatalf("header line should not contain verdict text:\n%s", lines[0])
+	}
+	if !strings.Contains(lines[0], "Project") {
+		t.Fatalf("header line should contain the surface label:\n%s", lines[0])
+	}
+	for _, want := range []string{
+		plan.StatusHeader,
+		"prototype - tab switches canned situations",
+		"Actions",
+	} {
+		if !strings.Contains(view, want) {
+			t.Fatalf("project render missing %q:\n%s", want, view)
+		}
+	}
+}
+
+func TestProjectRunningTUIFooterIncludesBrowserHint(t *testing.T) {
+	view := newModel(planFixtures(), projectRunning).renderMain()
+	if !strings.Contains(view, "right open in browser") {
+		t.Fatalf("running project footer missing browser hint:\n%s", view)
 	}
 }
 
