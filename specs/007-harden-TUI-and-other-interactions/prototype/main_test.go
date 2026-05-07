@@ -201,6 +201,45 @@ func TestAssistedDoctorFlowStartsWithOneFocusedBlocker(t *testing.T) {
 	}
 }
 
+func TestDoctorReportReadySummariesMatchInTUIAndText(t *testing.T) {
+	plan := planFixtures()[doctorReportNeedsHelp]
+	tui := newModel(planFixtures(), doctorReportNeedsHelp).renderMain()
+
+	var b strings.Builder
+	renderText(&b, plan)
+	text := b.String()
+
+	for _, want := range []string{"running", "exists", "available", "installed"} {
+		if !strings.Contains(tui, want) {
+			t.Fatalf("tui output missing ready summary %q:\n%s", want, tui)
+		}
+		if !strings.Contains(text, want) {
+			t.Fatalf("text output missing ready summary %q:\n%s", want, text)
+		}
+	}
+	if strings.Contains(tui, "Docker Desktop       ready") {
+		t.Fatalf("tui output should prefer fixture messages over generic status:\n%s", tui)
+	}
+}
+
+func TestRenderTextOmitsNeedsFixingWhenOnlyReadyChecksExist(t *testing.T) {
+	var b strings.Builder
+	renderText(&b, plan{
+		StatusHeader: "Doctor",
+		ReportReady: []reportItem{
+			{Label: "Docker Desktop", Status: statusReady, Message: "running"},
+		},
+	})
+	text := b.String()
+
+	if strings.Contains(text, "Needs fixing") {
+		t.Fatalf("text output should not show Needs fixing without attention items:\n%s", text)
+	}
+	if !strings.Contains(text, "All clear") {
+		t.Fatalf("text output missing All clear section:\n%s", text)
+	}
+}
+
 func assertContainsDefault(t *testing.T, plan plan, label, value string) {
 	t.Helper()
 	for _, item := range plan.Defaults {

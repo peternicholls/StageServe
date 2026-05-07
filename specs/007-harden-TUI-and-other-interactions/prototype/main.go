@@ -70,7 +70,6 @@ type reportItem struct {
 	Description string
 	Message     string
 	Command     string
-	Ready       bool
 	Status      workStatus
 }
 
@@ -145,7 +144,6 @@ type model struct {
 	localDNSReady  bool
 	recoveryStep   int
 	lastScreenName string
-	assistIndex    int
 }
 
 type projectValues struct {
@@ -504,7 +502,6 @@ func (m model) handleWorkEnter(current plan) model {
 func (m model) handleDecision(item decisionItem) model {
 	if item.Opens == modeAssist {
 		m.mode = modeAssist
-		m.assistIndex = 0
 		return m
 	}
 	if item.Opens != modeMain {
@@ -650,13 +647,16 @@ func renderReportSections(b *strings.Builder, attention, ready []reportItem) {
 	if len(ready) > 0 {
 		fmt.Fprintf(b, "\n%s\n", bold("All clear"))
 		for _, item := range ready {
-			status := string(item.Status)
-			if status == "" {
-				status = item.Message
-			}
-			fmt.Fprintf(b, "  %s  %-18s %s\n", green("✓"), item.Label, dim(status))
+			fmt.Fprintf(b, "  %s  %-18s %s\n", green("✓"), item.Label, dim(reportReadySummary(item)))
 		}
 	}
+}
+
+func reportReadySummary(item reportItem) string {
+	if item.Message != "" {
+		return item.Message
+	}
+	return string(item.Status)
 }
 
 func (m model) renderMain() string {
@@ -879,7 +879,7 @@ func renderText(w io.Writer, p plan) {
 	if p.Summary != "" {
 		fmt.Fprintf(w, "\n%s\n", p.Summary)
 	}
-	if len(p.ReportAttention) > 0 || len(p.ReportReady) > 0 {
+	if len(p.ReportAttention) > 0 {
 		fmt.Fprintf(w, "\nNeeds fixing\n")
 		for i, item := range p.ReportAttention {
 			fmt.Fprintf(w, "\n%d. %s\n", i+1, item.Label)
@@ -893,15 +893,11 @@ func renderText(w io.Writer, p plan) {
 				fmt.Fprintf(w, "   To fix: %s\n", item.Command)
 			}
 		}
-		if len(p.ReportReady) > 0 {
-			fmt.Fprintf(w, "\nAll clear\n")
-			for _, item := range p.ReportReady {
-				status := item.Message
-				if status == "" {
-					status = string(item.Status)
-				}
-				fmt.Fprintf(w, "- %s: %s\n", item.Label, status)
-			}
+	}
+	if len(p.ReportReady) > 0 {
+		fmt.Fprintf(w, "\nAll clear\n")
+		for _, item := range p.ReportReady {
+			fmt.Fprintf(w, "- %s: %s\n", item.Label, reportReadySummary(item))
 		}
 	}
 	if p.AssistanceTitle != "" {
