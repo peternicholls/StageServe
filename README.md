@@ -109,6 +109,14 @@ If you use `.dev`, the local HTTPS URL defaults to port `8443`. This avoids coll
 
 For a migration walk-through if you are coming from the old single-project localhost workflow, see [docs/migration.md](docs/migration.md).
 
+## Design References
+
+StageServe treats terminal output as a product interface. Human-facing style guides and prototype terminal interfaces live in [docs/design/](docs/design/):
+
+- [Terminal Experience Style Guide](docs/design/terminal-experience-style-guide.md)
+- [Terminal Copy Style Guide](docs/design/terminal-copy-style-guide.md)
+- [Terminal Interface Prototypes](docs/design/terminal-interface-prototypes.md)
+
 ## Command Semantics
 
 - `stage up`: Ensure shared routing is available, start the current project runtime, validate the live containers, register it in `.stageserve-state`, and mark it `attached`.
