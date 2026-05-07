@@ -662,44 +662,40 @@ func reportReadySummary(item reportItem) string {
 func (m model) renderMain() string {
 	p := m.currentPlan()
 	var b strings.Builder
-	fmt.Fprintf(&b, "StageServe easy mode prototype  %s\n", dim("[tab switches canned situations]"))
-	fmt.Fprintf(&b, "%s  %s\n\n", bold("StageServe 0.7.0"), p.StatusHeader)
+	renderScreenHeader(&b, "StageServe", p.StatusHeader)
 	if p.Context != "" {
-		fmt.Fprintf(&b, "%s\n\n", p.Context)
+		fmt.Fprintf(&b, "%s\n", dim(p.Context))
 	}
-	if p.Summary != "" {
-		fmt.Fprintf(&b, "%s\n\n", p.Summary)
-	}
+	renderVerdict(&b, p.Summary)
 	renderReportSections(&b, p.ReportAttention, p.ReportReady)
 	if p.AssistanceTitle != "" {
 		fmt.Fprintf(&b, "\n%s\n", bold(p.AssistanceTitle))
 	}
-	renderDefaults(&b, p.Defaults)
+	renderFactRows(&b, "Key facts", p.Defaults)
 	renderWorkPanel(&b, p)
-	renderDecisionBar(&b, p.Decisions, m.cursor)
+	renderActionList(&b, p.Decisions, m.cursor)
 	if m.resultTitle != "" {
 		fmt.Fprintf(&b, "\n%s\n%s\n", bold("Latest outcome"), m.resultTitle)
 		if m.resultBody != "" {
 			fmt.Fprintf(&b, "%s\n", m.resultBody)
 		}
 	}
-	fmt.Fprintf(&b, "\n%s\n", dim("↑/↓ navigate • enter use highlighted/default • ? details • m more • a advanced • tab next scenario • q quit"))
+	renderFooterHelp(&b, "↑/↓ navigate • enter use highlighted • ? details • m more • a advanced • tab next scenario • q quit")
 	return b.String()
 }
 
-func renderDefaults(b *strings.Builder, defaults []defaultValue) {
+func renderFactRows(b *strings.Builder, title string, defaults []defaultValue) {
 	if len(defaults) == 0 {
 		return
 	}
-	fmt.Fprintf(b, "%s\n", bold("Visible defaults"))
+	fmt.Fprintf(b, "\n%s\n", bold(title))
 	for _, item := range defaults {
 		note := ""
 		if item.Note != "" {
 			note = "  " + dim("("+item.Note+")")
 		}
-		fmt.Fprintf(b, "  %-18s %-34s%s\n", item.Label, item.Value, note)
+		fmt.Fprintf(b, "  %-16s %-34s%s\n", item.Label, item.Value, note)
 	}
-	fmt.Fprintln(b)
 }
 
 func renderWorkPanel(b *strings.Builder, p plan) {
@@ -723,21 +719,6 @@ func renderWorkPanel(b *strings.Builder, p plan) {
 		}
 	}
 	fmt.Fprintln(b)
-}
-
-func renderDecisionBar(b *strings.Builder, decisions []decisionItem, cursor int) {
-	if len(decisions) == 0 {
-		return
-	}
-	fmt.Fprintf(b, "%s\n", bold("Decision bar"))
-	for i, item := range decisions {
-		prefix := " "
-		if i == cursor {
-			prefix = ">"
-		}
-		fmt.Fprintf(b, "%s %s\n", prefix, item.Label)
-		fmt.Fprintf(b, "    %s\n", item.Description)
-	}
 }
 
 func (m model) renderConfirm() string {
