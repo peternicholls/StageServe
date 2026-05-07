@@ -13,6 +13,7 @@ make prototype-text PROTOTYPE_SCENARIO=project_running
 go run ./specs/007-harden-TUI-and-other-interactions/prototype --list-scenarios
 go run ./specs/007-harden-TUI-and-other-interactions/prototype
 go run ./specs/007-harden-TUI-and-other-interactions/prototype --scenario project_running
+go run ./specs/007-harden-TUI-and-other-interactions/prototype --scenario doctor_report_needs_help
 go run ./specs/007-harden-TUI-and-other-interactions/prototype --notui --scenario project_missing_config
 go run ./specs/007-harden-TUI-and-other-interactions/prototype --cli --scenario drift_detected
 ```
@@ -25,6 +26,7 @@ go run ./specs/007-harden-TUI-and-other-interactions/prototype --cli --scenario 
 - Project settings preview and confirmation before `.env.stageserve` would be written.
 - Running-project default is non-destructive: `enter` opens logs, not stop.
 - Out-of-sync recovery previews the safe step and confirms before changing records.
+- Doctor-style reports can offer guided help without hiding copy-pasteable commands.
 - Direct commands and advanced troubleshooting live behind footer paths.
 
 ## Controls
@@ -73,4 +75,7 @@ Manual TTY checks:
 - Use `Edit before writing`; confirm edits return to the preview and do not write.
 - Start at `project_running`; confirm `enter` opens logs and stop requires confirmation.
 - Start at `drift_detected`; confirm the safe step previews what changes before applying.
+- Start at `doctor_report_needs_help`; confirm the passive report appears before assistance choices.
+- Choose `Help me fix these`; confirm the next screen focuses only on Port 443 and explains the read-only sudo check.
+- Confirm `Leave it here` exits the assistance path without implying a change was made.
 - Press `m`; confirm direct commands are discoverable but not mixed into the decision bar.
