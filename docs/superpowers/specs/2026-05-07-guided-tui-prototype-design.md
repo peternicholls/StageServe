@@ -132,13 +132,14 @@ Key facts:
 
 Rules:
 
-- Do not use boxes or decorative borders.
-- Use spacing, alignment, section rules, and semantic glyphs for scanability.
+- Prefer spacing, alignment, section rules, and semantic glyphs for scanability.
+- Use boxes or borders only when they improve comprehension by clarifying scope, grouping, or focus. Do not use them as decoration.
 - Keep first-level language plain. Internal vocabulary belongs only in advanced/troubleshooting.
 - Every default value and default action must be visible before commitment.
 - The default action should be the lowest-risk likely goal.
 - Running-project screens must never default to stopping the project.
 - Text fallback must preserve the same information without relying on colour or glyphs.
+- Keep using Bubble Tea and Lipgloss for prototype interaction and styling so the design reference stays close to the production implementation path.
 
 ## Prototype Component Vocabulary
 
@@ -184,3 +185,4 @@ Prototype tests should protect UX invariants:
 - Production command rewrites.
 - New runtime dependencies.
 - JSON contract changes.
+- Code-side concerns that are discovered during design exploration. Record them separately for later implementation discussion instead of letting them derail the prototype design pass.
