@@ -34,7 +34,7 @@ func TestReporter_RollbackLeavesNoPhantomState(t *testing.T) {
 	st := mocks.NewState()
 	dc := mocks.NewDocker()
 
-	r := &Reporter{State: st, Docker: dc}
+	r := &Reporter{State: st, Runtime: mocks.NewRuntime(dc, mocks.NewComposer())}
 	statuses, err := r.All(context.Background())
 	if err != nil {
 		t.Fatalf("All: %v", err)
@@ -60,7 +60,7 @@ func TestReporter_RollbackPreservesUnrelatedAttachedProject(t *testing.T) {
 		Labels: map[string]string{"com.docker.compose.project": other.ComposeProjectName, "com.docker.compose.service": "apache"},
 	}}
 
-	r := &Reporter{State: st, Docker: dc}
+	r := &Reporter{State: st, Runtime: mocks.NewRuntime(dc, mocks.NewComposer())}
 	statuses, err := r.All(context.Background())
 	if err != nil {
 		t.Fatalf("All: %v", err)
@@ -94,7 +94,7 @@ func TestReporter_AttachedRecordWithoutContainersReportsDrift(t *testing.T) {
 	}
 	dc := mocks.NewDocker() // no containers
 
-	r := &Reporter{State: st, Docker: dc}
+	r := &Reporter{State: st, Runtime: mocks.NewRuntime(dc, mocks.NewComposer())}
 	statuses, err := r.All(context.Background())
 	if err != nil {
 		t.Fatalf("All: %v", err)
@@ -120,7 +120,7 @@ func TestReporter_OneBySelectorMatchesRecordedProjectPath(t *testing.T) {
 		Labels: map[string]string{"com.docker.compose.project": project.ComposeProjectName, "com.docker.compose.service": "nginx"},
 	}}
 
-	reporter := &Reporter{State: st, Docker: dc}
+	reporter := &Reporter{State: st, Runtime: mocks.NewRuntime(dc, mocks.NewComposer())}
 	got, err := reporter.OneBySelector(context.Background(), "/sites/beta")
 	if err != nil {
 		t.Fatalf("OneBySelector: %v", err)

@@ -7,8 +7,9 @@ import (
 
 	"github.com/peternicholls/stageserve/core/config"
 	"github.com/peternicholls/stageserve/core/guidance"
+	coreruntime "github.com/peternicholls/stageserve/core/runtime"
 	"github.com/peternicholls/stageserve/core/state"
-	"github.com/peternicholls/stageserve/infra/docker"
+	"github.com/peternicholls/stageserve/infra/applecontainer"
 )
 
 func collectGuidedContext(ctx context.Context, cfg config.ProjectConfig, capability guidance.TUICapability) guidance.GuidedContext {
@@ -76,9 +77,7 @@ func guidedRuntimeStatus(ctx context.Context, cfg config.ProjectConfig, record *
 		return guidance.RuntimeSummary{}
 	}
 
-	containers, err := docker.NewSDKClient().ListContainersByLabel(ctx, map[string]string{
-		"com.docker.compose.project": cfg.ComposeProjectName,
-	})
+	containers, err := applecontainer.NewManager(nil).ListServices(ctx, cfg.ComposeProjectName)
 	if err != nil {
 		return guidance.RuntimeSummary{}
 	}
@@ -95,7 +94,7 @@ func guidedRuntimeStatus(ctx context.Context, cfg config.ProjectConfig, record *
 	return summary
 }
 
-func runtimeServiceSummaries(containers []docker.Container) []guidance.RuntimeServiceSummary {
+func runtimeServiceSummaries(containers []coreruntime.Service) []guidance.RuntimeServiceSummary {
 	services := make([]guidance.RuntimeServiceSummary, 0, len(containers))
 	for _, container := range containers {
 		if container.Service == "" {

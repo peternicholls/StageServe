@@ -13,9 +13,11 @@ import (
 	"sort"
 	"strings"
 	"sync"
+
+	"github.com/peternicholls/stageserve/core/runtime"
 )
 
-const SchemaVersion = 1
+const SchemaVersion = 2
 
 // ErrNotFound is returned when a slug has no recorded state.
 var ErrNotFound = errors.New("state: project not found")
@@ -48,6 +50,9 @@ func (s *Store) projectFile(slug string) string {
 func (s *Store) Save(rec Record) error {
 	if rec.Project.Slug == "" {
 		return errors.New("state: cannot save record with empty slug")
+	}
+	if err := normalizeRecord(&rec); err != nil {
+		return err
 	}
 	rec.SchemaVersion = SchemaVersion
 	s.mu.Lock()
@@ -103,7 +108,24 @@ func (s *Store) loadFile(path string) (Record, error) {
 	if err := json.Unmarshal(data, &rec); err != nil {
 		return rec, fmt.Errorf("state: parse %s: %w", path, err)
 	}
+	if err := normalizeRecord(&rec); err != nil {
+		return rec, fmt.Errorf("state: parse %s: %w", path, err)
+	}
 	return rec, nil
+}
+
+func normalizeRecord(rec *Record) error {
+	backend, err := runtime.ParseBackend(string(rec.Project.RuntimeBackend))
+	if err != nil {
+		return err
+	}
+	rec.Project.RuntimeBackend = backend
+	if rec.Runtime.Backend == "" {
+		rec.Runtime.Backend = backend
+	} else if _, err := runtime.ParseBackend(string(rec.Runtime.Backend)); err != nil {
+		return err
+	}
+	return nil
 }
 
 // Remove deletes the state record for slug. Idempotent.

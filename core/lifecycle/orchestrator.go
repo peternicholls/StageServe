@@ -16,9 +16,8 @@ import (
 	"time"
 
 	"github.com/peternicholls/stageserve/core/config"
+	coreruntime "github.com/peternicholls/stageserve/core/runtime"
 	"github.com/peternicholls/stageserve/core/state"
-	"github.com/peternicholls/stageserve/infra/compose"
-	"github.com/peternicholls/stageserve/infra/docker"
 	"github.com/peternicholls/stageserve/infra/gateway"
 	"github.com/peternicholls/stageserve/platform/ports"
 	stls "github.com/peternicholls/stageserve/platform/tls"
@@ -26,8 +25,7 @@ import (
 
 // Deps bundles the collaborators the orchestrator needs.
 type Deps struct {
-	Docker  docker.DockerClient
-	Compose compose.Composer
+	Runtime coreruntime.Manager
 	Gateway gateway.GatewayManager
 	State   state.StateStore
 	Ports   ports.PortAllocator
@@ -49,6 +47,9 @@ func New(d Deps) *Orchestrator { return &Orchestrator{D: d} }
 // Up runs the documented 11-step flow.
 func (o *Orchestrator) Up(ctx context.Context, cfg config.ProjectConfig) error {
 	cfg = resolveSharedGatewayPorts(cfg)
+	if err := o.validateRuntimeCapabilities(cfg); err != nil {
+		return err
+	}
 	if err := ValidateRuntimeAssets(cfg); err != nil {
 		return err
 	}
@@ -58,7 +59,7 @@ func (o *Orchestrator) Up(ctx context.Context, cfg config.ProjectConfig) error {
 
 	// Step 1: ensure shared network exists.
 	if err := o.ensureSharedNetwork(ctx, cfg); err != nil {
-		return Wrap("ensure-shared-network", cfg.Slug, err, "Verify Docker is running and the shared network can be created.")
+		return Wrap("ensure-shared-network", cfg.Slug, err, "Verify Apple Container is running and its default network is available.")
 	}
 	// Step 2: allocate ports.
 	registry, err := o.D.State.Registry()
@@ -93,34 +94,33 @@ func (o *Orchestrator) Up(ctx context.Context, cfg config.ProjectConfig) error {
 
 	// Step 4: ensure shared gateway is running.
 	if err := o.ensureSharedGateway(ctx, cfg); err != nil {
-		return Wrap("shared-gateway", "", err, sharedComposeRemedy(cfg, "up -d", " and inspect logs."))
+		return Wrap("shared-gateway", "", err, sharedRuntimeRemedy(" and inspect logs."))
 	}
 
-	// Step 5: write per-project compose env file (synthesized from cfg).
+	// Step 5: write the per-project runtime environment (synthesized from cfg).
 	envFile, err := writeEnvFile(cfg)
 	if err != nil {
 		return Wrap("write-env-file", cfg.Slug, err, "Check the project directory is writable.")
 	}
 
-	// Step 6: docker compose up --wait.
-	composeOpts := compose.UpOptions{
+	// Step 6: start the Apple Container project services.
+	runtimeOpts := coreruntime.StartOptions{
 		ProjectDir:  cfg.Dir,
-		ComposeFile: cfg.StackFile,
+		Definition:  cfg.StackFile,
 		ProjectName: cfg.ComposeProjectName,
 		EnvFile:     envFile,
 		Profiles:    runtimeProfiles(cfg),
-		Detach:      true,
 		WaitTimeout: time.Duration(cfg.WaitTimeoutSecs) * time.Second,
 	}
-	if err := o.D.Compose.Up(ctx, composeOpts); err != nil {
+	if err := o.D.Runtime.Start(ctx, runtimeOpts); err != nil {
 		o.rollbackProject(ctx, cfg)
-		return Wrap("compose-up", cfg.Slug, err, "Check `stage logs` for the failing service.")
+		return Wrap("runtime-up", cfg.Slug, err, "Check `stage logs` for the failing service.")
 	}
 
 	// Step 7: wait for healthchecks.
-	if err := o.D.Docker.WaitHealthy(ctx, cfg.ComposeProjectName, time.Duration(cfg.WaitTimeoutSecs)*time.Second); err != nil {
+	if err := o.D.Runtime.WaitHealthy(ctx, cfg.ComposeProjectName, time.Duration(cfg.WaitTimeoutSecs)*time.Second); err != nil {
 		o.rollbackProject(ctx, cfg)
-		return Wrap("wait-healthy", cfg.Slug, err, "Inspect container health with `docker ps` then `stage logs`.")
+		return Wrap("wait-healthy", cfg.Slug, err, "Inspect Apple Container state with `container list --all`, then run `stage logs`.")
 	}
 	if err := o.runPostUpHook(ctx, cfg); err != nil {
 		o.rollbackProject(ctx, cfg)
@@ -145,7 +145,7 @@ func (o *Orchestrator) Up(ctx context.Context, cfg config.ProjectConfig) error {
 	}
 	if err := o.reloadSharedGateway(ctx, cfg); err != nil {
 		o.rollbackProject(ctx, cfg)
-		return Wrap("gateway-reload", cfg.Slug, err, sharedComposeRemedy(cfg, "up -d --force-recreate gateway", "."))
+		return Wrap("gateway-reload", cfg.Slug, err, sharedRuntimeRemedy("."))
 	}
 
 	// Step 9: persist state.
@@ -153,7 +153,7 @@ func (o *Orchestrator) Up(ctx context.Context, cfg config.ProjectConfig) error {
 		SchemaVersion:   state.SchemaVersion,
 		Project:         cfg,
 		AttachmentState: state.StateAttached,
-		Runtime:         observedRuntime(ctx, o.D.Docker, cfg),
+		Runtime:         observedRuntime(ctx, o.D.Runtime, cfg),
 	}
 	if err := o.D.State.Save(rec); err != nil {
 		o.rollbackProject(ctx, cfg)
@@ -187,16 +187,16 @@ func runtimeProfiles(cfg config.ProjectConfig) []string {
 	return []string{cfg.Profile}
 }
 
-// ValidateRuntimeAssets verifies the product-owned compose files before any
-// Docker or compose side effect begins.
+// ValidateRuntimeAssets verifies product-owned Apple Container definitions
+// before any runtime side effect begins.
 func ValidateRuntimeAssets(cfg config.ProjectConfig) error {
 	for _, required := range []struct {
 		step  string
 		label string
 		path  string
 	}{
-		{step: "runtime-asset-shared", label: "shared runtime compose file", path: cfg.SharedFile},
-		{step: "runtime-asset-project", label: "project runtime compose file", path: cfg.StackFile},
+		{step: "runtime-asset-shared", label: "shared Apple Container definition", path: cfg.SharedFile},
+		{step: "runtime-asset-project", label: "project Apple Container definition", path: cfg.StackFile},
 	} {
 		if err := validateRuntimeAsset(required.path); err != nil {
 			return Wrap(required.step, cfg.Slug, err, runtimeAssetRemedy(cfg, required.label, required.path))
@@ -234,7 +234,7 @@ func (o *Orchestrator) Down(ctx context.Context, cfg config.ProjectConfig, remov
 	}
 
 	if err := o.stopProject(ctx, cfg, removeVolumes); err != nil {
-		return Wrap("compose-down", cfg.Slug, err, "Inspect docker compose output above.")
+		return Wrap("runtime-down", cfg.Slug, err, "Inspect the Apple Container error above.")
 	}
 	rec := state.Record{
 		SchemaVersion:   state.SchemaVersion,
@@ -245,7 +245,7 @@ func (o *Orchestrator) Down(ctx context.Context, cfg config.ProjectConfig, remov
 		return Wrap("save-state", cfg.Slug, err, "Inspect permissions on the state directory.")
 	}
 	if err := o.syncSharedGateway(ctx, cfg, ""); err != nil {
-		return Wrap("gateway-reload", cfg.Slug, err, sharedComposeRemedy(cfg, "up -d gateway", "."))
+		return Wrap("gateway-reload", cfg.Slug, err, sharedRuntimeRemedy("."))
 	}
 	if err := removeEnvFile(cfg); err != nil {
 		return Wrap("remove-env-file", cfg.Slug, err, "Inspect permissions on the generated runtime env file under the state directory.")
@@ -272,7 +272,7 @@ func (o *Orchestrator) DownAll(ctx context.Context, cfg config.ProjectConfig, re
 		}
 		projects = append(projects, rec.Project)
 		if err := o.stopProject(ctx, rec.Project, removeVolumes); err != nil {
-			failures = append(failures, fmt.Sprintf("%s compose-down: %v", row.Slug, err))
+			failures = append(failures, fmt.Sprintf("%s runtime-down: %v", row.Slug, err))
 			continue
 		}
 		rec.AttachmentState = state.StateDown
@@ -286,7 +286,7 @@ func (o *Orchestrator) DownAll(ctx context.Context, cfg config.ProjectConfig, re
 		return Wrap("down-all", "", errors.New(strings.Join(failures, "; ")), "Some projects may already be stopped. Run `stage status --all`, inspect the listed project errors, then retry `stage down --all`.")
 	}
 	if err := o.syncSharedGateway(ctx, cfg, ""); err != nil {
-		return Wrap("gateway-reload", "", err, sharedComposeRemedy(cfg, "up -d gateway", "."))
+		return Wrap("gateway-reload", "", err, sharedRuntimeRemedy("."))
 	}
 	for _, project := range projects {
 		if err := removeEnvFile(project); err != nil {
@@ -310,11 +310,9 @@ func (o *Orchestrator) Attach(ctx context.Context, cfg config.ProjectConfig) err
 		}
 		return Wrap("attach", cfg.Slug, err, "Inspect the recorded state for this project.")
 	}
-	containers, err := o.D.Docker.ListContainersByLabel(ctx, map[string]string{
-		"com.docker.compose.project": cfg.ComposeProjectName,
-	})
+	containers, err := o.D.Runtime.ListServices(ctx, cfg.ComposeProjectName)
 	if err != nil {
-		return Wrap("attach", cfg.Slug, err, "Inspect Docker daemon availability and the current project containers.")
+		return Wrap("attach", cfg.Slug, err, "Inspect Apple Container service availability and the current project containers.")
 	}
 	if len(containers) == 0 {
 		return o.Up(ctx, cfg)
@@ -336,7 +334,7 @@ func (o *Orchestrator) Attach(ctx context.Context, cfg config.ProjectConfig) err
 		return Wrap("gateway-config", cfg.Slug, err, "Inspect the gateway config path under the state directory.")
 	}
 	if err := o.reloadSharedGateway(ctx, cfg); err != nil {
-		return Wrap("gateway-reload", cfg.Slug, err, sharedComposeRemedy(cfg, "up -d --force-recreate gateway", "."))
+		return Wrap("gateway-reload", cfg.Slug, err, sharedRuntimeRemedy("."))
 	}
 	return nil
 }
@@ -349,13 +347,13 @@ func (o *Orchestrator) Detach(ctx context.Context, cfg config.ProjectConfig) err
 	}
 
 	if err := o.stopProject(ctx, cfg, false); err != nil {
-		return Wrap("compose-down", cfg.Slug, err, "Inspect docker compose output above.")
+		return Wrap("runtime-down", cfg.Slug, err, "Inspect the Apple Container error above.")
 	}
 	if err := o.D.State.Remove(cfg.Slug); err != nil {
 		return Wrap("remove-state", cfg.Slug, err, "Inspect permissions on the state directory.")
 	}
 	if err := o.syncSharedGateway(ctx, cfg, ""); err != nil {
-		return Wrap("gateway-reload", cfg.Slug, err, sharedComposeRemedy(cfg, "up -d gateway", "."))
+		return Wrap("gateway-reload", cfg.Slug, err, sharedRuntimeRemedy("."))
 	}
 	if err := removeEnvFile(cfg); err != nil {
 		return Wrap("remove-env-file", cfg.Slug, err, "Inspect permissions on the generated runtime env file under the state directory.")
@@ -382,9 +380,9 @@ func (o *Orchestrator) RestartService(ctx context.Context, cfg config.ProjectCon
 	} else if err != nil {
 		return Wrap("restart-service", cfg.Slug, err, "Inspect permissions on the generated runtime env file under the state directory.")
 	}
-	if err := o.D.Compose.Restart(ctx, compose.RestartOptions{
+	if err := o.D.Runtime.Restart(ctx, coreruntime.RestartOptions{
 		ProjectDir:  cfg.Dir,
-		ComposeFile: cfg.StackFile,
+		Definition:  cfg.StackFile,
 		ProjectName: cfg.ComposeProjectName,
 		EnvFile:     envFile,
 		Service:     service,
@@ -397,41 +395,39 @@ func (o *Orchestrator) RestartService(ctx context.Context, cfg config.ProjectCon
 // --- helpers ---
 
 func (o *Orchestrator) ensureSharedNetwork(ctx context.Context, cfg config.ProjectConfig) error {
-	exists, err := o.D.Docker.NetworkExists(ctx, cfg.SharedGateway.Network)
+	exists, err := o.D.Runtime.NetworkExists(ctx, cfg.SharedGateway.Network)
 	if err != nil {
 		return err
 	}
 	if exists {
 		return nil
 	}
-	return o.D.Docker.CreateNetwork(ctx, cfg.SharedGateway.Network)
+	return o.D.Runtime.CreateNetwork(ctx, cfg.SharedGateway.Network)
 }
 
-func sharedComposeRemedy(cfg config.ProjectConfig, command, suffix string) string {
+func sharedRuntimeRemedy(suffix string) string {
 	return fmt.Sprintf(
-		"Run `stage doctor` to check setup, or `stage up` to retry%s",
+		"Run `stage doctor` to check Apple Container, or `stage up` to retry%s",
 		suffix,
 	)
 }
 
 func (o *Orchestrator) ensureSharedGateway(ctx context.Context, cfg config.ProjectConfig) error {
-	return o.D.Compose.Up(ctx, compose.UpOptions{
+	return o.D.Runtime.Start(ctx, coreruntime.StartOptions{
 		ProjectDir:  cfg.StackHome,
-		ComposeFile: cfg.SharedFile,
+		Definition:  cfg.SharedFile,
 		ProjectName: cfg.SharedGateway.ComposeProjectName,
 		Env:         sharedGatewayEnv(cfg),
-		Detach:      true,
 		WaitTimeout: time.Duration(cfg.WaitTimeoutSecs) * time.Second,
 	})
 }
 
 func (o *Orchestrator) reloadSharedGateway(ctx context.Context, cfg config.ProjectConfig) error {
-	return o.D.Compose.Up(ctx, compose.UpOptions{
+	return o.D.Runtime.Start(ctx, coreruntime.StartOptions{
 		ProjectDir:    cfg.StackHome,
-		ComposeFile:   cfg.SharedFile,
+		Definition:    cfg.SharedFile,
 		ProjectName:   cfg.SharedGateway.ComposeProjectName,
 		Env:           sharedGatewayEnv(cfg),
-		Detach:        true,
 		ForceRecreate: true,
 		Services:      []string{"gateway"},
 	})
@@ -444,9 +440,9 @@ func (o *Orchestrator) stopProject(ctx context.Context, cfg config.ProjectConfig
 	} else if err != nil {
 		return err
 	}
-	return o.D.Compose.Down(ctx, compose.DownOptions{
+	return o.D.Runtime.Stop(ctx, coreruntime.StopOptions{
 		ProjectDir:    cfg.Dir,
-		ComposeFile:   cfg.StackFile,
+		Definition:    cfg.StackFile,
 		ProjectName:   cfg.ComposeProjectName,
 		EnvFile:       envFile,
 		RemoveVolumes: removeVolumes,
@@ -485,39 +481,19 @@ func (o *Orchestrator) runPostUpHook(ctx context.Context, cfg config.ProjectConf
 	if strings.TrimSpace(cfg.PostUpCommand) == "" {
 		return nil
 	}
-	containerID, err := o.findServiceContainer(ctx, cfg.ComposeProjectName, "apache")
-	if err != nil {
-		return err
-	}
-	_, err = o.D.Docker.Exec(ctx, docker.ExecOptions{
-		ContainerID: containerID,
-		Cmd:         []string{"sh", "-lc", cfg.PostUpCommand},
-		WorkingDir:  cfg.ContainerSiteRoot,
+	_, err := o.D.Runtime.Exec(ctx, coreruntime.ExecOptions{
+		ProjectDir: cfg.Dir, Definition: cfg.StackFile, ProjectName: cfg.ComposeProjectName,
+		Service: "apache", Command: []string{"sh", "-lc", cfg.PostUpCommand},
+		WorkingDir: cfg.ContainerSiteRoot,
 	})
 	return err
 }
 
-func (o *Orchestrator) findServiceContainer(ctx context.Context, projectName, service string) (string, error) {
-	containers, err := o.D.Docker.ListContainersByLabel(ctx, map[string]string{
-		"com.docker.compose.project": projectName,
-		"com.docker.compose.service": service,
-	})
-	if err != nil {
-		return "", err
-	}
-	for _, container := range containers {
-		if container.Service == service {
-			return container.ID, nil
-		}
-	}
-	return "", fmt.Errorf("%s container not found for compose project %s", service, projectName)
-}
-
 func (o *Orchestrator) rollbackProject(ctx context.Context, cfg config.ProjectConfig) {
 	envFile := envFilePath(cfg)
-	_ = o.D.Compose.Down(ctx, compose.DownOptions{
+	_ = o.D.Runtime.Stop(ctx, coreruntime.StopOptions{
 		ProjectDir:  cfg.Dir,
-		ComposeFile: cfg.StackFile,
+		Definition:  cfg.StackFile,
 		ProjectName: cfg.ComposeProjectName,
 		EnvFile:     envFile,
 	})
@@ -565,6 +541,7 @@ func writeEnvFile(cfg config.ProjectConfig) (string, error) {
 		"CONTAINER_SITE_ROOT=" + cfg.ContainerSiteRoot,
 		"CONTAINER_DOCROOT=" + cfg.ContainerDocRoot,
 		"DB_HOST=mariadb",
+		"APPLE_MARIADB_HOST=" + cfg.ComposeProjectName + "-mariadb." + cfg.SiteSuffix,
 		"DB_PORT=3306",
 		"DB_DATABASE=" + cfg.MySQL.Database,
 		"DB_USERNAME=" + cfg.MySQL.User,
@@ -581,6 +558,7 @@ func writeEnvFile(cfg config.ProjectConfig) (string, error) {
 		"PROJECT_RUNTIME_NETWORK=" + cfg.RuntimeNetwork,
 		"PROJECT_DATABASE_VOLUME=" + cfg.DatabaseVolume,
 		"SHARED_GATEWAY_NETWORK=" + cfg.SharedGateway.Network,
+		"PROJECT_NGINX_TEMPLATE=" + filepath.Join(cfg.StackHome, "docker", "nginx.conf.tmpl"),
 	}, "\n") + "\n"
 	if err := writeFile(path, []byte(body)); err != nil {
 		return "", err
@@ -594,9 +572,10 @@ func sharedGatewayEnv(cfg config.ProjectConfig) []string {
 		"SHARED_GATEWAY_HTTP_PORT=" + intStr(cfg.SharedGateway.HTTPPort),
 		"SHARED_GATEWAY_HTTPS_PORT=" + intStr(cfg.SharedGateway.HTTPSPort),
 		"SHARED_GATEWAY_CONFIG_FILE=" + cfg.SharedGateway.ConfigFile,
+		"SHARED_GATEWAY_CERTS_DIR=/dev/null",
 	}
 	if sharedGatewayTLSEnabled(cfg) {
-		env = append(env, "SHARED_GATEWAY_CERTS_DIR="+sharedGatewayCertsDir(cfg))
+		env[len(env)-1] = "SHARED_GATEWAY_CERTS_DIR=" + sharedGatewayCertsDir(cfg)
 	}
 	return env
 }
@@ -714,12 +693,12 @@ func routesFromRegistry(rows []state.RegistryRow) []gateway.Route {
 	return out
 }
 
-func observedRuntime(ctx context.Context, dc docker.DockerClient, cfg config.ProjectConfig) state.RuntimeIdentity {
-	containers, err := dc.ListContainersByLabel(ctx, map[string]string{"com.docker.compose.project": cfg.ComposeProjectName})
+func observedRuntime(ctx context.Context, manager coreruntime.Manager, cfg config.ProjectConfig) state.RuntimeIdentity {
+	containers, err := manager.ListServices(ctx, cfg.ComposeProjectName)
 	if err != nil {
-		return state.RuntimeIdentity{}
+		return state.RuntimeIdentity{Backend: manager.Name()}
 	}
-	var rt state.RuntimeIdentity
+	rt := state.RuntimeIdentity{Backend: manager.Name()}
 	names := make([]string, 0, len(containers))
 	for _, c := range containers {
 		names = append(names, c.Service+"="+c.Status)
@@ -737,4 +716,25 @@ func observedRuntime(ctx context.Context, dc docker.DockerClient, cfg config.Pro
 	}
 	rt.SummaryLine = strings.Join(names, " ")
 	return rt
+}
+
+func (o *Orchestrator) validateRuntimeCapabilities(cfg config.ProjectConfig) error {
+	if o.D.Runtime == nil {
+		return Wrap("runtime-capability", cfg.Slug, errors.New("runtime manager is not configured"), "Reinstall StageServe or select a configured runtime backend.")
+	}
+	selected, err := coreruntime.ParseBackend(string(cfg.RuntimeBackend))
+	if err != nil {
+		return Wrap("runtime-capability", cfg.Slug, err, "Use the Apple Container runtime.")
+	}
+	if o.D.Runtime.Name() != selected {
+		return Wrap("runtime-capability", cfg.Slug, fmt.Errorf("selected runtime %q is not available through configured backend %q", cfg.RuntimeBackend, o.D.Runtime.Name()), "Select the configured runtime or run `stage doctor` for backend readiness.")
+	}
+	capabilities := o.D.Runtime.Capabilities()
+	if !capabilities.MultiService || !capabilities.SharedGateway {
+		return Wrap("runtime-capability", cfg.Slug, fmt.Errorf("Apple Container does not support the required multi-service shared-gateway profile"), "Update Apple Container and run `stage doctor` before retrying.")
+	}
+	if strings.TrimSpace(cfg.Profile) != "" && !capabilities.DebugProfile {
+		return Wrap("runtime-capability", cfg.Slug, fmt.Errorf("runtime %q does not support profile %q", cfg.RuntimeBackend, cfg.Profile), "Use STAGESERVE_RUNTIME=docker or remove the unsupported profile.")
+	}
+	return nil
 }

@@ -2,7 +2,10 @@
 // state and registry projection.
 package state
 
-import "github.com/peternicholls/stageserve/core/config"
+import (
+	"github.com/peternicholls/stageserve/core/config"
+	"github.com/peternicholls/stageserve/core/runtime"
+)
 
 // AttachmentState records the intended lifecycle state for a project.
 type AttachmentState string
@@ -24,6 +27,7 @@ type ContainerIdentity struct {
 // RuntimeIdentity captures the recorded identities of the well-known services
 // per project.
 type RuntimeIdentity struct {
+	Backend     runtime.BackendName
 	Nginx       ContainerIdentity
 	Apache      ContainerIdentity
 	MariaDB     ContainerIdentity
@@ -49,6 +53,7 @@ type RegistryRow struct {
 	Hostname         string
 	DocRoot          string
 	ComposeProject   string
+	RuntimeBackend   runtime.BackendName
 	RuntimeNetwork   string
 	DatabaseVolume   string
 	PHPVersion       string

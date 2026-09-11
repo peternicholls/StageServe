@@ -21,6 +21,7 @@ import (
 	"strings"
 
 	"github.com/peternicholls/stageserve/core/project"
+	"github.com/peternicholls/stageserve/core/runtime"
 )
 
 // Loader is the default ConfigLoader implementation.
@@ -173,7 +174,7 @@ func (l *Loader) resolveStackHome() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return filepath.Join(home, "docker", "stageserve"), nil
+	return filepath.Join(home, ".stageserve"), nil
 }
 
 // Load implements ConfigLoader.
@@ -287,6 +288,7 @@ func (l *Loader) Load(projectDir string, flags CLIFlags) (ProjectConfig, error) 
 		return cfg, fmt.Errorf("unsupported STAGESERVE_STACK %q: only 20i is implemented today", stackKind)
 	}
 	cfg.StackKind = stackDef.Kind
+	cfg.RuntimeBackend = runtime.BackendAppleContainer
 	cfg.Stack = stackDef
 	cfg.StackFile = stackDef.projectFilePath(stackHome)
 	cfg.SharedFile = stackDef.sharedFilePath(stackHome)
@@ -299,7 +301,7 @@ func (l *Loader) Load(projectDir string, flags CLIFlags) (ProjectConfig, error) 
 	}
 
 	cfg.ComposeProjectName = strOr(merged["COMPOSE_PROJECT_NAME"], "stage-"+cfg.Slug)
-	cfg.WebNetworkAlias = strOr(merged["WEB_NETWORK_ALIAS"], "stage-"+cfg.Slug+"-web")
+	cfg.WebNetworkAlias = strOr(merged["WEB_NETWORK_ALIAS"], cfg.ComposeProjectName+"-nginx."+cfg.SiteSuffix)
 	cfg.ContainerSiteRoot = "/home/sites/" + cfg.Slug
 	cfg.RuntimeNetwork = cfg.ComposeProjectName + "-runtime"
 	cfg.DatabaseVolume = cfg.ComposeProjectName + "-db-data"
@@ -332,7 +334,7 @@ func (l *Loader) Load(projectDir string, flags CLIFlags) (ProjectConfig, error) 
 	cfg.MySQL.Password = strOr(merged["MYSQL_PASSWORD"], "devpass")
 
 	// Shared gateway settings are runtime-owned, not env-configurable.
-	cfg.SharedGateway.Network = "stage-shared"
+	cfg.SharedGateway.Network = "default"
 	cfg.SharedGateway.HTTPPort = 80
 	cfg.SharedGateway.HTTPSPort = 443
 	cfg.SharedGateway.ComposeProjectName = "stage-shared"

@@ -1,0 +1,72 @@
+{
+  "schema_version": 1,
+  "product_guarantees": [
+    "project_identity",
+    "idempotent_start",
+    "project_scoped_stop",
+    "rollback",
+    "preflight_ports",
+    "hostname_routing",
+    "health_gating",
+    "status_drift",
+    "service_logs",
+    "service_exec",
+    "persistent_database_volume",
+    "resource_cleanup",
+    "structured_errors"
+  ],
+  "backends": {
+    "docker-compose": {
+      "status": "reference",
+      "supported": [
+        "project_identity",
+        "idempotent_start",
+        "project_scoped_stop",
+        "rollback",
+        "preflight_ports",
+        "hostname_routing",
+        "health_gating",
+        "status_drift",
+        "service_logs",
+        "service_exec",
+        "persistent_database_volume",
+        "resource_cleanup",
+        "structured_errors",
+        "shared_gateway_network",
+        "compose_dependency_order",
+        "compose_debug_profile",
+        "docker_labels"
+      ],
+      "unsupported": []
+    },
+    "apple-container": {
+      "status": "experimental",
+      "supported": [
+        "project_identity",
+        "preflight_ports",
+        "health_gating",
+        "service_logs",
+        "service_exec",
+        "persistent_database_volume",
+        "resource_cleanup"
+      ],
+      "unsupported": [
+        "compose_dependency_order",
+        "compose_debug_profile",
+        "docker_labels",
+        "docker_engine_api",
+        "bare_custom_network_dns",
+        "cross_backend_gateway"
+      ],
+      "requires_live_proof": [
+        "idempotent_start",
+        "project_scoped_stop",
+        "rollback",
+        "hostname_routing",
+        "status_drift",
+        "shared_gateway_network",
+        "resource_cleanup"
+      ]
+    }
+  }
+}

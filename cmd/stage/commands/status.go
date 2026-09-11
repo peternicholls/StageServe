@@ -9,7 +9,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/peternicholls/stageserve/core/state"
-	"github.com/peternicholls/stageserve/infra/docker"
+	"github.com/peternicholls/stageserve/infra/applecontainer"
 	"github.com/peternicholls/stageserve/observability/status"
 )
 
@@ -32,7 +32,7 @@ func NewStatus(flags *SharedFlags) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			r := &status.Reporter{State: store, Docker: docker.NewSDKClient()}
+			r := &status.Reporter{State: store, Runtime: applecontainer.NewManager(nil)}
 			ctx, cancel := contextWithSignal(cmd.Context())
 			defer cancel()
 			if flags.All {

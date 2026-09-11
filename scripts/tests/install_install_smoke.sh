@@ -20,8 +20,8 @@ make_runtime_bundle() {
   local tmpdir="$1"
   local root="$tmpdir/runtime"
   mkdir -p "$root/stacks/20i"
-  printf 'services: {}\n' > "$root/stacks/20i/docker-compose.shared.yml"
-  printf 'services: {}\n' > "$root/stacks/20i/docker-compose.20i.yml"
+  printf 'services: {}\n' > "$root/stacks/20i/apple-container.shared.json"
+  printf 'services: {}\n' > "$root/stacks/20i/apple-container.20i.json"
   tar -czf "$tmpdir/runtime.tar.gz" -C "$root" stacks
   printf '%s\n' "$tmpdir/runtime.tar.gz"
 }

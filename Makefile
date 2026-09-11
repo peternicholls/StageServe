@@ -37,11 +37,11 @@ clean:
 install-dev: build
 	@echo "→  Installing stage binary to /usr/local/bin/stage"
 	sudo cp $(BINARY) /usr/local/bin/stage
-	@STACK_HOME="$(HOME)/docker/stageserve"; \
+	@STACK_HOME="$(HOME)/.stageserve"; \
 		echo "→  Setting up stack home at $$STACK_HOME/stacks/20i"; \
 		mkdir -p "$$STACK_HOME/stacks/20i"; \
-		cp stacks/20i/docker-compose.shared.yml "$$STACK_HOME/stacks/20i/docker-compose.shared.yml"; \
-		cp stacks/20i/docker-compose.20i.yml "$$STACK_HOME/stacks/20i/docker-compose.20i.yml"; \
+		cp stacks/20i/apple-container.shared.json "$$STACK_HOME/stacks/20i/apple-container.shared.json"; \
+		cp stacks/20i/apple-container.20i.json "$$STACK_HOME/stacks/20i/apple-container.20i.json"; \
 		echo "→  Done. Run: stage up"
 
 prototype:

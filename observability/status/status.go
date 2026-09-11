@@ -9,8 +9,8 @@ import (
 	"sort"
 	"strings"
 
+	coreruntime "github.com/peternicholls/stageserve/core/runtime"
 	"github.com/peternicholls/stageserve/core/state"
-	"github.com/peternicholls/stageserve/infra/docker"
 )
 
 // ProjectStatus is the typed status of a single project.
@@ -30,10 +30,10 @@ type ContainerStatus struct {
 	Status  string
 }
 
-// Reporter materialises ProjectStatus values from registry + live docker.
+// Reporter materialises ProjectStatus values from registry and Apple Container.
 type Reporter struct {
-	State  state.StateStore
-	Docker docker.DockerClient
+	State   state.StateStore
+	Runtime coreruntime.Manager
 }
 
 // All reports status for every recorded project.
@@ -84,7 +84,7 @@ func (r *Reporter) byRow(ctx context.Context, row state.RegistryRow) (ProjectSta
 		Hostname:        row.Hostname,
 		AttachmentState: row.AttachmentState,
 	}
-	containers, err := r.Docker.ListContainersByLabel(ctx, map[string]string{"com.docker.compose.project": row.ComposeProject})
+	containers, err := r.Runtime.ListServices(ctx, row.ComposeProject)
 	if err != nil {
 		return ps, err
 	}

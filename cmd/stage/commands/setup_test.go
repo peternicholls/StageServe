@@ -120,10 +120,10 @@ func TestSetup_UsesConfigResolvedStateDir(t *testing.T) {
 	if err := os.MkdirAll(filepath.Join(stackHome, "stacks", "20i"), 0o755); err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
-	if err := os.WriteFile(filepath.Join(stackHome, "stacks", "20i", "docker-compose.shared.yml"), []byte("services: {}\n"), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(stackHome, "stacks", "20i", "apple-container.shared.json"), []byte("services: {}\n"), 0o644); err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
-	if err := os.WriteFile(filepath.Join(stackHome, "stacks", "20i", "docker-compose.20i.yml"), []byte("services: {}\n"), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(stackHome, "stacks", "20i", "apple-container.20i.json"), []byte("services: {}\n"), 0o644); err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
 

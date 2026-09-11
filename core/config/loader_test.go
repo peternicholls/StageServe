@@ -8,6 +8,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/peternicholls/stageserve/core/runtime"
 )
 
 func writeFile(t *testing.T, path, body string) {
@@ -46,13 +48,16 @@ func TestLoader_DefaultsApplied(t *testing.T) {
 	if cfg.StackKind != "20i" {
 		t.Errorf("default STAGESERVE_STACK=%q want 20i", cfg.StackKind)
 	}
+	if cfg.RuntimeBackend != runtime.BackendAppleContainer {
+		t.Errorf("default STAGESERVE_RUNTIME=%q want apple-container", cfg.RuntimeBackend)
+	}
 	if cfg.Stack.Kind != "20i" {
 		t.Errorf("Stack.Kind=%q want 20i", cfg.Stack.Kind)
 	}
-	if want := filepath.Join(cfg.StackHome, "stacks", "20i", "docker-compose.20i.yml"); cfg.StackFile != want {
+	if want := filepath.Join(cfg.StackHome, "stacks", "20i", "apple-container.20i.json"); cfg.StackFile != want {
 		t.Errorf("StackFile=%q want %q", cfg.StackFile, want)
 	}
-	if want := filepath.Join(cfg.StackHome, "stacks", "20i", "docker-compose.shared.yml"); cfg.SharedFile != want {
+	if want := filepath.Join(cfg.StackHome, "stacks", "20i", "apple-container.shared.json"); cfg.SharedFile != want {
 		t.Errorf("SharedFile=%q want %q", cfg.SharedFile, want)
 	}
 	if !cfg.Stack.Capabilities.SharedGateway || !cfg.Stack.Capabilities.ProjectDatabase {
@@ -79,7 +84,7 @@ func TestLoader_DefaultsApplied(t *testing.T) {
 	if cfg.ContainerSiteRoot != "/home/sites/"+cfg.Slug {
 		t.Errorf("ContainerSiteRoot=%q", cfg.ContainerSiteRoot)
 	}
-	if cfg.WebNetworkAlias != "stage-"+cfg.Slug+"-web" {
+	if cfg.WebNetworkAlias != "stage-"+cfg.Slug+"-nginx.test" {
 		t.Errorf("WebNetworkAlias=%q", cfg.WebNetworkAlias)
 	}
 	if cfg.ComposeProjectName != "stage-"+cfg.Slug {
@@ -92,8 +97,8 @@ func TestLoader_DefaultsApplied(t *testing.T) {
 		t.Errorf("DatabaseVolume=%q", cfg.DatabaseVolume)
 	}
 	// Shared resources now use the same stage- prefix family as project runtimes.
-	if cfg.SharedGateway.Network != "stage-shared" {
-		t.Errorf("SharedGateway.Network=%q want stage-shared", cfg.SharedGateway.Network)
+	if cfg.SharedGateway.Network != "default" {
+		t.Errorf("SharedGateway.Network=%q want default", cfg.SharedGateway.Network)
 	}
 	if cfg.SharedGateway.ComposeProjectName != "stage-shared" {
 		t.Errorf("SharedGateway.ComposeProjectName=%q want stage-shared", cfg.SharedGateway.ComposeProjectName)
@@ -236,9 +241,22 @@ func TestLoader_RejectsUnsupportedStackKind(t *testing.T) {
 	}
 }
 
+func TestLoader_UsesAppleContainerRuntime(t *testing.T) {
+	stackHome := t.TempDir()
+	projectDir := t.TempDir()
+
+	cfg, err := newLoader(t, nil, stackHome).Load(projectDir, CLIFlags{})
+	if err != nil {
+		t.Fatalf("load: %v", err)
+	}
+	if cfg.RuntimeBackend != runtime.BackendAppleContainer {
+		t.Fatalf("RuntimeBackend=%q want apple-container", cfg.RuntimeBackend)
+	}
+}
+
 func TestStackCatalogRootExists(t *testing.T) {
 	stackHome := t.TempDir()
-	writeFile(t, filepath.Join(stackHome, "stacks", "20i", "docker-compose.shared.yml"), "services: {}\n")
+	writeFile(t, filepath.Join(stackHome, "stacks", "20i", "apple-container.shared.json"), "{}\n")
 
 	if !stackCatalogRootExists(stackHome) {
 		t.Fatal("stackCatalogRootExists=false want true")
@@ -314,8 +332,8 @@ func TestLoader_SharedGatewaySettingsAreNotLoadedFromEnv(t *testing.T) {
 	if cfg.SharedGateway.HTTPSPort != 443 {
 		t.Fatalf("SharedGateway.HTTPSPort=%d want fixed default 443", cfg.SharedGateway.HTTPSPort)
 	}
-	if cfg.SharedGateway.Network != "stage-shared" {
-		t.Fatalf("SharedGateway.Network=%q want stage-shared", cfg.SharedGateway.Network)
+	if cfg.SharedGateway.Network != "default" {
+		t.Fatalf("SharedGateway.Network=%q want default", cfg.SharedGateway.Network)
 	}
 	if cfg.SharedGateway.ComposeProjectName != "stage-shared" {
 		t.Fatalf("SharedGateway.ComposeProjectName=%q want stage-shared", cfg.SharedGateway.ComposeProjectName)

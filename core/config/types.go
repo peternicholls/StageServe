@@ -4,6 +4,8 @@
 // returned from Load().
 package config
 
+import "github.com/peternicholls/stageserve/core/runtime"
+
 // CLIFlags carries the highest-precedence configuration source: command-line flags
 // the operator passed in. Empty fields fall through to the next layer
 // (project .env.stageserve -> shell env -> stack .env.stageserve -> defaults).
@@ -102,7 +104,8 @@ type StackMetadata struct {
 // values for the current project.
 type ProjectConfig struct {
 	// Identity
-	StackKind          string // STAGESERVE_STACK
+	StackKind          string              // STAGESERVE_STACK
+	RuntimeBackend     runtime.BackendName // always apple-container
 	Stack              StackMetadata
 	Name               string // PROJECT_NAME
 	Slug               string // PROJECT_SLUG

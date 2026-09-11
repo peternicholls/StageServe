@@ -10,6 +10,7 @@ import (
 	"sync"
 	"time"
 
+	coreruntime "github.com/peternicholls/stageserve/core/runtime"
 	"github.com/peternicholls/stageserve/core/state"
 	"github.com/peternicholls/stageserve/infra/compose"
 	"github.com/peternicholls/stageserve/infra/docker"
@@ -149,6 +150,73 @@ func (m *Composer) Restart(ctx context.Context, opts compose.RestartOptions) err
 func (m *Composer) Logs(ctx context.Context, opts compose.LogsOptions) error { return m.LogsErr }
 
 func (m *Composer) Exec(ctx context.Context, opts compose.ExecOptions) error { return m.ExecErr }
+
+// --- Runtime manager ---
+
+// Runtime adapts the existing narrow test doubles to the vendor-neutral core
+// contract. Production code uses the Apple Container manager directly.
+type Runtime struct {
+	Docker  *Docker
+	Compose *Composer
+}
+
+func NewRuntime(dockerClient *Docker, composer *Composer) *Runtime {
+	return &Runtime{Docker: dockerClient, Compose: composer}
+}
+
+func (m *Runtime) Name() coreruntime.BackendName { return coreruntime.BackendAppleContainer }
+func (m *Runtime) Capabilities() coreruntime.Capabilities {
+	return coreruntime.Capabilities{MultiService: true, Networks: true, Volumes: true, HealthChecks: true, Logs: true, Exec: true, Restart: true, DebugProfile: true, SharedGateway: true}
+}
+func (m *Runtime) Available(ctx context.Context) error { return m.Docker.Available(ctx) }
+func (m *Runtime) NetworkExists(ctx context.Context, name string) (bool, error) {
+	return m.Docker.NetworkExists(ctx, name)
+}
+func (m *Runtime) CreateNetwork(ctx context.Context, name string) error {
+	return m.Docker.CreateNetwork(ctx, name)
+}
+func (m *Runtime) RemoveNetwork(ctx context.Context, name string) error {
+	return m.Docker.RemoveNetwork(ctx, name)
+}
+func (m *Runtime) Start(ctx context.Context, opts coreruntime.StartOptions) error {
+	return m.Compose.Up(ctx, compose.UpOptions{ProjectDir: opts.ProjectDir, ComposeFile: opts.Definition, ProjectName: opts.ProjectName, EnvFile: opts.EnvFile, Env: opts.Env, Profiles: opts.Profiles, WaitTimeout: opts.WaitTimeout, Detach: true, NoDeps: opts.NoDeps, ForceRecreate: opts.ForceRecreate, Services: opts.Services})
+}
+func (m *Runtime) Stop(ctx context.Context, opts coreruntime.StopOptions) error {
+	return m.Compose.Down(ctx, compose.DownOptions{ProjectDir: opts.ProjectDir, ComposeFile: opts.Definition, ProjectName: opts.ProjectName, EnvFile: opts.EnvFile, Env: opts.Env, RemoveVolumes: opts.RemoveVolumes})
+}
+func (m *Runtime) Restart(ctx context.Context, opts coreruntime.RestartOptions) error {
+	return m.Compose.Restart(ctx, compose.RestartOptions{ProjectDir: opts.ProjectDir, ComposeFile: opts.Definition, ProjectName: opts.ProjectName, EnvFile: opts.EnvFile, Env: opts.Env, Service: opts.Service})
+}
+func (m *Runtime) Logs(ctx context.Context, opts coreruntime.LogsOptions) error {
+	return m.Compose.Logs(ctx, compose.LogsOptions{ProjectDir: opts.ProjectDir, ComposeFile: opts.Definition, ProjectName: opts.ProjectName, EnvFile: opts.EnvFile, Env: opts.Env, Service: opts.Service, Follow: opts.Follow})
+}
+func (m *Runtime) Exec(ctx context.Context, opts coreruntime.ExecOptions) (string, error) {
+	containers, err := m.Docker.ListContainersByLabel(ctx, map[string]string{"com.docker.compose.project": opts.ProjectName, "com.docker.compose.service": opts.Service})
+	if err != nil {
+		return "", err
+	}
+	if len(containers) == 0 {
+		return "", errors.New("service not found")
+	}
+	return m.Docker.Exec(ctx, docker.ExecOptions{ContainerID: containers[0].ID, Cmd: opts.Command, WorkingDir: opts.WorkingDir})
+}
+func (m *Runtime) ListServices(ctx context.Context, projectName string) ([]coreruntime.Service, error) {
+	containers, err := m.Docker.ListContainersByLabel(ctx, map[string]string{"com.docker.compose.project": projectName})
+	if err != nil {
+		return nil, err
+	}
+	services := make([]coreruntime.Service, 0, len(containers))
+	for _, container := range containers {
+		services = append(services, coreruntime.Service{ID: container.ID, Name: container.Name, Status: container.Status, Service: container.Service, Project: container.Project, Labels: container.Labels})
+	}
+	return services, nil
+}
+func (m *Runtime) WaitHealthy(ctx context.Context, projectName string, timeout time.Duration) error {
+	return m.Docker.WaitHealthy(ctx, projectName, timeout)
+}
+func (m *Runtime) ServiceLogs(ctx context.Context, serviceID string, follow bool) (coreruntime.LogStream, error) {
+	return m.Docker.ContainerLogs(ctx, serviceID, follow)
+}
 
 // --- GatewayManager ---
 

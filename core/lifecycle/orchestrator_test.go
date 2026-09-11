@@ -14,6 +14,7 @@ import (
 
 	"github.com/peternicholls/stageserve/core/config"
 	"github.com/peternicholls/stageserve/core/lifecycle"
+	"github.com/peternicholls/stageserve/core/runtime"
 	"github.com/peternicholls/stageserve/core/state"
 	"github.com/peternicholls/stageserve/infra/docker"
 	"github.com/peternicholls/stageserve/internal/mocks"
@@ -47,22 +48,23 @@ func newCfg(t *testing.T) config.ProjectConfig {
 	if err := os.MkdirAll(stackAssets, 0o755); err != nil {
 		t.Fatalf("mkdir stack assets: %v", err)
 	}
-	for _, name := range []string{"docker-compose.20i.yml", "docker-compose.shared.yml"} {
+	for _, name := range []string{"apple-container.20i.json", "apple-container.shared.json"} {
 		if err := os.WriteFile(filepath.Join(stackAssets, name), []byte("services: {}\n"), 0o644); err != nil {
 			t.Fatalf("write %s: %v", name, err)
 		}
 	}
 	return config.ProjectConfig{
+		RuntimeBackend:     runtime.BackendAppleContainer,
 		Slug:               "demo",
 		Name:               "demo",
 		Dir:                dir,
 		StackHome:          stack,
 		StateDir:           stateDir,
-		StackFile:          stack + "/stacks/20i/docker-compose.20i.yml",
-		SharedFile:         stack + "/stacks/20i/docker-compose.shared.yml",
+		StackFile:          stack + "/stacks/20i/apple-container.20i.json",
+		SharedFile:         stack + "/stacks/20i/apple-container.shared.json",
 		Hostname:           "demo.test",
 		ComposeProjectName: "stage-demo",
-		WebNetworkAlias:    "stage-demo-web",
+		WebNetworkAlias:    "stage-demo-nginx.test",
 		ContainerSiteRoot:  "/home/sites/demo", ContainerDocRoot: "/home/sites/demo",
 		PHPVersion:      "8.5",
 		WaitTimeoutSecs: 5,
@@ -70,7 +72,7 @@ func newCfg(t *testing.T) config.ProjectConfig {
 			Version: "10.6", Database: "demo", User: "demo", Password: "demo", RootPassword: "root",
 		},
 		SharedGateway: config.SharedGateway{
-			Network:            "stage-shared",
+			Network:            "default",
 			ComposeProjectName: "stage-shared",
 			HTTPPort:           80,
 			HTTPSPort:          443,
@@ -87,7 +89,7 @@ func TestOrchestrator_UpFailsBeforeDockerWhenRuntimeAssetMissing(t *testing.T) {
 	dc := mocks.NewDocker()
 	composer := mocks.NewComposer()
 	orch := lifecycle.New(lifecycle.Deps{
-		Docker: dc, Compose: composer, Gateway: mocks.NewGateway(), State: mocks.NewState(), Ports: mocks.NewPorts(ports.Allocation{}),
+		Runtime: mocks.NewRuntime(dc, composer), Gateway: mocks.NewGateway(), State: mocks.NewState(), Ports: mocks.NewPorts(ports.Allocation{}),
 	})
 
 	err := orch.Up(context.Background(), cfg)
@@ -116,7 +118,7 @@ func TestOrchestrator_UpFailsBeforeDockerWhenProjectRuntimeAssetMissing(t *testi
 	}
 	composer := mocks.NewComposer()
 	orch := lifecycle.New(lifecycle.Deps{
-		Docker: mocks.NewDocker(), Compose: composer, Gateway: mocks.NewGateway(), State: mocks.NewState(), Ports: mocks.NewPorts(ports.Allocation{}),
+		Runtime: mocks.NewRuntime(mocks.NewDocker(), composer), Gateway: mocks.NewGateway(), State: mocks.NewState(), Ports: mocks.NewPorts(ports.Allocation{}),
 	})
 
 	err := orch.Up(context.Background(), cfg)
@@ -148,13 +150,13 @@ func TestOrchestrator_UpHappyPath(t *testing.T) {
 	pa := mocks.NewPorts(ports.Allocation{MySQLPort: 3306, PMAPort: 8081})
 
 	orch := lifecycle.New(lifecycle.Deps{
-		Docker: dc, Compose: composer, Gateway: gw, State: st, Ports: pa,
+		Runtime: mocks.NewRuntime(dc, composer), Gateway: gw, State: st, Ports: pa,
 	})
 
 	if err := orch.Up(context.Background(), cfg); err != nil {
 		t.Fatalf("Up: %v", err)
 	}
-	if !dc.Networks["stage-shared"] {
+	if !dc.Networks["default"] {
 		t.Errorf("shared network was not ensured")
 	}
 	if len(composer.UpCalls) < 2 {
@@ -188,7 +190,7 @@ func TestOrchestrator_RestartServiceOnlyCallsProjectCompose(t *testing.T) {
 	st := mocks.NewState()
 	st.Records[cfg.Slug] = state.Record{Project: cfg, AttachmentState: state.StateAttached}
 	orch := lifecycle.New(lifecycle.Deps{
-		Docker: mocks.NewDocker(), Compose: composer, Gateway: gw, State: st, Ports: mocks.NewPorts(ports.Allocation{}),
+		Runtime: mocks.NewRuntime(mocks.NewDocker(), composer), Gateway: gw, State: st, Ports: mocks.NewPorts(ports.Allocation{}),
 	})
 
 	if err := orch.RestartService(context.Background(), cfg, "apache"); err != nil {
@@ -213,7 +215,7 @@ func TestOrchestrator_UpHonorsCanceledContextBeforeSideEffects(t *testing.T) {
 	cfg := newCfg(t)
 	composer := mocks.NewComposer()
 	orch := lifecycle.New(lifecycle.Deps{
-		Docker: mocks.NewDocker(), Compose: composer, Gateway: mocks.NewGateway(), State: mocks.NewState(), Ports: mocks.NewPorts(ports.Allocation{}),
+		Runtime: mocks.NewRuntime(mocks.NewDocker(), composer), Gateway: mocks.NewGateway(), State: mocks.NewState(), Ports: mocks.NewPorts(ports.Allocation{}),
 	})
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
@@ -244,7 +246,7 @@ func TestOrchestrator_UpRollbackOnHealthFail(t *testing.T) {
 	pa := mocks.NewPorts(ports.Allocation{MySQLPort: 3306, PMAPort: 8081})
 
 	orch := lifecycle.New(lifecycle.Deps{
-		Docker: dc, Compose: composer, Gateway: gw, State: st, Ports: pa,
+		Runtime: mocks.NewRuntime(dc, composer), Gateway: gw, State: st, Ports: pa,
 	})
 
 	err := orch.Up(context.Background(), cfg)
@@ -286,7 +288,7 @@ func TestOrchestrator_UpRunsPostUpHook(t *testing.T) {
 	pa := mocks.NewPorts(ports.Allocation{MySQLPort: 3306, PMAPort: 8081})
 
 	orch := lifecycle.New(lifecycle.Deps{
-		Docker: dc, Compose: componer, Gateway: gw, State: st, Ports: pa,
+		Runtime: mocks.NewRuntime(dc, componer), Gateway: gw, State: st, Ports: pa,
 	})
 
 	if err := orch.Up(context.Background(), cfg); err != nil {
@@ -316,7 +318,7 @@ func TestOrchestrator_UpPassesDebugProfileToProjectCompose(t *testing.T) {
 	pa := mocks.NewPorts(ports.Allocation{MySQLPort: 3306, PMAPort: 8081})
 
 	orch := lifecycle.New(lifecycle.Deps{
-		Docker: dc, Compose: composer, Gateway: gw, State: st, Ports: pa,
+		Runtime: mocks.NewRuntime(dc, composer), Gateway: gw, State: st, Ports: pa,
 	})
 
 	if err := orch.Up(context.Background(), cfg); err != nil {
@@ -346,7 +348,7 @@ func TestOrchestrator_UpGeneratesDevTLSAndMountsCerts(t *testing.T) {
 	pa := mocks.NewPorts(ports.Allocation{MySQLPort: 3306, PMAPort: 8081})
 
 	orch := lifecycle.New(lifecycle.Deps{
-		Docker: dc, Compose: composer, Gateway: gw, State: st, Ports: pa, TLS: tlsProvider,
+		Runtime: mocks.NewRuntime(dc, composer), Gateway: gw, State: st, Ports: pa, TLS: tlsProvider,
 	})
 
 	if err := orch.Up(context.Background(), cfg); err != nil {
@@ -397,7 +399,7 @@ func TestOrchestrator_UpRollbackOnPostUpHookFailure(t *testing.T) {
 	pa := mocks.NewPorts(ports.Allocation{MySQLPort: 3306, PMAPort: 8081})
 
 	orch := lifecycle.New(lifecycle.Deps{
-		Docker: dc, Compose: componer, Gateway: gw, State: st, Ports: pa,
+		Runtime: mocks.NewRuntime(dc, componer), Gateway: gw, State: st, Ports: pa,
 	})
 
 	err := orch.Up(context.Background(), cfg)
@@ -430,7 +432,7 @@ func TestOrchestrator_UpRollbackOnGatewayReloadFailureRemovesRoute(t *testing.T)
 	pa := mocks.NewPorts(ports.Allocation{MySQLPort: 3306, PMAPort: 8081})
 
 	orch := lifecycle.New(lifecycle.Deps{
-		Docker: dc, Compose: composer, Gateway: gw, State: st, Ports: pa,
+		Runtime: mocks.NewRuntime(dc, composer), Gateway: gw, State: st, Ports: pa,
 	})
 
 	err := orch.Up(context.Background(), cfg)
@@ -464,7 +466,7 @@ func TestOrchestrator_UpRollbackOnSaveFailureRemovesRoute(t *testing.T) {
 	pa := mocks.NewPorts(ports.Allocation{MySQLPort: 3306, PMAPort: 8081})
 
 	orch := lifecycle.New(lifecycle.Deps{
-		Docker: dc, Compose: composer, Gateway: gw, State: st, Ports: pa,
+		Runtime: mocks.NewRuntime(dc, composer), Gateway: gw, State: st, Ports: pa,
 	})
 
 	err := orch.Up(context.Background(), cfg)
@@ -498,7 +500,7 @@ func TestOrchestrator_UpPortConflictBeforeDocker(t *testing.T) {
 	pa.Err = errors.New("simulated reservation conflict")
 
 	orch := lifecycle.New(lifecycle.Deps{
-		Docker: dc, Compose: composer, Gateway: gw, State: st, Ports: pa,
+		Runtime: mocks.NewRuntime(dc, composer), Gateway: gw, State: st, Ports: pa,
 	})
 
 	err := orch.Up(context.Background(), cfg)
@@ -524,7 +526,7 @@ func TestOrchestrator_UpSharedGatewayFailureIncludesSharedComposeFile(t *testing
 	pa := mocks.NewPorts(ports.Allocation{MySQLPort: 3306, PMAPort: 8081})
 
 	orch := lifecycle.New(lifecycle.Deps{
-		Docker: dc, Compose: composer, Gateway: gw, State: st, Ports: pa,
+		Runtime: mocks.NewRuntime(dc, composer), Gateway: gw, State: st, Ports: pa,
 	})
 
 	err := orch.Up(context.Background(), cfg)
@@ -558,7 +560,7 @@ func TestOrchestrator_DownMarksProjectStoppedAndRemovesEnvFile(t *testing.T) {
 	}
 
 	orch := lifecycle.New(lifecycle.Deps{
-		Docker: mocks.NewDocker(), Compose: composer, Gateway: gw, State: st, Ports: pa,
+		Runtime: mocks.NewRuntime(mocks.NewDocker(), composer), Gateway: gw, State: st, Ports: pa,
 	})
 
 	if err := orch.Down(context.Background(), cfg, false); err != nil {
@@ -598,7 +600,7 @@ func TestOrchestrator_AttachFailsOnRegistryReadError(t *testing.T) {
 	}}
 	composer := mocks.NewComposer()
 	orch := lifecycle.New(lifecycle.Deps{
-		Docker: dc, Compose: composer, Gateway: mocks.NewGateway(), State: st, Ports: mocks.NewPorts(ports.Allocation{}),
+		Runtime: mocks.NewRuntime(dc, composer), Gateway: mocks.NewGateway(), State: st, Ports: mocks.NewPorts(ports.Allocation{}),
 	})
 
 	err := orch.Attach(context.Background(), cfg)
@@ -633,7 +635,7 @@ func TestOrchestrator_DownAllReportsPartialFailures(t *testing.T) {
 	composer := mocks.NewComposer()
 	composer.DownErr = errors.New("compose refused")
 	orch := lifecycle.New(lifecycle.Deps{
-		Docker: mocks.NewDocker(), Compose: composer, Gateway: mocks.NewGateway(), State: st, Ports: mocks.NewPorts(ports.Allocation{}),
+		Runtime: mocks.NewRuntime(mocks.NewDocker(), composer), Gateway: mocks.NewGateway(), State: st, Ports: mocks.NewPorts(ports.Allocation{}),
 	})
 
 	err := orch.DownAll(context.Background(), cfg, false)
@@ -644,7 +646,7 @@ func TestOrchestrator_DownAllReportsPartialFailures(t *testing.T) {
 	if !ok || se.Step != "down-all" {
 		t.Fatalf("step error=%+v ok=%v", se, ok)
 	}
-	if !strings.Contains(se.Error(), "compose-down") || !strings.Contains(se.Remedy, "stage status --all") {
+	if !strings.Contains(se.Error(), "runtime-down") || !strings.Contains(se.Remedy, "stage status --all") {
 		t.Fatalf("error/remedy missing detail: %v", se)
 	}
 	if len(composer.DownCalls) != 2 {
@@ -661,7 +663,7 @@ func TestOrchestrator_DownWithoutEnvFileStillRunsComposeDown(t *testing.T) {
 	_ = st.Save(state.Record{Project: cfg, AttachmentState: state.StateAttached})
 
 	orch := lifecycle.New(lifecycle.Deps{
-		Docker: mocks.NewDocker(), Compose: composer, Gateway: gw, State: st, Ports: pa,
+		Runtime: mocks.NewRuntime(mocks.NewDocker(), composer), Gateway: gw, State: st, Ports: pa,
 	})
 
 	if err := orch.Down(context.Background(), cfg, false); err != nil {
@@ -690,7 +692,7 @@ func TestOrchestrator_DetachRemovesStateAndReloadsGateway(t *testing.T) {
 	}
 
 	orch := lifecycle.New(lifecycle.Deps{
-		Docker: mocks.NewDocker(), Compose: composer, Gateway: gw, State: st, Ports: pa,
+		Runtime: mocks.NewRuntime(mocks.NewDocker(), composer), Gateway: gw, State: st, Ports: pa,
 	})
 
 	if err := orch.Detach(context.Background(), cfg); err != nil {
@@ -738,7 +740,7 @@ func TestOrchestrator_DownAllStopsEveryRecordedProject(t *testing.T) {
 	}
 
 	orch := lifecycle.New(lifecycle.Deps{
-		Docker: mocks.NewDocker(), Compose: composer, Gateway: gw, State: st, Ports: pa,
+		Runtime: mocks.NewRuntime(mocks.NewDocker(), composer), Gateway: gw, State: st, Ports: pa,
 	})
 
 	if err := orch.DownAll(context.Background(), cfg, true); err != nil {
@@ -803,7 +805,7 @@ func TestOrchestrator_PostUpHookFailure_RollbackIsolation(t *testing.T) {
 	pa := mocks.NewPorts(ports.Allocation{MySQLPort: 3306, PMAPort: 8081})
 
 	orch := lifecycle.New(lifecycle.Deps{
-		Docker: dc, Compose: composer, Gateway: gw, State: st, Ports: pa,
+		Runtime: mocks.NewRuntime(dc, composer), Gateway: gw, State: st, Ports: pa,
 	})
 
 	err := orch.Up(context.Background(), cfg)
@@ -849,7 +851,7 @@ func TestOrchestrator_AttachBootstrapsWhenRuntimeIsNotRunning(t *testing.T) {
 	}
 
 	orch := lifecycle.New(lifecycle.Deps{
-		Docker: dc, Compose: composer, Gateway: gw, State: st, Ports: pa,
+		Runtime: mocks.NewRuntime(dc, composer), Gateway: gw, State: st, Ports: pa,
 	})
 
 	if err := orch.Attach(context.Background(), cfg); err != nil {
@@ -872,8 +874,8 @@ func TestOrchestrator_AttachBootstrapsWhenRuntimeIsNotRunning(t *testing.T) {
 	if foundAlias == "" {
 		t.Fatalf("attach route for %q missing from %+v", cfg.Slug, gw.Routes)
 	}
-	if foundAlias != "stage-demo-web" {
-		t.Fatalf("attach route alias=%q want stage-demo-web", foundAlias)
+	if foundAlias != "stage-demo-nginx.test" {
+		t.Fatalf("attach route alias=%q want stage-demo-nginx.test", foundAlias)
 	}
 	if len(composer.UpCalls) < 3 {
 		t.Fatalf("attach should bootstrap via Up, got compose up calls %+v", composer.UpCalls)
@@ -908,8 +910,8 @@ func TestOrchestrator_AttachBootstrapsWhenRuntimeIsNotRunning(t *testing.T) {
 	if len(gw.Routes) == 0 {
 		t.Fatalf("attach bootstrap did not add a gateway route")
 	}
-	if foundAlias != "stage-demo-web" {
-		t.Fatalf("attach route alias=%q want stage-demo-web", foundAlias)
+	if foundAlias != "stage-demo-nginx.test" {
+		t.Fatalf("attach route alias=%q want stage-demo-nginx.test", foundAlias)
 	}
 }
 
@@ -931,7 +933,7 @@ func TestOrchestrator_AttachAddsRouteAndMarksAttached(t *testing.T) {
 	}
 
 	orch := lifecycle.New(lifecycle.Deps{
-		Docker: dc, Compose: composer, Gateway: gw, State: st, Ports: pa,
+		Runtime: mocks.NewRuntime(dc, composer), Gateway: gw, State: st, Ports: pa,
 	})
 
 	if err := orch.Attach(context.Background(), cfg); err != nil {
@@ -954,8 +956,8 @@ func TestOrchestrator_AttachAddsRouteAndMarksAttached(t *testing.T) {
 	if foundAlias == "" {
 		t.Fatalf("attach route for %q missing from %+v", cfg.Slug, gw.Routes)
 	}
-	if foundAlias != "stage-demo-web" {
-		t.Fatalf("attach route alias=%q want stage-demo-web", foundAlias)
+	if foundAlias != "stage-demo-nginx.test" {
+		t.Fatalf("attach route alias=%q want stage-demo-nginx.test", foundAlias)
 	}
 	if len(composer.UpCalls) != 1 || !composer.UpCalls[0].ForceRecreate {
 		t.Fatalf("attach did not request gateway reload with force recreate: %+v", composer.UpCalls)

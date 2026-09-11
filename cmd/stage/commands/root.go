@@ -11,8 +11,7 @@ import (
 	"github.com/peternicholls/stageserve/core/guidance"
 	"github.com/peternicholls/stageserve/core/lifecycle"
 	"github.com/peternicholls/stageserve/core/state"
-	"github.com/peternicholls/stageserve/infra/compose"
-	"github.com/peternicholls/stageserve/infra/docker"
+	"github.com/peternicholls/stageserve/infra/applecontainer"
 	"github.com/peternicholls/stageserve/infra/gateway"
 	"github.com/peternicholls/stageserve/platform/ports"
 	stls "github.com/peternicholls/stageserve/platform/tls"
@@ -75,7 +74,7 @@ func NewRoot(version string) *cobra.Command {
 	pf.StringVar(&flags.HostPort, "host-port", "", "HTTP host port (advanced)")
 	pf.IntVar(&flags.WaitTimeoutSecs, "wait-timeout", 0, "Healthcheck wait timeout in seconds (default 120)")
 	pf.BoolVar(&flags.DryRun, "dry-run", false, "Print planned actions without executing")
-	pf.StringSliceVar(&flags.Profile, "profile", nil, "Compose profile to enable (currently: debug)")
+	pf.StringSliceVar(&flags.Profile, "profile", nil, "Optional runtime profile to enable (currently: debug)")
 	pf.BoolVar(&flags.All, "all", false, "Apply to every recorded project")
 	pf.StringVar(&flags.StackHome, "stack-home", "", "Path to the stageserve install (default: auto)")
 
@@ -141,8 +140,7 @@ func buildOrchestrator(cfg config.ProjectConfig) (*lifecycle.Orchestrator, error
 		return nil, err
 	}
 	return lifecycle.New(lifecycle.Deps{
-		Docker:  docker.NewSDKClient(),
-		Compose: compose.NewCLI(),
+		Runtime: applecontainer.NewManager(nil),
 		Gateway: gateway.NewManager(cfg.SharedGateway.ConfigFile),
 		State:   store,
 		Ports:   ports.NewAllocator(cfg.StateDir),

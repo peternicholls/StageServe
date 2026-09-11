@@ -1,0 +1,66 @@
+{
+  "volumes": ["${PROJECT_DATABASE_VOLUME}"],
+  "services": [
+    {
+      "name": "mariadb",
+      "image": "mariadb:${MYSQL_VERSION}",
+      "environment": {
+        "MYSQL_ROOT_PASSWORD": "${MYSQL_ROOT_PASSWORD}",
+        "MYSQL_DATABASE": "${MYSQL_DATABASE}",
+        "MYSQL_USER": "${MYSQL_USER}",
+        "MYSQL_PASSWORD": "${MYSQL_PASSWORD}"
+      },
+      "mounts": ["${PROJECT_DATABASE_VOLUME}:/var/lib/mysql"],
+      "ports": ["127.0.0.1:${MYSQL_PORT}:3306"],
+      "health": {
+        "command": ["healthcheck.sh", "--connect", "--innodb_initialized"],
+        "interval": "2s",
+        "retries": 60
+      }
+    },
+    {
+      "name": "apache",
+      "image": "stageserve-apache",
+      "build": {
+        "context": "../../docker/apache",
+        "file": "../../docker/apache/Dockerfile",
+        "args": {"PHP_VERSION": "${PHP_VERSION}"}
+      },
+      "environment": {
+        "DB_HOST": "${APPLE_MARIADB_HOST}",
+        "DB_PORT": "3306",
+        "DB_DATABASE": "${DB_DATABASE}",
+        "DB_USERNAME": "${DB_USERNAME}",
+        "DB_PASSWORD": "${DB_PASSWORD}"
+      },
+      "workdir": "${CONTAINER_DOCROOT}",
+      "mounts": ["${PROJECT_ROOT}:${CONTAINER_SITE_ROOT}"],
+      "health": {
+        "command": ["php-fpm", "-t"],
+        "interval": "2s",
+        "retries": 60
+      }
+    },
+    {
+      "name": "nginx",
+      "image": "nginx:1.25-alpine",
+      "environment": {"CONTAINER_DOCROOT": "${CONTAINER_DOCROOT}"},
+      "mounts": [
+        "${PROJECT_ROOT}:${CONTAINER_SITE_ROOT}:ro",
+        "${PROJECT_NGINX_TEMPLATE}:/etc/nginx/templates/default.conf.template:ro"
+      ],
+      "health": {
+        "command": ["wget", "-qO-", "http://127.0.0.1/__stageserve_health"],
+        "interval": "2s",
+        "retries": 60
+      }
+    },
+    {
+      "name": "phpmyadmin",
+      "image": "phpmyadmin/phpmyadmin",
+      "profiles": ["debug"],
+      "environment": {"PMA_HOST": "${APPLE_MARIADB_HOST}"},
+      "ports": ["127.0.0.1:${PMA_PORT}:80"]
+    }
+  ]
+}

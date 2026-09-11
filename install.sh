@@ -8,7 +8,7 @@
 #
 # Environment overrides (for testing):
 #   STAGESERVE_INSTALL_DIR   — destination directory (default: $HOME/.local/bin)
-#   STAGESERVE_STACK_HOME    — StageServe runtime asset home (default: $HOME/docker/stageserve)
+#   STAGESERVE_STACK_HOME    — StageServe runtime asset home (default: $HOME/.stageserve)
 #   STAGESERVE_TEST_ASSET_PATH — bypass download; copy this path as the binary
 #   STAGESERVE_TEST_BUNDLE_PATH — bypass bundle download; extract this .tar.gz
 #   NONINTERACTIVE          — suppress prompts and TUI handoff (set to 1)
@@ -25,7 +25,7 @@ set -euo pipefail
 STAGESERVE_VERSION="${STAGESERVE_VERSION:-latest}"
 STAGESERVE_REPO="peternicholls/StageServe"
 STAGESERVE_INSTALL_DIR="${STAGESERVE_INSTALL_DIR:-$HOME/.local/bin}"
-STAGESERVE_STACK_HOME="${STAGESERVE_STACK_HOME:-$HOME/docker/stageserve}"
+STAGESERVE_STACK_HOME="${STAGESERVE_STACK_HOME:-$HOME/.stageserve}"
 NONINTERACTIVE="${NONINTERACTIVE:-0}"
 
 _test_mode=0
@@ -217,8 +217,8 @@ provision_runtime_assets() {
   mkdir -p "$STAGESERVE_STACK_HOME"
   tar -xzf "$source" -C "$STAGESERVE_STACK_HOME"
 
-  [[ -f "$STAGESERVE_STACK_HOME/stacks/20i/docker-compose.shared.yml" ]] || die "Runtime bundle missing stacks/20i/docker-compose.shared.yml"
-  [[ -f "$STAGESERVE_STACK_HOME/stacks/20i/docker-compose.20i.yml" ]] || die "Runtime bundle missing stacks/20i/docker-compose.20i.yml"
+  [[ -f "$STAGESERVE_STACK_HOME/stacks/20i/apple-container.shared.json" ]] || die "Runtime bundle missing stacks/20i/apple-container.shared.json"
+  [[ -f "$STAGESERVE_STACK_HOME/stacks/20i/apple-container.20i.json" ]] || die "Runtime bundle missing stacks/20i/apple-container.20i.json"
   ok "runtime assets installed to $STAGESERVE_STACK_HOME"
   rm -rf "$tmpdir"
 }

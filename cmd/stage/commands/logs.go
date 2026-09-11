@@ -8,7 +8,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/peternicholls/stageserve/core/state"
-	"github.com/peternicholls/stageserve/infra/docker"
+	"github.com/peternicholls/stageserve/infra/applecontainer"
 	"github.com/peternicholls/stageserve/observability/logs"
 )
 
@@ -45,7 +45,7 @@ func NewLogs(flags *SharedFlags) *cobra.Command {
 			}
 			ctx, cancel := contextWithSignal(cmd.Context())
 			defer cancel()
-			s := &logs.Streamer{Docker: docker.NewSDKClient()}
+			s := &logs.Streamer{Runtime: applecontainer.NewManager(nil)}
 			return s.Stream(ctx, cfg.ComposeProjectName, serviceName, follow, os.Stdout)
 		},
 	}

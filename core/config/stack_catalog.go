@@ -14,8 +14,8 @@ var supportedStacks = map[string]StackMetadata{
 	"20i": {
 		Kind:               "20i",
 		AssetDir:           filepath.Join("stacks", "20i"),
-		SharedComposeFile:  "docker-compose.shared.yml",
-		ProjectComposeFile: "docker-compose.20i.yml",
+		SharedComposeFile:  "apple-container.shared.json",
+		ProjectComposeFile: "apple-container.20i.json",
 		Capabilities: StackCapabilities{
 			SharedGateway:   true,
 			LocalDNS:        true,
@@ -24,7 +24,7 @@ var supportedStacks = map[string]StackMetadata{
 			DebugProfile:    true,
 		},
 		Requirements: []StackRequirement{
-			{Name: "gateway", Scope: "shared-runtime", Description: "Shared reverse proxy and shared Docker network must be present."},
+			{Name: "gateway", Scope: "shared-runtime", Description: "Shared reverse proxy on the Apple Container default network must be present."},
 			{Name: "local-dns", Scope: "host", Description: "Local DNS resolution must send supported suffixes to StageServe."},
 			{Name: "mkcert", Scope: "host", Description: "Local certificate generation is required for HTTPS routes on supported suffixes."},
 		},

@@ -67,6 +67,12 @@ func cleanRemediation(s string) string {
 // Used in the detailed doctor/setup report to give context to each issue.
 func checkDescription(id string) string {
 	switch id {
+	case "apple-container.platform":
+		return "Apple Container requires Apple silicon and macOS 26 or later."
+	case "apple-container.binary":
+		return "Apple Container provides the native container command used by StageServe."
+	case "apple-container.service":
+		return "The Apple Container system service must be running before projects can start."
 	case "docker.binary":
 		return "Docker CLI — the command-line tool used to manage containers."
 	case "docker.daemon":

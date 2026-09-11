@@ -93,9 +93,6 @@ server {
     add_header X-StageServe-Hostname "{{ .Hostname }}" always;
 
     location / {
-        resolver 127.0.0.11 valid=5s;
-        set $upstream http://{{ .WebNetworkAlias }}:80;
-
         proxy_http_version 1.1;
         proxy_set_header Host $host;
         proxy_set_header X-Forwarded-Host $host;
@@ -104,7 +101,7 @@ server {
         proxy_set_header X-Real-IP $remote_addr;
         proxy_connect_timeout 2s;
         proxy_read_timeout 600s;
-        proxy_pass $upstream;
+        proxy_pass http://{{ .WebNetworkAlias }}:80;
     }
 }
 {{- else }}
@@ -121,9 +118,6 @@ server {
     add_header X-StageServe-Hostname "{{ .Hostname }}" always;
 
     location / {
-        resolver 127.0.0.11 valid=5s;
-        set $upstream http://{{ .WebNetworkAlias }}:80;
-
         proxy_http_version 1.1;
         proxy_set_header Host $host;
         proxy_set_header X-Forwarded-Host $host;
@@ -132,7 +126,7 @@ server {
         proxy_set_header X-Real-IP $remote_addr;
         proxy_connect_timeout 2s;
         proxy_read_timeout 600s;
-        proxy_pass $upstream;
+        proxy_pass http://{{ .WebNetworkAlias }}:80;
     }
 }
 {{- end }}

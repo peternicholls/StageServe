@@ -2,9 +2,12 @@
 package state
 
 import (
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/peternicholls/stageserve/core/config"
+	"github.com/peternicholls/stageserve/core/runtime"
 )
 
 func TestStore_SaveLoadRoundTrip(t *testing.T) {
@@ -36,6 +39,43 @@ func TestStore_SaveLoadRoundTrip(t *testing.T) {
 	}
 	if got.SchemaVersion != SchemaVersion {
 		t.Errorf("schema version not stamped: %d", got.SchemaVersion)
+	}
+	if got.Project.RuntimeBackend != runtime.BackendAppleContainer || got.Runtime.Backend != runtime.BackendAppleContainer {
+		t.Errorf("runtime backend defaults not stamped: project=%q observed=%q", got.Project.RuntimeBackend, got.Runtime.Backend)
+	}
+}
+
+func TestStore_LoadRecordDefaultsToAppleContainer(t *testing.T) {
+	dir := t.TempDir()
+	store, err := NewStore(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	legacy := `{"schema_version":1,"project":{"Slug":"legacy","Name":"legacy"},"attachment_state":"down","runtime":{}}`
+	if err := os.WriteFile(filepath.Join(dir, "projects", "legacy.json"), []byte(legacy), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	rec, err := store.Load("legacy")
+	if err != nil {
+		t.Fatalf("load legacy record: %v", err)
+	}
+	if rec.Project.RuntimeBackend != runtime.BackendAppleContainer || rec.Runtime.Backend != runtime.BackendAppleContainer {
+		t.Fatalf("backend project=%q observed=%q want apple-container", rec.Project.RuntimeBackend, rec.Runtime.Backend)
+	}
+}
+
+func TestStore_LoadUnknownBackendFailsClosed(t *testing.T) {
+	dir := t.TempDir()
+	store, err := NewStore(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	unknown := `{"schema_version":2,"project":{"Slug":"future","RuntimeBackend":"unknown"},"attachment_state":"down","runtime":{}}`
+	if err := os.WriteFile(filepath.Join(dir, "projects", "future.json"), []byte(unknown), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := store.Load("future"); err == nil {
+		t.Fatal("unknown runtime backend loaded successfully")
 	}
 }
 

@@ -91,10 +91,10 @@ func TestRootNoArgsPrintsGuidanceWithoutMutatingProject(t *testing.T) {
 	if err := os.MkdirAll(stackDir, 0o755); err != nil {
 		t.Fatalf("create stack dir: %v", err)
 	}
-	if err := os.WriteFile(filepath.Join(stackDir, "docker-compose.shared.yml"), []byte("services: {}\n"), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(stackDir, "apple-container.shared.json"), []byte("services: {}\n"), 0o644); err != nil {
 		t.Fatalf("write shared compose: %v", err)
 	}
-	if err := os.WriteFile(filepath.Join(stackDir, "docker-compose.20i.yml"), []byte("services: {}\n"), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(stackDir, "apple-container.20i.json"), []byte("services: {}\n"), 0o644); err != nil {
 		t.Fatalf("write project compose: %v", err)
 	}
 

@@ -16,7 +16,7 @@ import (
 	"github.com/peternicholls/stageserve/core/lifecycle"
 	"github.com/peternicholls/stageserve/core/onboarding"
 	"github.com/peternicholls/stageserve/core/state"
-	"github.com/peternicholls/stageserve/infra/docker"
+	"github.com/peternicholls/stageserve/infra/applecontainer"
 	obslogs "github.com/peternicholls/stageserve/observability/logs"
 	obsstatus "github.com/peternicholls/stageserve/observability/status"
 )
@@ -63,7 +63,7 @@ func (r guidedRuntimeRunner) Status(ctx context.Context, cfg config.ProjectConfi
 	if err != nil {
 		return "", err
 	}
-	reporter := &obsstatus.Reporter{State: store, Docker: docker.NewSDKClient()}
+	reporter := &obsstatus.Reporter{State: store, Runtime: applecontainer.NewManager(nil)}
 	projectStatus, err := reporter.One(ctx, cfg.Slug)
 	if err != nil {
 		return "", err
@@ -73,7 +73,7 @@ func (r guidedRuntimeRunner) Status(ctx context.Context, cfg config.ProjectConfi
 
 func (r guidedRuntimeRunner) Logs(ctx context.Context, cfg config.ProjectConfig, service string) (string, error) {
 	var output bytes.Buffer
-	streamer := &obslogs.Streamer{Docker: docker.NewSDKClient()}
+	streamer := &obslogs.Streamer{Runtime: applecontainer.NewManager(nil)}
 	if err := streamer.Stream(ctx, cfg.ComposeProjectName, service, false, &output); err != nil {
 		return "", err
 	}

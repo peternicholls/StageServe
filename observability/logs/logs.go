@@ -1,4 +1,4 @@
-// Logs streams Docker logs for a project, with named diagnostics when a
+// Package logs streams Apple Container logs for a project, with named diagnostics when a
 // requested service is missing or unhealthy.
 package logs
 
@@ -7,27 +7,31 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/peternicholls/stageserve/infra/docker"
+	coreruntime "github.com/peternicholls/stageserve/core/runtime"
 )
 
-// Streamer streams logs for one container by name (or compose service).
+// Streamer streams logs for one runtime service.
 type Streamer struct {
-	Docker docker.DockerClient
+	Runtime coreruntime.Manager
 }
 
 // Stream finds the container by service+project label and copies its logs to w.
-func (s *Streamer) Stream(ctx context.Context, composeProject, service string, follow bool, w io.Writer) error {
-	containers, err := s.Docker.ListContainersByLabel(ctx, map[string]string{
-		"com.docker.compose.project": composeProject,
-		"com.docker.compose.service": service,
-	})
+func (s *Streamer) Stream(ctx context.Context, runtimeProject, service string, follow bool, w io.Writer) error {
+	containers, err := s.Runtime.ListServices(ctx, runtimeProject)
 	if err != nil {
 		return err
 	}
-	if len(containers) == 0 {
-		return fmt.Errorf("logs: no container found for service %q in project %q", service, composeProject)
+	var selected *coreruntime.Service
+	for i := range containers {
+		if containers[i].Service == service {
+			selected = &containers[i]
+			break
+		}
 	}
-	stream, err := s.Docker.ContainerLogs(ctx, containers[0].ID, follow)
+	if selected == nil {
+		return fmt.Errorf("logs: no container found for service %q in project %q", service, runtimeProject)
+	}
+	stream, err := s.Runtime.ServiceLogs(ctx, selected.ID, follow)
 	if err != nil {
 		return err
 	}

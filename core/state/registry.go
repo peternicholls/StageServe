@@ -33,6 +33,7 @@ func recordToRow(rec Record) RegistryRow {
 		Hostname:         p.Hostname,
 		DocRoot:          p.DocRoot,
 		ComposeProject:   p.ComposeProjectName,
+		RuntimeBackend:   p.RuntimeBackend,
 		RuntimeNetwork:   p.RuntimeNetwork,
 		DatabaseVolume:   p.DatabaseVolume,
 		PHPVersion:       p.PHPVersion,
