@@ -261,3 +261,105 @@ Exact shared resource names remain part of the lower-level workflow contract and
 ## Phase Boundary
 
 This contract now includes registry-driven hostname-aware gateway rules plus the first macOS local DNS bootstrap path. The `.test` hostname is the routing target at the gateway layer, and `dnsmasq` plus `/etc/resolver` provide the resolution path for that suffix.
+
+## Phase 0: runtime baseline
+
+## Current 20i topology
+
+The product-owned assets are:
+
+- `stacks/20i/docker-compose.shared.yml`: one shared `nginx` gateway on the
+  external `stage-shared` network, publishing host HTTP/HTTPS ports and
+  mounting generated configuration and certificates.
+- `stacks/20i/docker-compose.20i.yml`: project services `nginx`, `apache`, and
+  `mariadb`, plus optional `phpmyadmin` under the `debug` profile.
+- `docker/nginx.conf.tmpl`: project web routing template.
+- `docker/apache/Dockerfile`: PHP/Apache image build input.
+
+The project services use two network scopes:
+
+1. A project network named from `PROJECT_RUNTIME_NETWORK` for application and
+   database communication.
+2. The external shared gateway network for project `nginx` and the gateway.
+
+The normal dependency graph is:
+
+```text
+mariadb --healthy -> apache --healthy -> nginx --healthy -> gateway route
+     \-------------------- phpmyadmin (debug) ----------------/
+```
+
+The gateway must not be made dependent on the database. `phpmyadmin` is
+optional and is never part of the default happy path.
+
+## Product guarantees
+
+These behaviors belong above the runtime adapter and must remain stable across
+backends:
+
+| Area | Contract |
+| --- | --- |
+| Identity | A project is identified by StageServe slug/path/state, not a vendor container ID. |
+| Start | `stage up` is idempotent and leaves a registered project attached only after health and route checks pass. |
+| Stop | `stage down` stops only the selected project and updates state; volume deletion is explicit. |
+| Rollback | Failure after project startup cleans up the partially started project and does not leave a false attached record. |
+| Ports | Conflicts are detected before runtime creation; allocated project ports remain associated with the project. |
+| Routing | A healthy project is reachable through its configured hostname and gateway route. |
+| Health | Startup does not complete while required services are unhealthy or missing. |
+| Status | Desired state, observed state, missing services, unhealthy services, and drift are distinguishable. |
+| Logs | An operator can retrieve/follow logs for a named service with a useful missing-service error. |
+| Exec | A supported one-shot command runs in the selected service and returns output plus failure status. |
+| Persistence | Database data survives stop/start; explicit volume removal is destructive and separate. |
+| Cleanup | Repeated up/down cycles do not leak runtime resources, generated env files, or gateway routes. |
+| Errors | Operator-facing failures identify the failed step and a concrete next action. |
+
+## Docker-specific implementation details
+
+These details are not portable guarantees and must stay inside the Docker
+adapter:
+
+- `docker compose` is the orchestration command surface.
+- `com.docker.compose.project`, `com.docker.compose.service`, and
+  `io.stageserve.*` labels are the observation mechanism.
+- Docker container IDs are recorded in `state.RuntimeIdentity` as observations.
+- Compose `depends_on` health conditions provide startup ordering.
+- The Docker Engine SDK supplies network existence, labeled listing, health
+  polling, logs, and exec.
+- Compose profiles implement the optional `debug` service.
+
+## Apple backend minimum profile
+
+The first Apple profile should support only the guarantees it can prove:
+
+- Apple silicon and macOS 26 host.
+- OCI image pull/build/run.
+- Stable StageServe-generated service names.
+- Host-published ports or inspected direct container addresses.
+- Source bind mounts and named database volumes.
+- Explicit health probes, logs, exec, stop, delete, and inspection.
+- A tested network/DNS strategy for gateway-to-project traffic.
+
+The Apple profile must report unsupported rather than emulate silently when it
+needs any of the following unproven behaviors:
+
+- Compose-style dependency orchestration.
+- Bare service-name discovery on a custom network.
+- Docker Engine API/socket consumers.
+- Docker-specific profiles, labels, or volume semantics.
+- Cross-backend shared gateway routing.
+
+## Capability matrix
+
+The machine-readable baseline is
+`infra/runtime/testdata/capability-matrix.json`. It intentionally separates
+product guarantees from backend capabilities. A backend can be selected only
+for a stack profile whose required capabilities are all supported and tested.
+
+## Phase 0 evidence
+
+The existing tests in `core/lifecycle/orchestrator_test.go`,
+`observability/status/status_test.go`, `core/config/loader_test.go`, and
+`core/state/store_test.go` characterize the current short-test behavior. Before
+the Apple adapter is added, extend that coverage when a missing product
+guarantee is discovered; do not weaken an existing Docker assertion to fit the
+new backend.

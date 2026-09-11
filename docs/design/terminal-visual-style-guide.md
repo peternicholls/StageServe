@@ -50,8 +50,9 @@ Use the design artifacts in this order:
 3. [Terminal Copy Style Guide](terminal-copy-style-guide.md) defines labels, voice, remediation, warnings, confirmations, and vocabulary.
 4. [StageServe Doctor Seed](stage-doctor-seed.md) documents the current production report surface.
 5. [Terminal Components And Prototypes](terminal-interface-prototypes.md) shows reusable component sketches and application examples.
-6. [Guided Flow Map](guided-flow-map.md) defines durable guided-routing situations and default actions.
-7. `.github/instructions/terminal-*.instructions.md` mirrors these ideas for agents working in scoped code paths.
+6. [Guided Dashboard Proposal](guided-dashboard-proposal.md) defines the current guided-shell chrome pattern from the mockups.
+7. [Guided Flow Map](guided-flow-map.md) defines durable guided-routing situations and default actions.
+8. `.github/instructions/terminal-*.instructions.md` mirrors these ideas for agents working in scoped code paths.
 
 Spec files and prototypes can supply context, but they do not outrank the current design guide. If an older spec or prototype conflicts with this guide, update the older artifact or treat it as historical context.
 
@@ -73,8 +74,8 @@ The plain-text version must carry the same information as the styled version. Co
 
 Use whitespace, order, and alignment before adding decoration.
 
-- Start with a surface header.
-- Put the human verdict before diagnostics or choices.
+- Start with a surface header. In guided screens, use the dashboard chrome from the current mockups: surface state, one headline, compact evidence facts, and local command hints.
+- Put the human verdict or next-step headline before diagnostics or choices.
 - Show values before actions that commit to those values.
 - Give each screen one dominant focus section.
 - Keep advanced material in `More…`, details, or troubleshooting surfaces.
@@ -139,7 +140,8 @@ Use these components as the reusable design language. The implementation may ren
 
 | Component | Job | Design notes |
 | --- | --- | --- |
-| Surface header | Establish product and current surface | `◆ StageServe` plus `Doctor`, `Setup`, `Project`, or `Recovery` |
+| Surface header | Establish product and current surface | `◆ StageServe` plus `Doctor`, `Setup`, `Project`, or `Recovery`. The gradient background on guided-screen headers spans only the text width, matching the footer rule — not the full terminal width. |
+| Guided dashboard | Orient interactive flows | Surface state, one headline, compact evidence facts, then command strip |
 | Verdict line | State the human outcome | First sentence about state; appears before detail |
 | Key facts | Show values StageServe will use | Aligned labels, values, and short source notes |
 | Report section | Present evidence | Blockers before passing checks; remediation adjacent to blocker |
@@ -181,10 +183,12 @@ This works because it is evidence-first. The report answers context, verdict, bl
 ## Example: Guided Surface
 
 ```text
-  ◆  StageServe                         Project
-  ──────────────────────────────────────
+  ◆ StageServe                                      Ready
 
-  This project is ready to run.
+  Next: run this project.
+  ● Machine ready Docker and ports passed    ● DNS ready *.test points here    ● Project stopped Configured, not running
+  ────────────────────────────────────────────────────────────────────────
+  [↵] run project   [e] edit settings   [d] diagnostics   [m] more
 
 ── Key facts ───────────────────────────
 
@@ -204,7 +208,7 @@ This works because it is evidence-first. The report answers context, verdict, bl
     Show direct commands, plain text output, and advanced detail.
 ```
 
-This works because it is action-first. It shows visible defaults before action, gives one low-risk default, and keeps implementation detail secondary.
+This works because it is action-first. The dashboard names the next step before choices. It shows visible defaults before action, gives one low-risk default, and keeps implementation detail secondary. See [Guided Dashboard Proposal](guided-dashboard-proposal.md) for the full pattern.
 
 ## Bubble Tea And Lip Gloss Separation
 

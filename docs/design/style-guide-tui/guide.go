@@ -86,6 +86,7 @@ func renderAnatomy(width int) string {
 		renderRule(builder, width, "Screen grammar", styleCyan)
 		renderNumbered(builder, []string{
 			"Surface header: StageServe identity plus Doctor, Setup, Project, Recovery, or another current surface.",
+			"Guided dashboard: surface state, one headline, compact evidence facts, then command strip (guided and utility surfaces only).",
 			"Verdict line: the first human sentence about the current state.",
 			"Key facts: the values StageServe will use before the user commits.",
 			"Focus section: Needs fixing, Setup steps, Recovery steps, What you can do, or another dominant section.",
@@ -123,6 +124,7 @@ func renderComponents(width int) string {
 		renderRule(builder, width, "Component vocabulary", styleCyan)
 		renderTermRows(builder, []termRow{
 			{"Surface header", "Establishes StageServe identity and current surface."},
+			{"Guided dashboard", "Surface state, headline, evidence facts, command strip (guided and utility surfaces)."},
 			{"Verdict line", "States the human outcome before detail."},
 			{"Key facts", "Shows values StageServe will use before commitment."},
 			{"Report section", "Presents evidence, blockers first, with remediation adjacent."},

@@ -224,16 +224,20 @@ Each reusable pattern should include:
 **Output sketch:**
 
 ```text
-  ◆  StageServe                         Project
-  --------------------------------------
+  ◆ StageServe                                      Ready
 
-  This project is ready to run.
+  Next: run this project.
+  ● Machine ready Docker and ports passed    ● DNS ready *.test points here    ● Project stopped Configured, not running
+  ────────────────────────────────────────────────────────────────────────
+  [↵] run project   [e] edit settings   [d] diagnostics   [m] more
 
--- Key facts ---------------------------
+── Key facts ───────────────────────────
 
   Local URL       http://pete-site.develop
   Web folder      ./public_html
   Status          not running yet
+
+── What you can do ─────────────────────
 
 ▶ Run this project
     Start the project and open it in your browser.
@@ -241,12 +245,13 @@ Each reusable pattern should include:
   Edit project settings
     Change site name, web folder, or domain suffix first.
 
-  ↑/↓ navigate • enter run • ? details • esc quit
+  More…
+    Show direct commands, plain text output, and advanced detail.
 ```
 
-**Why it works:** The verdict appears before choices. Default values and the default action are visible before commitment. Secondary choices stay small and user-goal oriented.
+**Why it works:** The dashboard names the next step before choices. Default values and the default action are visible before commitment. Secondary choices stay small and user-goal oriented.
 
-**Rules demonstrated:** visible defaults, lowest-risk default action, plain language, semantic hierarchy, context-specific footer.
+**Rules demonstrated:** guided dashboard headline and evidence facts, visible defaults, lowest-risk default action, plain language, semantic hierarchy, context-specific command hints.
 
 ### Running Project Screen
 
@@ -257,16 +262,20 @@ Each reusable pattern should include:
 **Output sketch:**
 
 ```text
-  ◆  StageServe                         Project
-  --------------------------------------
+  ◆ StageServe                                      Running
 
-  pete-site is running.
+  This project is running at http://pete-site.develop.
+  ● Site online http://pete-site.develop    ● DNS ready .develop routes locally    ● Apache + PHP up Up 3 hours
+  ────────────────────────────────────────────────────────────────────────
+  [o] open browser   [l] logs   [s] status   [m] more
 
--- Key facts ---------------------------
+── Key facts ───────────────────────────
 
   Local URL       http://pete-site.develop
   Web folder      ./public_html
   Status          healthy
+
+── What you can do ─────────────────────
 
 ▶ View project logs
     Watch what your project is doing right now.
@@ -278,9 +287,9 @@ Each reusable pattern should include:
     Show direct commands, plain text output, and advanced detail.
 ```
 
-**Why it works:** The default action is informative rather than destructive, and direct commands stay secondary.
+**Why it works:** The dashboard makes day-2 state and common controls visible immediately. The default action is informative rather than destructive, and direct commands stay secondary.
 
-**Rules demonstrated:** safe defaults, user-goal labels, More panel boundary.
+**Rules demonstrated:** guided dashboard, safe defaults, user-goal labels, More panel boundary.
 
 ### Report To Assisted Help
 

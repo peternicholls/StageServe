@@ -58,7 +58,7 @@ Rules:
 
 ```text
 <blank line>
-  ◆  <Title>                                      <- styleCyan icon, styleWhite bold title
+  ◆  <Title>                                      <- styleCyan icon, styleWhite bold title; gradient background spans text width only, matching footer rule width
   ──────────────────────────────────────           <- styleDim divider
 <blank line>
   ✗  Not ready — N of M checks need attention.    <- styleError bold, or styleReady bold when all pass
@@ -90,32 +90,40 @@ Section title variants:
 
 Use this for bare `stage`, project setup, run/stop/logs, recovery, and any future Bubble Tea screen that is action-first instead of evidence-first.
 
+Guided screens use a dashboard chrome area above the body. The dashboard carries four layers:
+
+1. **Surface header:** product identity and current state such as `Running`, `Ready`, `Needs attention`, or `Doctor`.
+2. **Headline:** one human sentence — a verdict, next step, or utility context — in the semantic colour that matches the state.
+3. **Evidence facts:** three or four compact facts supporting the headline.
+4. **Command strip:** keys relevant to the current screen.
+
 ```text
-<blank line>
-  ◆  StageServe                         <Surface>
-  ──────────────────────────────────────
-<blank line>
-  <human verdict sentence>
-<blank line>
-  <one short summary line, optional>
-<blank line>
+  ◆ StageServe                                      <Surface state>
+
+  <headline: verdict or next step>
+  ● <fact 1>    ● <fact 2>    ● <fact 3>
+  ────────────────────────────────────────────────────────────────────────
+  [<key>] <action>   [<key>] <action>   [<key>] <action>
+
 ── Key facts ───────────────────────────
-<blank line>
+
   <Label padded>  <Value padded>  (<short note>)
-<blank line>
+
 ── <Setup steps|Recovery steps|What you can do> ─────
-<blank line>
+
   ▶ <default item>
     <what enter will do>
-<blank line>
+
     <secondary item>
     <why someone would choose it>
-<blank line>
+
   <context-specific footer help>
 ```
 
 Rules:
 
+- The dashboard headline is the most prominent line after the surface header. Use semantic colour matching the state: green for ready, yellow for attention, red for errors.
+- Evidence facts wrap onto additional lines in narrow terminals rather than truncating important values.
 - Show the value StageServe will use before the action that commits to it.
 - Keep the highlighted default first and low-risk.
 - Use one dominant focus section. Do not show `Needs fixing`, `Setup steps`, and `What you can do` at equal visual weight on the same screen unless the screen truly needs all three.

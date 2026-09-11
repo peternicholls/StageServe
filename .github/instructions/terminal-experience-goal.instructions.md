@@ -18,6 +18,7 @@ Read these in order:
 4. `.github/instructions/terminal-markup-spec.instructions.md`
 5. `.github/instructions/terminal-copy-style.instructions.md`
 6. `.github/instructions/terminal-pattern-catalog.instructions.md`
+7. `docs/design/guided-dashboard-proposal.md`
 
 When the work changes bare `stage`, planner situations, project setup routing, run/stop flow, recovery, or report-to-assistance handoffs, also read:
 

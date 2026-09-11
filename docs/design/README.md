@@ -19,7 +19,9 @@ Use these docs when changing `stage doctor`, `stage setup`, onboarding, guided b
    - The current production report seed, taken from the real `stage doctor` command and projector code.
 5. [Terminal Components And Prototypes](terminal-interface-prototypes.md)
    - Reusable components, representative screen sketches, and TUI/plain-text twins.
-6. [Guided Flow Map](guided-flow-map.md)
+6. [Guided Dashboard Proposal](guided-dashboard-proposal.md)
+   - Current proposal for the guided shell dashboard: state headline, compact evidence, and local command strip.
+7. [Guided Flow Map](guided-flow-map.md)
    - Durable routing, situations, default actions, and planner boundaries for the guided shell.
 
 ## Design Scope
@@ -56,6 +58,7 @@ The design system is distilled from current implementation, active spec work, an
 - The current `stage doctor` rendering is the best production visual anchor.
 - The current `stage doctor` rendering is documented in [StageServe Doctor Seed](stage-doctor-seed.md).
 - The visual identity rules are consolidated in [Terminal Visual Identity Style Guide](terminal-visual-style-guide.md).
+- The current guided dashboard direction is documented in [Guided Dashboard Proposal](guided-dashboard-proposal.md) and reflected in the runnable mockups under `mockups/`.
 - The prototype under `specs/007-harden-TUI-and-other-interactions/prototype/` is the design sandbox for guided flows.
 - The detailed scenario notes and vocabulary live under `specs/007-harden-TUI-and-other-interactions/flow-diagrams/`.
 

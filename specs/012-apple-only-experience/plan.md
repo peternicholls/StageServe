@@ -35,8 +35,8 @@
   the shortest obvious operator path and what friction it removes or adds.
 - [ ] Reliability expectations are explicit, including backward compatibility or
   migration behavior, canonical variable names, defaults, required values, and
-  precedence order (CLI override -> project `.env.stageserve` -> shell environment -> stack
-  `.env.stageserve` -> defaults).
+  precedence order (CLI override -> `.20i-local` -> shell environment -> stack
+  defaults).
 - [ ] Robustness boundaries are defined for containers, volumes, networks,
   shared services, runtime data, isolation, and recovery from partial failure
   or drift.
@@ -116,10 +116,3 @@ directories captured above]
 |-----------|------------|-------------------------------------|
 | [e.g., 4th project] | [current need] | [why 3 projects insufficient] |
 | [e.g., Repository pattern] | [specific problem] | [why direct DB access insufficient] |
-
-## Apple-only delivery gate
-
-Identify the tested Apple `container` release and macOS/Apple silicon matrix.
-Keep TUI, plain text and JSON on shared services. Docker/Compose fallback is
-unsupported. Record live routing, health, persistence and failure evidence;
-mock tests and archived completion marks do not establish release readiness.

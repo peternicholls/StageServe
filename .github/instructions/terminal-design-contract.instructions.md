@@ -103,6 +103,7 @@ When everything passes, the output should become quieter. Do not print ceremonia
 StageServe screens should be composed from a small reusable grammar:
 
 - **Surface header:** StageServe identity plus the current surface such as `Doctor`, `Setup`, `Project`, or `Recovery`.
+- **Guided dashboard (interactive surfaces only):** surface state, one headline, compact evidence facts, and a local command strip. See `docs/design/guided-dashboard-proposal.md` for the active pattern.
 - **Verdict line:** the first human sentence about the current state.
 - **Key facts or visible defaults:** aligned rows for values StageServe will use.
 - **Focus section:** one dominant section such as `Needs fixing`, `All clear`, `Setup steps`, `Recovery steps`, or `What you can do`.

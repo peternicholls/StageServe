@@ -80,23 +80,32 @@ function stageHeader(surfaceLabel, width) {
   var title = '  StageServe';
   var right = surfaceLabel + '  local hosting console';
   var gap = Math.max(2, band - title.length - right.length);
-  return '<span class="product-header">' + T('title', title) + ' '.repeat(gap) + T('surface', right) + '</span>';
+  return '<span class="product-header"><span class="product-header-content">' + T('title', title) + ' '.repeat(gap) + T('surface', right) + '</span></span>';
 }
 
-function dashboard(items, width) {
-  var gap = '  ';
+function dashboard(headline, items, width) {
   var out = [];
-  var cellWidth = Math.floor((width + 4 - gap.length) / 2);
-  for (var i = 0; i < items.length; i += 2) {
-    var left = items[i];
-    var right = items[i + 1];
-    var leftText = T(left.tone || 'chip', '●') + ' ' + T('muted', fit(left.label + ': ' + left.value, cellWidth - 2));
-    if (right) {
-      var rightText = T(right.tone || 'chip', '●') + ' ' + T('muted', fit(right.label + ': ' + right.value, cellWidth - 2));
-      out.push('<span class="dashboard-line">' + leftText + gap + rightText + '</span>');
+  var lineLimit = width + 4;
+  var headlineTone = items && items.length ? items[0].tone || 'chip' : 'chip';
+  if (headline) {
+    out.push('<span class="dashboard-headline">  ' + T(headlineTone, headline) + '</span>');
+  }
+
+  var currentLine = '  ';
+  for (var i = 0; i < items.length; i++) {
+    var item = items[i];
+    var factText = T(item.tone || 'chip', '●') + ' ' + T('label', item.label) + ' ' + T('muted', item.value);
+    var separator = currentLine.trim() ? '    ' : '';
+    var nextLine = currentLine + separator + factText;
+    if (stripTags(nextLine).length > lineLimit && currentLine.trim()) {
+      out.push('<span class="dashboard-line">' + currentLine + '</span>');
+      currentLine = '  ' + factText;
     } else {
-      out.push('<span class="dashboard-line">' + leftText + '</span>');
+      currentLine = nextLine;
     }
+  }
+  if (currentLine.trim()) {
+    out.push('<span class="dashboard-line">' + currentLine + '</span>');
   }
   return out.join('\n');
 }
@@ -120,10 +129,15 @@ function productFooter(width) {
   ].join('\n');
 }
 
-function chrome(surfaceLabel, width, statusItems, commands) {
+function chrome(surfaceLabel, width, headline, statusItems, commands) {
+  if (Array.isArray(headline)) {
+    commands = statusItems;
+    statusItems = headline;
+    headline = '';
+  }
   return [
     stageHeader(surfaceLabel, width),
-    dashboard(statusItems, width),
+    dashboard(headline, statusItems, width),
     commandStrip(commands, width),
   ].join('\n');
 }
@@ -160,7 +174,7 @@ Screens['guided-ready'] = {
   html: function (w) {
     var lw = w - 4;
     return [
-      chrome('Ready', lw, [
+      chrome('Ready', lw, 'Next: run this project.', [
         { tone: 'ready', label: 'Machine ready', value: 'Docker and ports passed' },
         { tone: 'ready', label: 'DNS ready', value: '*.test points here' },
         { tone: 'subtle-chip', label: 'Project stopped', value: 'Configured, not running' },
@@ -217,7 +231,7 @@ Screens['guided-running'] = {
   html: function (w) {
     var lw = w - 4;
     return [
-      chrome('Running', lw, [
+      chrome('Running', lw, 'This project is running at https://demo.test.', [
         { tone: 'ready', label: 'Site online', value: 'Browser can open demo.test' },
         { tone: 'ready', label: 'DNS ready', value: '*.test routes locally' },
         { tone: 'ready', label: 'Services running', value: 'apache and nginx are up' },
@@ -284,7 +298,7 @@ Screens['guided-loading'] = {
   html: function (w) {
     var lw = w - 4;
     return [
-      chrome('Starting up', lw, [
+      chrome('Starting up', lw, 'Starting local services now.', [
         { tone: 'chip', label: 'Action running', value: 'Starting local services' },
         { tone: 'ready', label: 'DNS ready', value: '*.test routes locally' },
         { tone: 'subtle-chip', label: 'Project', value: 'demo' },
@@ -421,7 +435,7 @@ Screens['guided-machine-not-ready'] = {
   html: function (w) {
     var lw = w - 4;
     return [
-      chrome('Needs attention', lw, [
+      chrome('Needs attention', lw, 'Next: open Docker Desktop.', [
         { tone: 'needs-action', label: 'Docker needs action', value: 'Open Docker Desktop first' },
         { tone: 'subtle-chip', label: 'DNS not checked', value: 'Waiting for Docker' },
         { tone: 'subtle-chip', label: 'Ports not checked', value: 'Waiting for setup' },
@@ -687,29 +701,34 @@ Screens['guided-doctor-utility'] = {
   html: function (w) {
     var lw = w - 4;
     return [
-      hdr('StageServe Doctor', lw),
-      '  ' + rule(lw),
-      '',
-      section('StageServe Doctor', 'neutral', lw),
+      chrome('Doctor', lw, 'All checks passed.', [
+        { tone: 'ready', label: 'Machine ready', value: 'All checks passed' },
+        { tone: 'ready', label: 'DNS ready', value: '*.test routes locally' },
+        { tone: 'ready', label: 'Ports ready', value: '80 and 443 available' },
+        { tone: 'chip', label: 'Mode', value: 'read-only report' },
+      ], [
+        { key: '↵', label: 'back to menu' },
+        { key: 'r', label: 'run again' },
+        { key: 'm', label: 'more tools' },
+        { key: 'q', label: 'quit' },
+      ]),
       '',
       '  ' + T('ready', '\u2713') + '  ' + T('white-bold', 'All 8 checks passed \u2014 your machine is ready.'),
       '',
       section('Checks passed', 'action', lw),
+      panel('Readiness checks', [
+        T('ready', '\u2713') + '  ' + T('label', 'Docker CLI') + '             ' + T('dim', 'installed'),
+        T('ready', '\u2713') + '  ' + T('label', 'Docker daemon') + '          ' + T('dim', 'running'),
+        T('ready', '\u2713') + '  ' + T('label', 'State directory') + '        ' + T('dim', 'exists'),
+        T('ready', '\u2713') + '  ' + T('label', 'Shared stack file') + '      ' + T('dim', 'available'),
+        T('ready', '\u2713') + '  ' + T('label', 'Project stack file') + '     ' + T('dim', 'available'),
+        T('ready', '\u2713') + '  ' + T('label', 'Port 80 / 443') + '          ' + T('dim', 'available'),
+        T('ready', '\u2713') + '  ' + T('label', 'DNS resolver') + '           ' + T('dim', 'configured'),
+      ], lw, 'ready'),
       '',
-      '  ' + T('ready', '\u2713') + '  ' + T('label', 'Docker CLI           ') + '  ' + T('dim', 'installed'),
-      '  ' + T('ready', '\u2713') + '  ' + T('label', 'Docker daemon        ') + '  ' + T('dim', 'running'),
-      '  ' + T('ready', '\u2713') + '  ' + T('label', 'State directory      ') + '  ' + T('dim', 'exists'),
-      '  ' + T('ready', '\u2713') + '  ' + T('label', 'Shared stack file    ') + '  ' + T('dim', 'available'),
-      '  ' + T('ready', '\u2713') + '  ' + T('label', 'Project stack file   ') + '  ' + T('dim', 'available'),
-      '  ' + T('ready', '\u2713') + '  ' + T('label', 'Port 80              ') + '  ' + T('dim', 'available'),
-      '  ' + T('ready', '\u2713') + '  ' + T('label', 'Port 443             ') + '  ' + T('dim', 'available'),
-      '  ' + T('ready', '\u2713') + '  ' + T('label', 'DNS resolver         ') + '  ' + T('dim', 'configured'),
-      '',
-      '  ' + T('dim', '\u2500'.repeat(40)),
       '  ' + T('dim', 'Your machine is ready. Run:') + ' ' + T('bright-cyan', 'stage up'),
       '',
-      '  ' + rule(lw),
-      '  ' + T('footer', '\u21b5 back to menu  q quit'),
+      productFooter(lw),
       '',
     ].join('\n');
   }
@@ -822,7 +841,7 @@ Screens['guided-more'] = {
   html: function (w) {
     var lw = w - 4;
     return [
-      chrome('More', lw, [
+      chrome('More', lw, 'Advanced options for this running project.', [
         { tone: 'ready', label: 'Project running', value: 'Local site is online' },
         { tone: 'ready', label: 'DNS ready', value: '*.test routes locally' },
         { tone: 'chip', label: 'Tools available', value: 'Diagnostics and output modes' },
@@ -876,7 +895,7 @@ Screens['guided-command-palette'] = {
   html: function (w) {
     var lw = w - 4;
     return [
-      chrome('Running', lw, [
+      chrome('Running', lw, 'Command palette is open.', [
         { tone: 'ready', label: 'Site online', value: 'Browser can open demo.test' },
         { tone: 'ready', label: 'DNS ready', value: '*.test routes locally' },
         { tone: 'ready', label: 'Services running', value: 'apache and nginx are up' },
@@ -1001,22 +1020,31 @@ Screens['guided-status'] = {
   html: function (w) {
     var lw = w - 4;
     return [
-      hdr('Status', lw),
-      '  ' + rule(lw),
+      chrome('Status', lw, 'Live status for https://demo.test.', [
+        { tone: 'ready', label: 'Site online', value: 'https://demo.test' },
+        { tone: 'ready', label: 'DNS ready', value: '*.test routes locally' },
+        { tone: 'ready', label: 'Services running', value: 'apache and nginx' },
+        { tone: 'chip', label: 'Stack', value: '20i Apache + PHP' },
+      ], [
+        { key: '↵', label: 'back to menu' },
+        { key: 'l', label: 'logs' },
+        { key: 'r', label: 'refresh' },
+        { key: 'q', label: 'quit' },
+      ]),
       '',
       '  ' + T('verdict-ready', 'This project is running at https://demo.test.'),
       '',
       section('Project status', 'neutral', lw),
+      panel('Live project', [
+        T('label', 'Project') + '     ' + T('muted', 'demo'),
+        T('label', 'Stack') + '       ' + T('muted', '20i (Apache + PHP)'),
+        T('label', 'Local URL') + '   ' + T('command', 'https://demo.test'),
+        '',
+        T('ready', '●') + ' ' + T('label', 'apache') + '      ' + T('ready', 'running') + '   ' + T('dim', 'Up 3 hours'),
+        T('ready', '●') + ' ' + T('label', 'nginx') + '       ' + T('ready', 'running') + '   ' + T('dim', 'Up 3 hours'),
+      ], lw, 'ready'),
       '',
-      '  ' + T('label', 'Project') + '     demo',
-      '  ' + T('label', 'Stack') + '       20i (Apache + PHP)',
-      '  ' + T('label', 'Local URL') + '   https://demo.test',
-      '',
-      '  ' + T('label', 'apache') + '      ' + T('ready', 'running') + '   Up 3 hours',
-      '  ' + T('label', 'nginx') + '       ' + T('ready', 'running') + '   Up 3 hours',
-      '',
-      '  ' + rule(lw),
-      '  ' + T('footer', '\u21b5 back to menu  q quit'),
+      productFooter(lw),
       '',
     ].join('\n');
   }
@@ -1038,25 +1066,29 @@ Screens['guided-error'] = {
   html: function (w) {
     var lw = w - 4;
     return [
-      hdr('Starting up', lw),
-      '  ' + rule(lw),
+      chrome('Action error', lw, 'Next: run diagnostics.', [
+        { tone: 'error', label: 'Start failed', value: 'Project did not come online' },
+        { tone: 'needs-action', label: 'Next step', value: 'Run diagnostics' },
+        { tone: 'subtle-chip', label: 'Files safe', value: 'No project files changed' },
+        { tone: 'chip', label: 'Recovery', value: 'guided actions available' },
+      ], [
+        { key: '↵', label: 'run diagnostics' },
+        { key: 't', label: 'try again' },
+        { key: 'm', label: 'more tools' },
+        { key: 'q', label: 'quit' },
+      ]),
       '',
       '  ' + T('verdict-error', "Couldn't start this project."),
       '  ' + T('muted', 'Run stage doctor to check setup, or stage up to retry'),
       '',
       section('What you can do', 'action', lw),
+    ].concat(actionLine(true, 'Run diagnostics', 'Read-only. Check machine and project readiness.', '↵')).concat([
+      ''
+    ]).concat(actionLine(false, 'Try again', 'Retry starting this project.', 't')).concat([
       '',
-      '  <span class="tok-cursor-item">' + T('active-marker', '\u25b6') + '  ' + T('focus', 'Run diagnostics') + '                </span>',
-      '     Read-only. Check machine and runtime readiness.',
+      productFooter(lw),
       '',
-      '  ' + T('inactive-marker', ' ') + '  Try again                               ',
-      '     Retry starting this project.',
-      '',
-      '',
-      '  ' + rule(lw),
-      '  ' + T('footer', '\u2191\u2193 navigate  \u21b5 select  q quit'),
-      '',
-    ].join('\n');
+    ]).join('\n');
   }
 };
 

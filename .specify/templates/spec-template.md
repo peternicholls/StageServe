@@ -88,7 +88,7 @@
 
 ### Configuration & Precedence
 
-- New or changed configuration inputs: [env vars, `.20i-local` keys, CLI flags,
+- New or changed configuration inputs: [env vars, `.env.stageserve` keys, CLI flags,
   defaults]
 - Precedence order: [document the effective order, or state that none changes]
 
@@ -157,3 +157,10 @@
 - [Assumption about scope boundaries, e.g., "Mobile support is out of scope for v1"]
 - [Assumption about data/environment, e.g., "Existing authentication system will be reused"]
 - [Dependency on existing system/service, e.g., "Requires access to the existing user profile API"]
+
+## Apple-only delivery gate
+
+Identify the tested Apple `container` release and macOS/Apple silicon matrix.
+Keep TUI, plain text and JSON on shared services. Docker/Compose fallback is
+unsupported. Record live routing, health, persistence and failure evidence;
+mock tests and archived completion marks do not establish release readiness.

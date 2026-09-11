@@ -1,20 +1,15 @@
 <!--
 Sync Impact Report
-Version change: 2.0.0 -> 2.0.1
-Modified principles:
-- Formatting and line wrapping only; no semantic changes
-Added sections:
-- None
-Removed sections:
-- None
-Templates requiring updates:
-- ✅ .specify/memory/constitution.md
-- ✅ No dependent template or documentation changes required for this patch-only amendment
-Follow-up TODOs:
-- None
+Version: 2.0.1 -> 3.0.0 (breaking runtime/platform contract)
+Authority: user direction, 2026-09-11: Apple Containers only.
+Preserved: ease of use, reliability, robustness, friction removal.
+Changed: Apple-only runtime, shared TUI/CLI semantics, explicit legacy migration.
+Synced: spec/plan templates, README authority notice, active spec 012,
+        docs/product-direction.md, docs/roadmap.md, agent context.
+Historical specs are archived; old implementation docs carry transition notices.
 -->
 
-# 20i Stack Constitution
+# StageServe Constitution
 
 ## Core Principles
 
@@ -29,7 +24,7 @@ Routine operations MUST prefer sensible defaults, low setup overhead, and
 minimal manual coordination between shell, GUI, and automation entry points.
 
 Rationale: this stack only creates value when local project startup and
-inspection remain easier than hand-rolled Docker workflows.
+inspection remain easier than hand-rolled local container workflows.
 
 ### II. Reliability Must Be Boring And Predictable
 The same input MUST produce the same operational result across shell commands,
@@ -58,29 +53,35 @@ clarity matter more than optimistic happy-path behavior.
 Features and process changes MUST actively reduce recurring operator pain rather
 than shift it elsewhere. Any new step, prompt, manual sync, or stateful
 exception MUST be justified in the plan, along with the friction it removes and
-the simpler alternative considered. Where the repository and the deployed stack
-copy under `$HOME/docker/20i-stack` can diverge, the workflow and docs MUST make
-that sync point explicit so operators do not discover it by failure.
+the simpler alternative considered. Runtime assets and the binary MUST have an explicit compatibility relationship;
+user project settings and persistent data MUST survive asset and binary updates.
 
 Rationale: this project exists to remove the repeated annoyances that make local
 stack management slower, harder to remember, or easier to get wrong.
 
 ## Operational Constraints
 
-- The primary supported operator environment is macOS with Docker Desktop and a
-  POSIX shell workflow.
-- Compose-based launches MUST continue to support invocation from an arbitrary
-  project directory through the repo's documented environment contract, or the
-  replacement contract MUST be documented and migration-tested.
-- Changes that affect the working copy in this repository and the deployed stack
-  copy under `$HOME/docker/20i-stack` MUST call out that sync requirement in the
-  implementation plan and user-facing docs.
-- Common-path operations MUST continue to fit within a shell-first workflow even
-  when GUI wrappers or shared services are added.
-- Development defaults such as local credentials, open ports, and phpMyAdmin
-  exposure MUST remain clearly labeled as development-only behavior.
-- Shared infrastructure additions MUST define bootstrap, steady-state, detach,
-  teardown, and recovery expectations before implementation begins.
+- The supported runtime is Apple `container` only, on Apple silicon and a tested
+  macOS 26-or-later release. The supported CLI version range MUST be recorded
+  from live validation. Docker Desktop, Compose, and Docker socket compatibility
+  are not supported product paths or fallback mechanisms.
+- The primary interface is a guided TUI backed by the same application services
+  as direct CLI, plain text, and structured JSON output. Renderers MUST NOT own
+  lifecycle truth. A separate GUI requires a later evidence-backed decision.
+- A supported project can be operated from its own folder, independently of the
+  source checkout. Configuration precedence is CLI flags -> project
+  `.env.stageserve` -> shell environment -> stack `.env.stageserve` -> defaults.
+- Persistent project identity and database data MUST NOT be reinterpreted as
+  Apple resources merely because an old record lacks a runtime identifier.
+  Legacy Docker data requires an explicit backed-up migration, not adoption.
+- Development credentials and endpoint exposure MUST remain clearly labeled
+  development-only. Default exposure MUST stay local; network isolation and
+  routing must be demonstrated on the selected Apple runtime release.
+- Shared infrastructure MUST define bootstrap, steady-state, teardown and recovery.
+  Project stop/removal MUST preserve other projects and database volumes unless
+  the operator explicitly requests scoped data deletion.
+- OS-level DNS or trust changes MUST show exact effects and require operator
+  authorization; normal project actions MUST NOT require repeated privilege prompts.
 
 ## Delivery Workflow & Quality Gates
 
@@ -92,7 +93,7 @@ stack management slower, harder to remember, or easier to get wrong.
 - Every task list MUST include the work needed to keep docs and alternate entry
   points aligned when behavior changes, plus validation for any claimed
   reduction in operator friction.
-- Changes to Compose files, runtime images, routing, or automation MUST be
+- Changes to Apple runtime definitions, images, routing, or automation MUST be
   validated against startup, status/inspection, teardown, and at least one
   failure path relevant to the change. If validation cannot be run, the gap MUST
   be recorded explicitly.
@@ -124,4 +125,4 @@ Compliance review expectations:
 - Unresolved non-compliance MUST be treated as a blocker until explicitly
   justified and accepted in the plan.
 
-**Version**: 2.0.1 | **Ratified**: 2026-04-01 | **Last Amended**: 2026-04-01
+**Version**: 3.0.0 | **Ratified**: 2026-04-01 | **Last Amended**: 2026-09-11

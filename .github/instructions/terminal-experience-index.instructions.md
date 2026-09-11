@@ -29,7 +29,10 @@ When a task says `style guide`, `design style guide`, `visual identity`, or `ter
 5. **Pattern catalog:** `.github/instructions/terminal-pattern-catalog.instructions.md`
    - Provides examples, anti-examples, and reusable interaction patterns for current and anticipated StageServe flows.
    - Read this when designing a new output shape or reviewing whether an interaction feels consistent.
-6. **Goal prompt:** `.github/instructions/terminal-experience-goal.instructions.md`
+6. **Guided dashboard proposal:** `docs/design/guided-dashboard-proposal.md`
+   - Defines the current guided-shell chrome pattern: surface state, headline, evidence facts, command strip.
+   - Read this when working on the guided shell dashboard, mockups, or guided-screen renderers.
+7. **Goal prompt:** `.github/instructions/terminal-experience-goal.instructions.md`
    - Long-form operating prompt for agents asked to design, review, or revise terminal interactions.
    - Give this to Codex when the work itself is to improve a StageServe terminal experience.
 

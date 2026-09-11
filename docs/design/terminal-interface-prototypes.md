@@ -17,6 +17,19 @@ For the current production report seed, start with [StageServe Doctor Seed](stag
 
 Must contain the StageServe identity and current surface. It establishes context, not verdict.
 
+### Guided dashboard
+
+```text
+  ◆ StageServe                                      Running
+
+  This project is running at https://demo.test.
+  ● Site online https://demo.test    ● DNS ready *.test routes locally    ● Apache + PHP up Up 3 hours
+  ────────────────────────────────────────────────────────────────────────
+  [o] open browser   [l] logs   [s] status   [r] restart   [x] stop
+```
+
+Guided and utility screens use this richer chrome instead of a bare report header. It gives one state headline, compact evidence, and local commands before the body. See [Guided Dashboard Proposal](guided-dashboard-proposal.md) for the active proposal.
+
 ### Verdict line
 
 ```text
@@ -211,12 +224,12 @@ For the full code-anchored write-up, see [StageServe Doctor Seed](stage-doctor-s
 **Context:** the machine is not ready yet.
 
 ```text
-  ◆  StageServe                         Setup
-  ──────────────────────────────────────
+  ◆ StageServe                                      Needs attention
 
-  Your computer isn't ready yet.
-
-  StageServe is checking the computer before it looks at this project.
+  Next: open Docker Desktop.
+  ● Docker CLI installed    ▲ Docker not running    · Ports waiting    · DNS waiting
+  ────────────────────────────────────────────────────────────────────────
+  [↵] open Docker   [d] diagnostics   [m] setup commands   [q] quit
 
 ── Setup steps ─────────────────────────
 
@@ -228,23 +241,21 @@ For the full code-anchored write-up, see [StageServe Doctor Seed](stage-doctor-s
 
   •  Local HTTPS certificates           optional for this URL
   •  Network ports 80 and 443           pending
-
-  ? details • q quit
 ```
 
-**Why it works:** setup is presented as tool-owned work, not a diagnostic menu.
+**Why it works:** setup is presented as tool-owned work, not a diagnostic menu. The dashboard gives the next step before the checklist.
 
 ### Project setup preview
 
 **Context:** this folder needs its first `.env.stageserve` file.
 
 ```text
-  ◆  StageServe                         Project setup
-  ──────────────────────────────────────
+  ◆ StageServe                                      Project setup
 
   This folder doesn't have StageServe settings yet.
-
-  StageServe will create one file only: .env.stageserve.
+  ● Site name pete-site    ● Web folder ./public_html    ● Local URL http://pete-site.develop
+  ────────────────────────────────────────────────────────────────────────
+  [↵] use these settings   [e] edit first   [m] more options
 
 ── Key facts ───────────────────────────
 
@@ -266,17 +277,19 @@ For the full code-anchored write-up, see [StageServe Doctor Seed](stage-doctor-s
     Show direct commands, plain text output, and advanced detail.
 ```
 
-**Why it works:** the values are visible before the write, and the edit path is one step away.
+**Why it works:** the dashboard shows preview values before commitment, and the edit path is one step away.
 
 ### Running project screen
 
 **Context:** a configured project is already running.
 
 ```text
-  ◆  StageServe                         Project
-  ──────────────────────────────────────
+  ◆ StageServe                                      Running
 
-  pete-site is running.
+  This project is running at http://pete-site.develop.
+  ● Site online http://pete-site.develop    ● DNS ready .develop routes locally    ● Apache + PHP up Up 4 minutes
+  ────────────────────────────────────────────────────────────────────────
+  [o] open browser   [l] logs   [s] status   [m] more
 
 ── Key facts ───────────────────────────
 
@@ -298,20 +311,19 @@ For the full code-anchored write-up, see [StageServe Doctor Seed](stage-doctor-s
   → open in browser • q quit
 ```
 
-**Why it works:** the default action is informative, not destructive.
+**Why it works:** the dashboard makes day-2 state and common controls visible immediately. The default action is informative, not destructive.
 
 ### Recovery flow
 
 **Context:** StageServe cannot safely choose the next step.
 
 ```text
-  ◆  StageServe                         Recovery
-  ──────────────────────────────────────
+  ◆ StageServe                                      Recovery
 
   StageServe couldn't safely choose a next step.
-
-  Something went wrong while StageServe was checking this project.
-  StageServe doesn't want to guess. Here is what it can try, in order.
+  ● Auto-recovery failed    ● Project state uncertain    ● Manual steps available
+  ────────────────────────────────────────────────────────────────────────
+  [↵] start recovery   [d] diagnostics   [m] more tools
 
 ── Recovery steps ──────────────────────
 

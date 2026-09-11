@@ -74,6 +74,8 @@ Every screen should answer four questions in order:
 
 Prefer progressive disclosure. Start with the outcome, then the reason, then the action. Do not force users to infer meaning from a table of raw checks.
 
+For guided screens, the current mockups express this through a dashboard header: product and state first, then one human headline, compact evidence facts, and the command strip. Treat that dashboard as the active guided-screen pattern when older examples show only a simple header plus verdict.
+
 ### Safe defaults only
 
 The default action should be the lowest-risk likely goal.
@@ -98,9 +100,24 @@ StageServe screens should be composed from a small reusable grammar.
 
 The header establishes StageServe identity and the current surface, such as `Doctor`, `Setup`, `Project`, or `Recovery`.
 
+### Guided dashboard
+
+Guided and utility surfaces use a dashboard chrome above the body:
+
+```text
+◆ StageServe                                      Running
+
+This project is running at https://demo.test.
+● Site online https://demo.test    ● DNS ready *.test routes locally    ● Apache + PHP up Up 3 hours
+────────────────────────────────────────────────────────────────────────
+[o] open browser   [l] logs   [s] status   [r] restart   [x] stop
+```
+
+The dashboard gives orientation and fast controls. It does not replace the body sections that explain settings, choices, checklists, confirmations, or reports.
+
 ### Verdict line
 
-The verdict is the first human sentence about the current state. It appears before diagnostics, values, or actions.
+The verdict or next-step headline is the first human sentence about the current state. It appears before diagnostics, values, or actions.
 
 ### Key facts or visible defaults
 
