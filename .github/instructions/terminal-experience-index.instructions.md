@@ -41,7 +41,7 @@ When a task says `style guide`, `design style guide`, `visual identity`, or `ter
 When changing bare `stage`, planner situations, project setup flow, run/stop flow, recovery flow, or report-to-assistance handoffs, also read:
 
 - `docs/design/guided-flow-map.md`
-- `specs/007-harden-TUI-and-other-interactions/flow-diagrams/README.md`
+- `archive/2026-09-11-pre-apple-only/specs/007-harden-TUI-and-other-interactions/flow-diagrams/README.md`
 
 Those files define the durable interaction model that sits above any one Bubble Tea implementation.
 

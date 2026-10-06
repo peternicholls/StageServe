@@ -2,23 +2,23 @@
 applyTo: "cmd/**,core/**,infra/**,observability/**,platform/**"
 ---
 
-Prefer the current Go runtime and lifecycle contract over archived Bash behavior.
+Follow constitution 3.1.0 and specs/012-apple-only-experience/contracts/.
+Apple container is the only supported target runtime; Docker/Compose fallback
+and Engine sockets are unsupported. Existing legacy adapter code is retirement
+work, not the architecture to preserve. OCI Dockerfiles may remain build inputs.
 
-Before changing behavior, identify the owning slice first:
-- config precedence and env ownership live under `core/config`
-- orchestration and rollback behavior live under `core/lifecycle`
-- compose subprocess behavior lives under `infra/compose`
-- gateway routing behavior lives under `infra/gateway`
+Ownership:
+- core/config: effective values and source provenance
+- core/state: project identity, retained-data ledger and atomic operation journal
+- core/lifecycle: locks, transactional apply, recovery and shared routing
+- infra/applecontainer: version-qualified CLI commands and observations
+- infra/gateway: per-route TLS and validated configuration
+- core/guidance and command adapters: shared action semantics and presentation
 
-Keep the active runtime contract intact unless the task explicitly changes it:
-- `STAGESERVE_STACK=20i` is the only supported stack kind today
-- the active project compose file is `docker-compose.20i.yml`
-- the shared layer is `docker-compose.shared.yml`
-- shared routing resources use the `stage-*` naming contract
+Use exact project/resource ownership, never name prefixes, to authorize changes.
+Never implicitly adopt legacy records as Apple resources. Preserve data on stop
+and detach. Test current contracts, including failure and recovery, before
+claiming support. Unit success does not prove live Apple compatibility.
 
-When touching these areas, prefer focused validation with the smallest relevant test command first:
-- `go test ./core/config`
-- `go test ./core/lifecycle`
-- `go test ./cmd/stage/commands`
-
-Do not reintroduce legacy fallback behavior such as `.stackenv`, `<stack-home>/.env`, `.stageserve-local`, or deprecated `20i-*` wrapper semantics unless the task explicitly asks for compatibility restoration.
+Use focused tests first, then required broad gates. Do not add dependencies or
+reintroduce legacy configuration aliases without an explicit requirement.

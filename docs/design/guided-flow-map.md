@@ -2,7 +2,7 @@
 
 This file pulls the durable interaction contract for spec 007 into the main design system. It is the short reference for how bare `stage` and guided handoffs should route, what each situation means, and what the default action must be.
 
-Use the more detailed source material in `specs/007-harden-TUI-and-other-interactions/flow-diagrams/` when revising a specific screen or transition.
+Use the more detailed source material in `archive/2026-09-11-pre-apple-only/specs/007-harden-TUI-and-other-interactions/flow-diagrams/` when revising a specific screen or transition.
 
 ## Core Principle
 

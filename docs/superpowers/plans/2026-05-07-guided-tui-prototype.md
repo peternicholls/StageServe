@@ -1,10 +1,12 @@
+> **Historical prototype planning:** Superseded by [spec 012](../../../specs/012-apple-only-experience/spec.md). Fixture/design context only; not production or live-runtime evidence.
+
 # Guided TUI Prototype Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Turn the spec 007 prototype into a polished design reference for guided StageServe interactions, including the transition from `stage doctor`-style reports into assisted help.
 
-**Architecture:** Keep the prototype fixture-only and private to `specs/007-harden-TUI-and-other-interactions/prototype`. Introduce small composable render helpers inside the prototype before changing screen output. Add one new fixture scenario for report-to-assistance so the UX can be tested without changing production `stage doctor`.
+**Architecture:** Keep the prototype fixture-only and private to `archive/2026-09-11-pre-apple-only/specs/007-harden-TUI-and-other-interactions/prototype`. Introduce small composable render helpers inside the prototype before changing screen output. Add one new fixture scenario for report-to-assistance so the UX can be tested without changing production `stage doctor`.
 
 **Tech Stack:** Go, Bubble Tea, ANSI/Lipgloss-compatible terminal styling, existing Makefile prototype targets, Markdown design docs.
 
@@ -15,15 +17,15 @@
 - Modify: `.github/instructions/terminal-pattern-catalog.instructions.md`
   - Add a reusable pattern for interactive guided screens.
   - Add a reusable pattern for report-to-assistance handoff.
-- Modify: `specs/007-harden-TUI-and-other-interactions/prototype/main.go`
+- Modify: `archive/2026-09-11-pre-apple-only/specs/007-harden-TUI-and-other-interactions/prototype/main.go`
   - Add private component render helpers.
   - Polish existing guided screens to use the shared grammar.
   - Add a `doctor_report_needs_help` fixture scenario and an assisted-help mode.
   - Keep all behavior fixture-only.
-- Modify: `specs/007-harden-TUI-and-other-interactions/prototype/main_test.go`
+- Modify: `archive/2026-09-11-pre-apple-only/specs/007-harden-TUI-and-other-interactions/prototype/main_test.go`
   - Add UX invariant tests before implementation.
   - Keep existing tests passing.
-- Modify: `specs/007-harden-TUI-and-other-interactions/prototype/README.md`
+- Modify: `archive/2026-09-11-pre-apple-only/specs/007-harden-TUI-and-other-interactions/prototype/README.md`
   - Document the new scenario and manual review points.
 - Create or update if needed: `.omx/notepad.md`
   - Record code-side concerns discovered during design without mixing them into design decisions.
@@ -145,7 +147,7 @@ Not-tested: No renderer output changed"
 ## Task 2: Add Failing UX Tests For Assisted Reports
 
 **Files:**
-- Modify: `specs/007-harden-TUI-and-other-interactions/prototype/main_test.go`
+- Modify: `archive/2026-09-11-pre-apple-only/specs/007-harden-TUI-and-other-interactions/prototype/main_test.go`
 
 - [ ] **Step 1: Add canonical scenario coverage**
 
@@ -238,7 +240,7 @@ undefined: modeAssist
 Run:
 
 ```bash
-go test ./specs/007-harden-TUI-and-other-interactions/prototype
+go test ./archive/2026-09-11-pre-apple-only/specs/007-harden-TUI-and-other-interactions/prototype
 ```
 
 Expected: FAIL with missing `doctorReportNeedsHelp` and `modeAssist`.
@@ -246,7 +248,7 @@ Expected: FAIL with missing `doctorReportNeedsHelp` and `modeAssist`.
 ## Task 3: Add Prototype Render Components
 
 **Files:**
-- Modify: `specs/007-harden-TUI-and-other-interactions/prototype/main.go`
+- Modify: `archive/2026-09-11-pre-apple-only/specs/007-harden-TUI-and-other-interactions/prototype/main.go`
 
 - [ ] **Step 1: Add report section data types**
 
@@ -400,8 +402,8 @@ func renderReportSections(b *strings.Builder, attention, ready []reportItem) {
 Run:
 
 ```bash
-gofmt -w specs/007-harden-TUI-and-other-interactions/prototype/main.go specs/007-harden-TUI-and-other-interactions/prototype/main_test.go
-go test ./specs/007-harden-TUI-and-other-interactions/prototype
+gofmt -w archive/2026-09-11-pre-apple-only/specs/007-harden-TUI-and-other-interactions/prototype/main.go archive/2026-09-11-pre-apple-only/specs/007-harden-TUI-and-other-interactions/prototype/main_test.go
+go test ./archive/2026-09-11-pre-apple-only/specs/007-harden-TUI-and-other-interactions/prototype
 ```
 
 Expected: tests still fail only for missing `doctorReportNeedsHelp` and `modeAssist` until Task 4.
@@ -409,8 +411,8 @@ Expected: tests still fail only for missing `doctorReportNeedsHelp` and `modeAss
 ## Task 4: Add Doctor Assistance Scenario And Focused Assist View
 
 **Files:**
-- Modify: `specs/007-harden-TUI-and-other-interactions/prototype/main.go`
-- Modify: `specs/007-harden-TUI-and-other-interactions/prototype/main_test.go`
+- Modify: `archive/2026-09-11-pre-apple-only/specs/007-harden-TUI-and-other-interactions/prototype/main.go`
+- Modify: `archive/2026-09-11-pre-apple-only/specs/007-harden-TUI-and-other-interactions/prototype/main_test.go`
 
 - [ ] **Step 1: Add the scenario constant**
 
@@ -603,8 +605,8 @@ func (m model) renderAssist() string {
 Run:
 
 ```bash
-gofmt -w specs/007-harden-TUI-and-other-interactions/prototype/main.go specs/007-harden-TUI-and-other-interactions/prototype/main_test.go
-go test ./specs/007-harden-TUI-and-other-interactions/prototype
+gofmt -w archive/2026-09-11-pre-apple-only/specs/007-harden-TUI-and-other-interactions/prototype/main.go archive/2026-09-11-pre-apple-only/specs/007-harden-TUI-and-other-interactions/prototype/main_test.go
+go test ./archive/2026-09-11-pre-apple-only/specs/007-harden-TUI-and-other-interactions/prototype
 ```
 
 Expected: PASS.
@@ -612,22 +614,22 @@ Expected: PASS.
 - [ ] **Step 12: Commit**
 
 ```bash
-git add specs/007-harden-TUI-and-other-interactions/prototype/main.go specs/007-harden-TUI-and-other-interactions/prototype/main_test.go
+git add archive/2026-09-11-pre-apple-only/specs/007-harden-TUI-and-other-interactions/prototype/main.go archive/2026-09-11-pre-apple-only/specs/007-harden-TUI-and-other-interactions/prototype/main_test.go
 git commit -m "Prototype assisted help from doctor reports" -m "The design prototype now demonstrates how a passive doctor-style report can hand off into focused guided assistance without changing production command behavior.
 
 Constraint: Prototype remains fixture-only
 Rejected: Change production stage doctor first | the prototype is the design surface for validating interaction semantics
 Confidence: medium
 Scope-risk: moderate
-Tested: go test ./specs/007-harden-TUI-and-other-interactions/prototype
+Tested: go test ./archive/2026-09-11-pre-apple-only/specs/007-harden-TUI-and-other-interactions/prototype
 Not-tested: Manual TTY review"
 ```
 
 ## Task 5: Polish Existing Prototype Screens With Shared Grammar
 
 **Files:**
-- Modify: `specs/007-harden-TUI-and-other-interactions/prototype/main.go`
-- Modify: `specs/007-harden-TUI-and-other-interactions/prototype/main_test.go`
+- Modify: `archive/2026-09-11-pre-apple-only/specs/007-harden-TUI-and-other-interactions/prototype/main.go`
+- Modify: `archive/2026-09-11-pre-apple-only/specs/007-harden-TUI-and-other-interactions/prototype/main_test.go`
 
 - [ ] **Step 1: Rewrite `renderMain` around helper order**
 
@@ -665,7 +667,7 @@ func (m model) renderMain() string {
 Run:
 
 ```bash
-rg -n "renderDefaults|renderDecisionBar" specs/007-harden-TUI-and-other-interactions/prototype/main.go
+rg -n "renderDefaults|renderDecisionBar" archive/2026-09-11-pre-apple-only/specs/007-harden-TUI-and-other-interactions/prototype/main.go
 ```
 
 Expected after Step 1: only function definitions remain.
@@ -691,8 +693,8 @@ to:
 Run:
 
 ```bash
-gofmt -w specs/007-harden-TUI-and-other-interactions/prototype/main.go specs/007-harden-TUI-and-other-interactions/prototype/main_test.go
-go test ./specs/007-harden-TUI-and-other-interactions/prototype
+gofmt -w archive/2026-09-11-pre-apple-only/specs/007-harden-TUI-and-other-interactions/prototype/main.go archive/2026-09-11-pre-apple-only/specs/007-harden-TUI-and-other-interactions/prototype/main_test.go
+go test ./archive/2026-09-11-pre-apple-only/specs/007-harden-TUI-and-other-interactions/prototype
 ```
 
 Expected: PASS.
@@ -700,14 +702,14 @@ Expected: PASS.
 ## Task 6: Update Prototype README And Manual Review Checklist
 
 **Files:**
-- Modify: `specs/007-harden-TUI-and-other-interactions/prototype/README.md`
+- Modify: `archive/2026-09-11-pre-apple-only/specs/007-harden-TUI-and-other-interactions/prototype/README.md`
 
 - [ ] **Step 1: Add the new scenario to run examples**
 
 Add this line to the `Run` code block:
 
 ```bash
-go run ./specs/007-harden-TUI-and-other-interactions/prototype --scenario doctor_report_needs_help
+go run ./archive/2026-09-11-pre-apple-only/specs/007-harden-TUI-and-other-interactions/prototype --scenario doctor_report_needs_help
 ```
 
 - [ ] **Step 2: Add the new demonstration bullet**
@@ -733,7 +735,7 @@ Under `Manual TTY checks`, add:
 Run:
 
 ```bash
-rg -n "doctor_report_needs_help|guided help|Port 443" specs/007-harden-TUI-and-other-interactions/prototype/README.md
+rg -n "doctor_report_needs_help|guided help|Port 443" archive/2026-09-11-pre-apple-only/specs/007-harden-TUI-and-other-interactions/prototype/README.md
 ```
 
 Expected: all terms are found.
@@ -741,7 +743,7 @@ Expected: all terms are found.
 - [ ] **Step 5: Commit**
 
 ```bash
-git add specs/007-harden-TUI-and-other-interactions/prototype/README.md
+git add archive/2026-09-11-pre-apple-only/specs/007-harden-TUI-and-other-interactions/prototype/README.md
 git commit -m "Document assisted doctor prototype scenario" -m "The prototype README now tells reviewers how to exercise the report-to-assistance flow and what UX invariants to inspect manually.
 
 Constraint: Prototype review is visual and fixture-only
@@ -767,8 +769,8 @@ make prototype-test
 Expected:
 
 ```text
-go test ./specs/007-harden-TUI-and-other-interactions/prototype
-ok  	github.com/peternicholls/stageserve/specs/007-harden-TUI-and-other-interactions/prototype
+go test ./archive/2026-09-11-pre-apple-only/specs/007-harden-TUI-and-other-interactions/prototype
+ok  	github.com/peternicholls/stageserve/archive/2026-09-11-pre-apple-only/specs/007-harden-TUI-and-other-interactions/prototype
 ```
 
 - [ ] **Step 2: Run key text fallbacks**

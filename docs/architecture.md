@@ -1,6 +1,8 @@
 # StageServe Architecture (Go rewrite)
 
-Spec: [specs/003-rewrite-language-choices](../specs/003-rewrite-language-choices/spec.md).
+> **Transition notice — 2026-09-11:** [Spec 012 plan](../specs/012-apple-only-experience/plan.md) owns the Apple-only target architecture. Module history below is not the current runtime support contract.
+
+Spec: [archive/2026-09-11-pre-apple-only/specs/003-rewrite-language-choices](../archive/2026-09-11-pre-apple-only/specs/003-rewrite-language-choices/spec.md).
 
 This document describes the post-rewrite layout. It is the authoritative
 reference for "where should code X live?" questions.

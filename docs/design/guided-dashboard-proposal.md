@@ -1,5 +1,7 @@
 # Guided Dashboard Proposal
 
+> **Adopted direction — 2026-09-11:** The hierarchy in this proposal is selected by [spec 012](../../specs/012-apple-only-experience/spec.md). Its Docker examples are historical; running Enter views logs, and Apple-only readiness replaces Docker advice. See [product direction](../product-direction.md).
+
 This proposal updates the guided shell dashboard area used in the StageServe mockups. It treats the top area as useful product chrome, not as a dense status strip.
 
 ## Goal

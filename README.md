@@ -1,5 +1,7 @@
 # StageServe - Shared Hosting-Style Local Sites
 
+> **Direction update — 2026-09-11:** StageServe is moving to Apple `container` only, with a guided TUI and shared CLI/text/JSON. Start with [product direction](docs/product-direction.md), [roadmap](docs/roadmap.md) and [spec 012](specs/012-apple-only-experience/spec.md). The checkout is transitional and live Apple acceptance is pending. Docker-era instructions below are historical implementation material, not supported Apple setup guidance.
+
 ## Overview
 
 StageServe is a local development workflow for shared-hosting-style sites. It gives each project a stable local URL, keeps project settings in `.env.stageserve`, and lets a normal first run start from bare `stage` instead of a memorized command sequence.
@@ -367,4 +369,4 @@ docker volume ls
 
 ## Project Status
 
-The Bash implementation has been rewritten as a Go binary (spec [`003-rewrite-language-choices`](specs/003-rewrite-language-choices/spec.md)). The active runtime uses the current StageServe contract: `stage <subcommand>`, location-based `.env.stageserve`, and `.stageserve-state`.
+The Bash implementation has been rewritten as a Go binary (spec [`003-rewrite-language-choices`](archive/2026-09-11-pre-apple-only/specs/003-rewrite-language-choices/spec.md)). The active runtime uses the current StageServe contract: `stage <subcommand>`, location-based `.env.stageserve`, and `.stageserve-state`.

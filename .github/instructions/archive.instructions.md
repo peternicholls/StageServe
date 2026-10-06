@@ -1,9 +1,12 @@
 ---
-applyTo: "previous-version-archive/**"
+applyTo: "archive/**,previous-version-archive/**"
 ---
 
-Files under `previous-version-archive/` are historical reference material.
+These files are immutable historical evidence, not active instructions or a
+backlog. Current authority is constitution 3.1.0 and spec 012.
 
-Do not treat archive files as the source of truth for current StageServe behavior. Use them only when the task explicitly asks for migration history, compatibility analysis, or archival cleanup.
-
-Avoid copying old naming, config files, wrapper scripts, or TUI assumptions back into the active implementation unless the user explicitly requests that restoration.
+Do not rewrite historical content to match current terminology or change old
+completion marks. Inventory/manifest corrections must explain their scope and
+preserve original hashes. Use manifest.json for repository content verification;
+filesystem-manifest.json and local-metadata-manifest.json preserve the original
+local snapshot provenance, including ignored Finder metadata.

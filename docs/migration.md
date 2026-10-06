@@ -1,5 +1,37 @@
 # Migration Guide: Older Workflow to StageServe
 
+> **Transition notice — 2026-09-11:** Legacy Docker state/data requires explicit backed-up migration, never implicit Apple adoption. [Spec 012](../specs/012-apple-only-experience/data-model.md) defines the target; older migration instructions below are historical.
+
+## Apple runtime migration rules (Spec 012)
+
+The Apple runtime accepts only its supported project-state schema and explicit
+`apple-container` backend. Unversioned, older, newer, missing-backend, Docker and
+unknown-backend records are refused. Load, registration lookup, replacement and
+removal must preserve incompatible records; changing the backend string or schema
+number is not a migration.
+
+Before migrating, stop application writes and take a restorable backup of project
+configuration, source files, the complete state directory and a logical database
+export. Keep the Docker database volume and the original state unchanged until
+an import into a new Apple-owned volume has been verified with row counts and
+application sentinel data. Import configuration explicitly and review runtime,
+mount and routing differences. Migration tooling and a production migration
+rehearsal remain gated work; these rules do not imply automatic import support.
+
+Keep `installation.json`, `identities/<uuid>.json` and `operations/<uuid>.json`
+together when backing up or restoring Apple state. The retained identity ledger
+survives unregistering a project and records exact resource ownership. A copied
+folder receives a new project identity and does not inherit volume ownership.
+Missing installation identity, incompatible schemas, mismatched owners or corrupt
+journals require explicit recovery from a compatible backup. Do not recreate an
+installation identity, discard a pending journal, or infer ownership from a name
+prefix to make an operation proceed. Preserve suspect resources and state while
+investigating. Restoring an older application version also requires compatible
+state and engine versions; retain a quiesced logical export of newer database
+writes before any rollback that needs export/import.
+
+## Historical shared-gateway migration
+
 This guide covers the transition from the original localhost-centric single-project workflow to StageServe and the shared-gateway multi-project model.
 
 ## What Changed
@@ -217,7 +249,7 @@ the same `stage` entrypoint. The archived Bash implementation lives under
 
 ### Deferred for follow-up
 
-The following items are carried forward in `specs/003-rewrite-language-choices/tasks.md` as deferred:
+The following items are carried forward in `archive/2026-09-11-pre-apple-only/specs/003-rewrite-language-choices/tasks.md` as deferred:
 
 - Docker-gated integration tests (T039/T061), release pipeline + signing + install scripts (T051–T054), and final runtime validation (T069–T070).
 

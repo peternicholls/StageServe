@@ -1,3 +1,5 @@
+> **Historical planning:** Superseded on 2026-09-11 by the [Apple-only roadmap](roadmap.md) and [spec 012](../specs/012-apple-only-experience/spec.md). Retained as evidence; unchecked or checked items below are not the current backlog.
+
 # StageServe Project Analysis Report
 
 Date: 2026-05-22
@@ -86,7 +88,7 @@ No real-Docker lifecycle validation was run as part of this report.
 
 ### 1. The Easy-Mode Product Goal Is Still Planned, Not Implemented
 
-[docs/concept.md](concept.md) and [specs/007-harden-TUI-and-other-interactions/spec.md](../specs/007-harden-TUI-and-other-interactions/spec.md) define bare `stage` as the guided entrypoint. The active root command in [cmd/stage/commands/root.go](../cmd/stage/commands/root.go) has no no-args `RunE`, so Cobra prints help.
+[docs/concept.md](concept.md) and [archive/2026-09-11-pre-apple-only/specs/007-harden-TUI-and-other-interactions/spec.md](../archive/2026-09-11-pre-apple-only/specs/007-harden-TUI-and-other-interactions/spec.md) define bare `stage` as the guided entrypoint. The active root command in [cmd/stage/commands/root.go](../cmd/stage/commands/root.go) has no no-args `RunE`, so Cobra prints help.
 
 This is the largest product completeness gap. StageServe's current product is a competent direct-command CLI; it is not yet the simple-first guided tool described by spec 007.
 
@@ -133,7 +135,7 @@ Recommended next step: either downgrade `.dev` docs to partial support or comple
 
 In [core/lifecycle/orchestrator.go](../core/lifecycle/orchestrator.go), `Up` adds and reloads the gateway route before saving project state. If the state save fails after the gateway reload, `rollbackProject` stops the compose project but does not remove the route or resync gateway config.
 
-That breaks the documented promise that a failed `stage up` never leaves a half-attached project. It also matches unfinished lifecycle tasks in [specs/004-workflow-and-lifecycle/tasks.md](../specs/004-workflow-and-lifecycle/tasks.md).
+That breaks the documented promise that a failed `stage up` never leaves a half-attached project. It also matches unfinished lifecycle tasks in [archive/2026-09-11-pre-apple-only/specs/004-workflow-and-lifecycle/tasks.md](../archive/2026-09-11-pre-apple-only/specs/004-workflow-and-lifecycle/tasks.md).
 
 Recommended next step: treat route add/reload plus state save as one rollback-aware section. On any failure after route add, remove the route and reload/sync the gateway before returning.
 
@@ -145,7 +147,7 @@ Recommended next step: either wire profiles into `UpOptions` or remove the flag/
 
 ### 7. Spec Tracking Is Inconsistent
 
-[docs/plan.md](plan.md) presents the multi-project runtime plan as mostly complete, with only a few validation checkboxes open. [specs/004-workflow-and-lifecycle/tasks.md](../specs/004-workflow-and-lifecycle/tasks.md) still has many unchecked implementation and validation tasks, some of which appear partially implemented and some of which remain real gaps. [specs/007-harden-TUI-and-other-interactions/tasks.md](../specs/007-harden-TUI-and-other-interactions/tasks.md) is entirely unchecked. [specs/009-documentation-update-and-declutter/spec.md](../specs/009-documentation-update-and-declutter/spec.md) is a placeholder.
+[docs/plan.md](plan.md) presents the multi-project runtime plan as mostly complete, with only a few validation checkboxes open. [archive/2026-09-11-pre-apple-only/specs/004-workflow-and-lifecycle/tasks.md](../archive/2026-09-11-pre-apple-only/specs/004-workflow-and-lifecycle/tasks.md) still has many unchecked implementation and validation tasks, some of which appear partially implemented and some of which remain real gaps. [archive/2026-09-11-pre-apple-only/specs/007-harden-TUI-and-other-interactions/tasks.md](../archive/2026-09-11-pre-apple-only/specs/007-harden-TUI-and-other-interactions/tasks.md) is entirely unchecked. [archive/2026-09-11-pre-apple-only/specs/009-documentation-update-and-declutter/spec.md](../archive/2026-09-11-pre-apple-only/specs/009-documentation-update-and-declutter/spec.md) is a placeholder.
 
 Spec 007 and older onboarding task material also refer to an active `docs/installer-onboarding.md` style document, but that file is not present in the repository.
 

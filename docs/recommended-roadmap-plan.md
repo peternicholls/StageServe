@@ -1,3 +1,5 @@
+> **Historical planning:** Superseded on 2026-09-11 by the [Apple-only roadmap](roadmap.md) and [spec 012](../specs/012-apple-only-experience/spec.md). Retained as evidence; unchecked or checked items below are not the current backlog.
+
 # Recommended Roadmap Implementation Plan
 
 Date: 2026-05-22

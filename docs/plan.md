@@ -1,3 +1,5 @@
+> **Historical planning:** Superseded on 2026-09-11 by the [Apple-only roadmap](roadmap.md) and [spec 012](../specs/012-apple-only-experience/spec.md). Retained as evidence; unchecked or checked items below are not the current backlog.
+
 ## Plan: Multi-site Attachable Stack
 
 Refactor the current localhost-centric workflow into a shared front-door model: one persistent gateway and local DNS layer in front of isolated per-project runtimes. `stage` is the canonical entrypoint; `stage up` becomes "ensure shared infra exists, start this project, register its hostname". `stage attach` manages additional repos against that same shared layer, and `stage down` handles project shutdown cleanup.

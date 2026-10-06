@@ -164,3 +164,5 @@ Identify the tested Apple `container` release and macOS/Apple silicon matrix.
 Keep TUI, plain text and JSON on shared services. Docker/Compose fallback is
 unsupported. Record live routing, health, persistence and failure evidence;
 mock tests and archived completion marks do not establish release readiness.
+
+Include settings-apply and durable-identity decisions, private connectivity negative tests, mixed TLS, exact artifact qualification, early UX/accessibility and offline/resource/host lifecycle acceptance.

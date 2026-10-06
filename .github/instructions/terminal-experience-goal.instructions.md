@@ -23,7 +23,7 @@ Read these in order:
 When the work changes bare `stage`, planner situations, project setup routing, run/stop flow, recovery, or report-to-assistance handoffs, also read:
 
 - `docs/design/guided-flow-map.md`
-- `specs/007-harden-TUI-and-other-interactions/flow-diagrams/README.md`
+- `archive/2026-09-11-pre-apple-only/specs/007-harden-TUI-and-other-interactions/flow-diagrams/README.md`
 
 Use the visual identity style guide to understand the graphic-design intent, visual foundations, semantic colour, components, and separation of concerns. Use the design contract to decide what the experience should be. Use the markup spec only after the experience is clear. Use the copy style guide for labels, verdicts, explanations, remediation, and next actions. Use the pattern catalog for precedent and examples.
 

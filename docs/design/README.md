@@ -1,5 +1,7 @@
 # StageServe Terminal Design System
 
+> **Product authority — 2026-09-11:** [Apple-only product direction](../product-direction.md) selects the guided TUI for v1. Retain this visual system; Docker examples and historical prototype links are reference material to reconcile in M3. Source review is complete; rendered/real-terminal acceptance is pending.
+
 StageServe has one terminal design system for reports, guided flows, text fallback, and future Bubble Tea screens. This folder is the human-facing source of truth for that system.
 
 In design terms, the terminal style guide is a graphic-design artifact: a viewable reference for visual identity, component usage, examples, and review rules. Bubble Tea, Lip Gloss, renderer helpers, and command adapters implement that reference; they do not replace it.
@@ -59,8 +61,8 @@ The design system is distilled from current implementation, active spec work, an
 - The current `stage doctor` rendering is documented in [StageServe Doctor Seed](stage-doctor-seed.md).
 - The visual identity rules are consolidated in [Terminal Visual Identity Style Guide](terminal-visual-style-guide.md).
 - The current guided dashboard direction is documented in [Guided Dashboard Proposal](guided-dashboard-proposal.md) and reflected in the runnable mockups under `mockups/`.
-- The prototype under `specs/007-harden-TUI-and-other-interactions/prototype/` is the design sandbox for guided flows.
-- The detailed scenario notes and vocabulary live under `specs/007-harden-TUI-and-other-interactions/flow-diagrams/`.
+- The prototype under `archive/2026-09-11-pre-apple-only/specs/007-harden-TUI-and-other-interactions/prototype/` is the design sandbox for guided flows.
+- The detailed scenario notes and vocabulary live under `archive/2026-09-11-pre-apple-only/specs/007-harden-TUI-and-other-interactions/flow-diagrams/`.
 
 The [Guided Flow Map](guided-flow-map.md) is the durable summary. The spec flow-diagram files remain the deeper working material when a screen or transition needs revision.
 
@@ -78,3 +80,5 @@ The agent-facing instruction files under `.github/instructions/` mirror the same
 - `.github/instructions/terminal-experience-goal.instructions.md`
 
 When the design system changes, update the matching human docs, agent instructions, and reusable prototype examples in the same change so future work does not fork into parallel design languages.
+
+Review repair and verification: [early study and accessibility protocol](../../specs/012-apple-only-experience/ux-validation.md) gates full dashboard implementation.

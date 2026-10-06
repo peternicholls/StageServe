@@ -1,3 +1,5 @@
+> **Historical planning:** Superseded on 2026-09-11 by the [Apple-only roadmap](roadmap.md) and [spec 012](../specs/012-apple-only-experience/spec.md). Retained as evidence; unchecked or checked items below are not the current backlog.
+
 # Recommended Roadmap Task List
 
 Date: 2026-05-22
@@ -142,7 +144,7 @@ Source: [Project Analysis Report](project-analysis-report.md)
 - [x] T061 Update [README.md](../README.md) first-run path to start with bare `stage` after implementation lands.
 - [x] T062 Update [docs/runtime-contract.md](runtime-contract.md) for guided root behavior, no-TUI controls, text fallback, and direct command behavior.
 - [x] T063 Add or restore an active installer/onboarding doc if still referenced by specs.
-- [x] T064 Record terminal validation evidence in [specs/007-harden-TUI-and-other-interactions/quickstart.md](../specs/007-harden-TUI-and-other-interactions/quickstart.md).
+- [x] T064 Record terminal validation evidence in [archive/2026-09-11-pre-apple-only/specs/007-harden-TUI-and-other-interactions/quickstart.md](../archive/2026-09-11-pre-apple-only/specs/007-harden-TUI-and-other-interactions/quickstart.md).
 - [x] T064a Update [install.sh](../install.sh) so interactive install handoff points to bare `stage` after guided routing lands, while non-interactive installs keep explicit commands.
 - [x] T064b Update [.env.stageserve.example](../.env.stageserve.example) comments for guided config creation and active TLS/setup decisions.
 - [x] T064c Update command `Short` and `Long` strings for guided surfaces so first-level help uses plain user-goal language.
@@ -190,7 +192,7 @@ Source: [Project Analysis Report](project-analysis-report.md)
 - [x] T072c Apply a spacing, alignment, and hierarchy pass to guided screens in `cmd/stage/commands/tui.go` and any shared render helpers they use.
 - [x] T072d Apply a semantic colour/emphasis pass for guided screens while preserving `NO_COLOR` behavior and text fallback parity.
 - [x] T072e Validate narrower-width and multi-state guided renders (details, confirmation, editing, long-running result) and record any deliberate deferrals.
-- [x] T072f Record terminal design evidence in `specs/007-harden-TUI-and-other-interactions/quickstart.md` or the active design review surface.
+- [x] T072f Record terminal design evidence in `archive/2026-09-11-pre-apple-only/specs/007-harden-TUI-and-other-interactions/quickstart.md` or the active design review surface.
 
 ### Phase 4 Progress Evidence
 
@@ -200,7 +202,7 @@ Source: [Project Analysis Report](project-analysis-report.md)
 - 2026-05-28: `go test ./core/guidance ./cmd/stage/commands` passed after adding deterministic coverage for project, recovery, and 48-column guided renders.
 
 ## Post-Phase 4: Code review, cleanup, and release prep
-- [ ] T072g Follow instructions and planning in [specs/011-guided-experience-and-runtime-hardening](../specs/011-guided-experience-and-runtime-hardening) to prepare for release, including code review, cleanup, and release notes drafting.
+- [ ] T072g Follow instructions and planning in [archive/2026-09-11-pre-apple-only/specs/011-guided-experience-and-runtime-hardening](../archive/2026-09-11-pre-apple-only/specs/011-guided-experience-and-runtime-hardening) to prepare for release, including code review, cleanup, and release notes drafting.
 
 ## Phase 5: Process Hardening
 

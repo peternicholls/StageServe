@@ -1,5 +1,7 @@
 # StageServe Runtime Contract
 
+> **Transition notice — 2026-09-11:** The target contract is [spec 012](../specs/012-apple-only-experience/contracts/application-contract.md). This document preserves implementation/history during migration; Docker/Compose and hybrid guarantees below are superseded. Apple runtime behaviour still needs live proof.
+
 This document locks the StageServe command semantics and state model.
 
 ## Goals
@@ -356,6 +358,23 @@ product guarantees from backend capabilities. A backend can be selected only
 for a stack profile whose required capabilities are all supported and tested.
 
 ## Phase 0 evidence
+
+For spec 012 T002, capture real read-only CLI help and inventory using
+`python3 scripts/capture-apple-container.py --output /private/tmp/stageserve-container-capture`.
+The output directory must be new. Each command has a 30-second timeout; failures
+and partial output are recorded and produce a nonzero result. Capture files are
+private and include command arguments, exit codes, host details and content hashes.
+Review and redact inventory before copying approved fixtures into
+`infra/applecontainer/testdata/`; container inventories can contain local metadata.
+The tool never starts the runtime or creates resources. It does not capture actual
+inspect/run fixtures or prove connectivity, ownership or qualification. T002 and
+T003 remain open until those live cases are executed with the pinned candidate.
+
+Reviewed 1.4.1 help/version and unregistered-status output is retained in
+`infra/applecontainer/testdata/1.4.1/`. Readiness requires both successful command
+execution and the JSON `status` discriminator `running`; absent, invalid and
+unknown status is unavailable. Help-only capture from an extracted signed binary
+does not qualify an installed runtime or supported host matrix.
 
 The existing tests in `core/lifecycle/orchestrator_test.go`,
 `observability/status/status_test.go`, `core/config/loader_test.go`, and

@@ -1,9 +1,9 @@
 # Feature Specification: Apple-only guided StageServe
 
-**Feature Branch**: `codex/012-apple-only-experience`  
-**Spec Kit feature**: `012-apple-only-experience` (set `SPECIFY_FEATURE` for scripts)  
-**Created**: 2026-09-11  
-**Status**: Planned; implementation and live acceptance pending  
+**Feature Branch**: `codex/012-apple-only-experience`
+**Spec Kit feature**: `012-apple-only-experience` (set `SPECIFY_FEATURE` for scripts)
+**Created**: 2026-09-11
+**Status**: Revised after review, 2026-09-13; implementation, GUX and live qualification pending
 **Input**: Apple Containers only; consolidate GUI/TUI work, decide the product, review old specs for lessons, archive old planning, and plan the complete roadmap.
 
 ## User Scenarios & Testing *(mandatory)*
@@ -16,8 +16,8 @@ A developer with an Apple silicon Mac opens a PHP project folder and uses `stage
 **Independent Test**: On a clean supported host, from an unrelated project folder, create settings, run a PHP page that reads/writes MariaDB, open the displayed URL, stop and restart with the same data.
 **Acceptance Scenarios**:
 1. Given missing Apple software or stopped services, when opening StageServe, then report the precise blocker without starting Docker or modifying the host automatically.
-2. Given no project settings, when setup is selected, then show resolved name, path, web folder and URL before writing; cancel leaves files unchanged.
-3. Given a healthy stack, when starting, then report running only after required health and routed application checks pass.
+2. Given no project settings, when setup is selected, then show resolved name, path, web folder and URL before interactive writing; cancel leaves files unchanged. Direct noninteractive init uses the documented explicit-consent/dry-run contract.
+3. Given a healthy stack, when starting, then report infrastructure running only after StageServe-owned PHP/DB/route checks pass; optional application health is reported separately and cannot roll back healthy infrastructure.
 4. Given an existing config, when starting from its folder, then preserve explicit settings and explain configuration origins.
 
 ### User Story 2 - Operate projects confidently (Priority: P1)
@@ -43,7 +43,7 @@ A developer can understand partial startup, stale state, conflicts, unavailable 
 
 ### User Story 4 - Install, update and retain my work (Priority: P2)
 
-A developer installs a compatible binary/runtime-asset pair, understands supported host versions, and can update or return to a previous compatible release without losing project data.
+A developer installs a compatible binary/runtime-asset pair, understands supported host versions, and can update or return to a qualified previous release while preserving new writes; incompatible state/database downgrades are refused with explicit recovery.
 
 **Independent Test**: From a clean user account install verified artifacts; run US1; upgrade with a project present; exercise interrupted download and rollback using a retained backup.
 **Acceptance Scenarios**:
@@ -63,7 +63,7 @@ Primary entry is bare `stage` in an interactive project folder. Direct commands 
 
 ### Configuration & Precedence
 
-CLI flags -> project `.env.stageserve` -> shell environment -> stack `.env.stageserve` -> defaults. `STAGESERVE_RUNTIME` absent or `apple-container` selects Apple; other values fail before mutation. `.test` remains the default suffix. Existing explicit suffixes and paths remain unchanged until validated migration. Generated env files are outputs, never an undocumented higher-precedence configuration source.
+CLI flags -> project `.env.stageserve` -> shell environment -> stack `.env.stageserve` -> read-only application `.env` DB fallback -> defaults. The fallback imports only DB_DATABASE/DB_USERNAME/DB_PASSWORD when no explicit StageServe source supplied the corresponding setting; origin presence, not default-value equality, determines this. `STAGESERVE_RUNTIME` absent or `apple-container` selects Apple; other values fail before mutation. `.test` remains the default suffix. Existing explicit suffixes and paths remain unchanged until validated migration. Generated env files are outputs, never an undocumented higher-precedence configuration source.
 
 ### State, Isolation & Recovery
 
@@ -78,20 +78,29 @@ Update README, runtime contract, architecture, installer/onboarding, migration, 
 ### Functional Requirements
 
 - **FR-001**: Support only Apple `container` on tested Apple silicon/macOS combinations; reject unsupported runtime selection before side effects.
-- **FR-002**: Preview effective project settings and file path before create/edit; preserve deterministic precedence and cancellation without writes.
-- **FR-003**: Start required services in dependency order; prove routed PHP/database operation and bounded health waits before running/attached success.
+- **FR-002**: Preview effective project settings and file path before interactive create/edit; provide dry-run for automation, where explicit init/force authorizes documented defaults/overwrite; preserve deterministic precedence and cancellation without writes.
+- **FR-003**: Start required services in dependency order; require bounded StageServe-owned routed PHP and read-only managed DB checks before infrastructure-running success. Optional user-application health is separate and cannot trigger infrastructure rollback.
 - **FR-004**: Preserve project identity and database data across stop/start and application updates; separate stop, unregister and data deletion.
 - **FR-005**: Show one selected project, verdict, evidence and safe next action through a shared planner and application services.
 - **FR-006**: Provide working logs, status, browser-open and lifecycle actions without renderer-owned business logic; Enter on running opens logs.
-- **FR-007**: Support two simultaneous projects with isolated state/data and scoped cleanup, including shared-routing failure recovery.
+- **FR-007**: Support two simultaneous projects with isolated private services, state/data and scoped cleanup under the explicit connectivity matrix; test prohibited connections as well as routing, including shared-routing failure recovery.
 - **FR-008**: Expose truthful desired/observed state and actionable errors for partial startup, stale state and unavailable runtime; recheck after actions.
 - **FR-009**: Require explicit scoped confirmation for data deletion and host DNS/trust changes; never reset unrelated resources.
 - **FR-010**: Preserve direct CLI, plain text and JSON semantics; no prompts in non-TTY, no UI text in JSON, no colour-only information.
-- **FR-011**: Meet 52/80-column, resize, keyboard, cancellation and no-colour acceptance scenarios without losing essential action/scope information.
+- **FR-011**: Meet 52/80-column, resize, keyboard, cancellation and no-colour acceptance; provide a VoiceOver-verified interactive text journey with the same essential actions and safety.
 - **FR-012**: Ship verified binary/asset compatibility, host/runtime version gates, update recovery and explicit legacy migration guidance.
-- **FR-013**: Prove local DNS/routing and optional TLS independently; show actual scheme/port and never silently modify configured suffixes.
+- **FR-013**: Prove local DNS/routing and per-route opt-in TLS, including mixed HTTP/HTTPS projects, certificate renewal/refusal and shared listener ownership; never silently modify suffixes or other routes.
 - **FR-014**: Keep secrets out of diagnostics/JSON/support output and default endpoints local; inventory every published port.
 - **FR-015**: Preserve legacy planning with provenance and lessons; keep one active roadmap and trace all requirements to tasks and evidence.
+
+- **FR-016**: Apply existing-project settings transactionally using desired/applied fingerprints, field-specific recreation rules, stale-preview rejection and rollback without rewinding data.
+- **FR-017**: Preserve immutable project UUID and retained-resource ledger across detach; reject ambiguous copied/moved/missing-ledger adoption and prove exact volume ownership before reuse/deletion.
+- **FR-018**: Define application DB configuration origins and read-only health probes; never modify app source, app .env or DB rows for readiness.
+- **FR-019**: Qualify complete binary/asset/state/image/database compatibility, rollback after new writes, and promotion of the exact tested digests; reject incompatible engine changes on retained volumes.
+- **FR-020**: Support disconnected fresh-process cached start and recreation with unchanged build inputs; fail missing-cache preparation before stopping a working site.
+- **FR-021**: Meet declared resource/latency/log bounds and recover truthfully from disk exhaustion, sleep/reboot and uninstall/reinstall while preserving owned data and unrelated host resources.
+- **FR-022**: Conduct formative discovery, terminal-entry and project-switching study before full dashboard implementation; failed thresholds require revised onboarding or interface decision before proceeding.
+- **FR-023**: Provide measured keyboard/VoiceOver/text accessibility, bounded progress announcements, focus restoration and safe confirmation across the complete operator journey.
 
 ### Key Entities
 
@@ -102,13 +111,22 @@ Project settings; project identity/record; observed service; operation and resul
 ### Measurable Outcomes
 
 - **SC-001**: Three representative first-use trials complete setup/start/visit/stop without undocumented command ordering; record time, blockers and corrections. Target <=10 minutes excluding prerequisite/image downloads, with no unresolved critical usability blocker.
-- **SC-002**: Twenty repeated start/stop cycles retain a database sentinel, stable project identity and no leaked owned resources; every successful start passes routed application checks.
+- **SC-002**: Twenty repeated start/stop cycles retain a database sentinel, stable project identity and no leaked owned resources; every successful start passes StageServe-owned infrastructure checks; fixture application read/write verifies the full route independently.
 - **SC-003**: All failure/cancellation scenarios in the acceptance matrix produce truthful status and preserve unrelated project data/routes; zero unintended deletion.
 - **SC-004**: All canonical planner situations pass TUI/text semantic parity and JSON schema tests; 52/80-column real-terminal review retains visible scope and exit/cancel controls.
-- **SC-005**: Two projects survive independent operations and shared-route recovery; their unique HTTP and database sentinels never cross.
+- **SC-005**: Two projects survive independent operations and shared-route recovery; their unique HTTP and database sentinels never cross; all prohibited private-service connections in NET-01–04 fail.
 - **SC-006**: Clean install, update, interrupted update and rollback pass on the declared supported matrix before release; compatibility range and evidence are published.
-- **SC-007**: Every archived file matches its recorded checksum; every FR maps to implementation and validation tasks; no old spec remains an active backlog.
+- **SC-007**: Every one of the 88 repository-content archive files matches its recorded checksum from a clean checkout; the original 90-file local snapshot and two optional metadata files remain separately inventoried; every FR maps to implementation and validation tasks; no old spec remains an active backlog.
+
+- **SC-008**: CFG-01–04 and ID-01–04 pass running/stopped edit, failed apply, detach, copy/rename and fresh-process identity tests with zero unintended data adoption/loss.
+- **SC-009**: REL-01–04 and UPD-01–04 pass against the exact candidate digests, including post-upgrade writes and incompatible rollback refusal.
+- **SC-010**: OFF-01–03, CAP-01–03 and HOST-01–03 pass on the declared minimum host; thresholds and measurement methods are in release-qualification.md.
+- **SC-011**: GUX passes the early five-person protocol before T024; G3 passes A11Y-01–06 and measured responsiveness bounds in ux-validation.md.
 
 ## Assumptions
 
-One experienced Go developer-equivalent with access to an Apple silicon test Mac; existing libraries are reused, no new dependencies authorized. PHP/MariaDB development is the initial use case. Network access is required for initial images/tool installation. TUI is the selected v1 interface; GUI evaluation is conditional post-v1. Runtime version selection and topology proof are explicit M0/M1 experiments, not implicit support promises. This planning task does not implement or release the product.
+One experienced Go developer-equivalent with access to an Apple silicon test Mac; existing libraries are reused, no new dependencies authorized. PHP/MariaDB development is the initial use case. Network access is required for initial images/tool installation. TUI is the working v1 interface subject to an early GUX evidence gate; no separate GUI implementation is assumed. The candidate CLI is 1.4.1, not a current support certification. Runtime version selection and topology proof are explicit M0/M1 experiments, not implicit support promises. This planning task does not implement or release the product.
+
+## Detailed normative contracts
+
+[Project/runtime](contracts/project-runtime-contract.md), [release qualification](contracts/release-qualification.md) and [UX validation](ux-validation.md) define the detailed acceptance obligations.

@@ -1,6 +1,6 @@
 <!--
 Sync Impact Report
-Version: 2.0.1 -> 3.0.0 (breaking runtime/platform contract)
+Version: 3.0.0 -> 3.1.0 (expanded safety, research and release obligations)
 Authority: user direction, 2026-09-11: Apple Containers only.
 Preserved: ease of use, reliability, robustness, friction removal.
 Changed: Apple-only runtime, shared TUI/CLI semantics, explicit legacy migration.
@@ -67,10 +67,14 @@ stack management slower, harder to remember, or easier to get wrong.
   are not supported product paths or fallback mechanisms.
 - The primary interface is a guided TUI backed by the same application services
   as direct CLI, plain text, and structured JSON output. Renderers MUST NOT own
-  lifecycle truth. A separate GUI requires a later evidence-backed decision.
+  lifecycle truth. An early observed study MUST validate terminal entry before full dashboard
+  implementation. A separate GUI requires an evidence-backed decision; accessible
+  plain-text operation MUST cover the essential journey.
 - A supported project can be operated from its own folder, independently of the
   source checkout. Configuration precedence is CLI flags -> project
-  `.env.stageserve` -> shell environment -> stack `.env.stageserve` -> defaults.
+  `.env.stageserve` -> shell environment -> stack `.env.stageserve` -> documented
+  read-only application DB fallback -> defaults. Explicitness is determined by
+  source presence, never equality with a default value.
 - Persistent project identity and database data MUST NOT be reinterpreted as
   Apple resources merely because an old record lacks a runtime identifier.
   Legacy Docker data requires an explicit backed-up migration, not adoption.
@@ -101,6 +105,19 @@ stack management slower, harder to remember, or easier to get wrong.
   records the violation, the simpler rejected option, and the reason the extra
   complexity is necessary now.
 
+## Expanded Acceptance Obligations
+
+- Identity and retained-data ownership MUST survive unregistering. Settings apply
+  MUST compare desired/applied configuration and recover transactionally.
+- Infrastructure readiness and optional application health MUST remain distinct;
+  readiness MUST NOT alter application files or database rows.
+- Network isolation MUST have an explicit connectivity matrix and negative tests;
+  per-route TLS MUST preserve mixed HTTP/HTTPS projects.
+- Updates MUST qualify state and image/database compatibility after new writes.
+  Published artifacts MUST be the exact digest-qualified candidate set.
+- Offline operation, resource/latency bounds, accessible operation and owned host
+  cleanup MUST have assigned acceptance cases; unknown results remain open gates.
+
 ## Governance
 
 This constitution supersedes conflicting workflow guidance in repository docs and
@@ -125,4 +142,4 @@ Compliance review expectations:
 - Unresolved non-compliance MUST be treated as a blocker until explicitly
   justified and accepted in the plan.
 
-**Version**: 3.0.0 | **Ratified**: 2026-04-01 | **Last Amended**: 2026-09-11
+**Version**: 3.1.0 | **Ratified**: 2026-04-01 | **Last Amended**: 2026-09-13

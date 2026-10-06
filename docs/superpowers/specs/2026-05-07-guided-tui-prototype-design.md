@@ -1,3 +1,5 @@
+> **Historical prototype planning:** Superseded by [spec 012](../../../specs/012-apple-only-experience/spec.md). Fixture/design context only; not production or live-runtime evidence.
+
 # Guided TUI Prototype Design
 
 Date: 2026-05-07

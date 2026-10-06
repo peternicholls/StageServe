@@ -1,5 +1,7 @@
 # StageServe Installer And Guided Onboarding
 
+> **Transition notice — 2026-09-11:** Apple-only install/update acceptance is pending. Use the [roadmap](roadmap.md) and [acceptance runbook](../specs/012-apple-only-experience/quickstart.md); older installation/Docker and zero-setup claims below are not validated Apple instructions.
+
 This guide covers the supported install path, the guided first run, and the direct-command fallback for automation or power users.
 
 ## Install The Binary

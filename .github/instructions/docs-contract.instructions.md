@@ -1,18 +1,20 @@
 ---
-applyTo: "README.md,docs/**,specs/004-workflow-and-lifecycle/**,.env.stageserve.example"
+applyTo: "README.md,docs/**,specs/012-apple-only-experience/**,.env.stageserve.example"
 ---
 
-Treat these files as the active operator and workflow contract.
+Constitution 3.1.0 and specs/012-apple-only-experience define the Apple-only target.
+Product direction and roadmap summarize it; docs/design defines presentation.
+Historical implementation descriptions are not proof of target behaviour.
 
-When implementation changes the config, naming, compose-file layout, stack selection, lifecycle flow, or bootstrap behavior, update the corresponding docs/spec files in the same change so the written contract stays synchronized with the code.
+Keep affected operator documentation, command help, active spec contracts and
+acceptance cases aligned in the same change. Distinguish observed implementation
+from planned requirements; do not weaken a target merely to match incomplete code.
 
-Prefer current active surfaces and terminology:
-- project-local config: `<project>/.env.stageserve`
-- stack-wide defaults: `<stack-home>/.env.stageserve`
-- active runtime compose file: `docker-compose.20i.yml`
-- shared compose file: `docker-compose.shared.yml`
-- archived material: `previous-version-archive/`
+Canonical configuration is project and stack .env.stageserve. The documented
+project application .env DB fallback is read-only and subordinate to explicit
+StageServe values. Generated env files are outputs. Apple manifests are
+stacks/20i/apple-container.20i.json and apple-container.shared.json.
 
-Do not describe archived TUI material or legacy Bash behavior as current functionality.
-
-If a doc statement conflicts with code, align the doc to implemented behavior unless the task is explicitly to change the runtime.
+archive/** and previous-version-archive/** are historical evidence only. Never
+apply active-contract updates to archived files. Run the planning verifier when
+changing the active spec or archive inventory.
