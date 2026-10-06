@@ -2,6 +2,7 @@ package applecontainer
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"os/exec"
 	"runtime"
@@ -68,13 +69,32 @@ func (p Probe) Check(ctx context.Context) Readiness {
 	if runner == nil {
 		runner = CommandRunner{Bin: result.BinaryPath}
 	}
-	if _, err := runner.Run(ctx, "system", "status", "--format", "json"); err != nil {
+	if err := checkServiceStatus(ctx, runner); err != nil {
 		result.Message = "Apple Container is installed but its system service is not running"
 		return result
 	}
 	result.ServiceRunning = true
 	result.Message = fmt.Sprintf("Apple Container is ready at %s", result.BinaryPath)
 	return result
+}
+
+// A successful subprocess is insufficient evidence of a ready service. Decode
+// only the status discriminator; other versioned host/path fields are additive.
+func checkServiceStatus(ctx context.Context, runner Runner) error {
+	out, err := runner.Run(ctx, "system", "status", "--format", "json")
+	if err != nil {
+		return err
+	}
+	var status struct {
+		Status string `json:"status"`
+	}
+	if err := json.Unmarshal(out, &status); err != nil {
+		return fmt.Errorf("invalid Apple Container system status: %w", err)
+	}
+	if status.Status != "running" {
+		return fmt.Errorf("Apple Container system service is not running")
+	}
+	return nil
 }
 
 func commandOSVersion(ctx context.Context) (string, error) {

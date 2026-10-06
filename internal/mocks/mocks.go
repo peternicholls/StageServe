@@ -7,6 +7,7 @@ import (
 	"context"
 	"errors"
 	"io"
+	"os"
 	"sync"
 	"time"
 
@@ -36,7 +37,7 @@ type Docker struct {
 	AvailableErr error
 }
 
-func NewDocker() *Docker { return &Docker{Networks: map[string]bool{}} }
+func NewDocker() *Docker { return &Docker{Networks: map[string]bool{"default": true}} }
 
 func (m *Docker) Available(ctx context.Context) error { return m.AvailableErr }
 
@@ -179,12 +180,30 @@ func (m *Runtime) RemoveNetwork(ctx context.Context, name string) error {
 	return m.Docker.RemoveNetwork(ctx, name)
 }
 func (m *Runtime) Start(ctx context.Context, opts coreruntime.StartOptions) error {
+	if err := opts.Ownership.Validate(); err != nil {
+		return err
+	}
+	if opts.RecordResource == nil {
+		return errors.New("resource recorder is required")
+	}
 	return m.Compose.Up(ctx, compose.UpOptions{ProjectDir: opts.ProjectDir, ComposeFile: opts.Definition, ProjectName: opts.ProjectName, EnvFile: opts.EnvFile, Env: opts.Env, Profiles: opts.Profiles, WaitTimeout: opts.WaitTimeout, Detach: true, NoDeps: opts.NoDeps, ForceRecreate: opts.ForceRecreate, Services: opts.Services})
 }
 func (m *Runtime) Stop(ctx context.Context, opts coreruntime.StopOptions) error {
+	if err := opts.Ownership.Validate(); err != nil {
+		return err
+	}
+	if opts.RecordResource == nil {
+		return errors.New("resource recorder is required")
+	}
 	return m.Compose.Down(ctx, compose.DownOptions{ProjectDir: opts.ProjectDir, ComposeFile: opts.Definition, ProjectName: opts.ProjectName, EnvFile: opts.EnvFile, Env: opts.Env, RemoveVolumes: opts.RemoveVolumes})
 }
 func (m *Runtime) Restart(ctx context.Context, opts coreruntime.RestartOptions) error {
+	if err := opts.Ownership.Validate(); err != nil {
+		return err
+	}
+	if opts.RecordResource == nil {
+		return errors.New("resource recorder is required")
+	}
 	return m.Compose.Restart(ctx, compose.RestartOptions{ProjectDir: opts.ProjectDir, ComposeFile: opts.Definition, ProjectName: opts.ProjectName, EnvFile: opts.EnvFile, Env: opts.Env, Service: opts.Service})
 }
 func (m *Runtime) Logs(ctx context.Context, opts coreruntime.LogsOptions) error {
@@ -263,15 +282,24 @@ func (m *Gateway) RemoveRoute(slug string, current []gateway.Route) (string, str
 // --- StateStore ---
 
 type State struct {
-	mu          sync.Mutex
-	Records     map[string]state.Record
-	StateDirVal string
-	SaveErr     error
-	RegistryErr error
+	mu             sync.Mutex
+	Records        map[string]state.Record
+	StateDirVal    string
+	OwnershipStore *state.Store
+	SaveErr        error
+	RegistryErr    error
 }
 
 func NewState() *State {
-	return &State{Records: map[string]state.Record{}, StateDirVal: "/tmp/stageserve-test-state"}
+	dir, err := os.MkdirTemp("", "stageserve-state-mock-")
+	if err != nil {
+		panic(err)
+	}
+	store, err := state.NewStore(dir)
+	if err != nil {
+		panic(err)
+	}
+	return &State{Records: map[string]state.Record{}, StateDirVal: dir, OwnershipStore: store}
 }
 
 func (m *State) Save(rec state.Record) error {
@@ -310,6 +338,7 @@ func (m *State) Registry() ([]state.RegistryRow, error) {
 	rows := []state.RegistryRow{}
 	for _, rec := range m.Records {
 		rows = append(rows, state.RegistryRow{
+			ProjectID: rec.ProjectID, InstallationID: rec.InstallationID,
 			Slug:            rec.Project.Slug,
 			AttachmentState: rec.AttachmentState,
 			Name:            rec.Project.Name,
@@ -364,3 +393,62 @@ func (m *Ports) Allocate(req ports.Request, registry []state.RegistryRow) (ports
 
 // errStub keeps the linter happy if we ever extend the package without using errors.
 var _ = errors.New
+
+// Seed records explicit ownership for lifecycle fixtures; Save never adopts IDs.
+func (m *State) Seed(rec state.Record) error {
+	id, err := m.CreateIdentity(rec.Project.Dir, rec.Project.Slug)
+	if err != nil {
+		return err
+	}
+	rec.ProjectID = id.ProjectID
+	rec.InstallationID = id.InstallationID
+	rec.SchemaVersion = state.SchemaVersion
+	rec.Project.ComposeProjectName = "stage-" + id.ProjectID
+	rec.Project.DatabaseVolume = rec.Project.ComposeProjectName + "-db-data"
+	if err := m.OwnershipStore.Save(rec); err != nil {
+		return err
+	}
+	return m.Save(rec)
+}
+func (m *State) CreateIdentity(path, slug string) (state.Identity, error) {
+	return m.OwnershipStore.CreateIdentity(path, slug)
+}
+func (m *State) LoadIdentity(id string) (state.Identity, error) {
+	return m.OwnershipStore.LoadIdentity(id)
+}
+func (m *State) IdentityForPath(path string) (state.Identity, error) {
+	return m.OwnershipStore.IdentityForPath(path)
+}
+func (m *State) SaveIdentity(id state.Identity, rev uint64) error {
+	return m.OwnershipStore.SaveIdentity(id, rev)
+}
+func (m *State) InstallationIdentity(path string) (state.Identity, error) {
+	return m.OwnershipStore.InstallationIdentity(path)
+}
+func (m *State) BeginOperation(id string, rev uint64, kind, hash string) (state.Operation, error) {
+	return m.OwnershipStore.BeginOperation(id, rev, kind, hash)
+}
+func (m *State) SaveOperation(op state.Operation) error { return m.OwnershipStore.SaveOperation(op) }
+func (m *State) PendingOperations(id string) ([]state.Operation, error) {
+	return m.OwnershipStore.PendingOperations(id)
+}
+func (m *State) RecoverOperation(id string) error { return m.OwnershipStore.RecoverOperation(id) }
+func (m *State) CommitInstallationOperation(op state.Operation, id state.Identity, rev uint64) error {
+	return m.OwnershipStore.CommitInstallationOperation(op, id, rev)
+}
+func (m *State) CommitOperation(op state.Operation, id state.Identity, rec *state.Record, rev uint64) error {
+	if m.SaveErr != nil {
+		return m.SaveErr
+	}
+	if err := m.OwnershipStore.CommitOperation(op, id, rec, rev); err != nil {
+		return err
+	}
+	if rec == nil {
+		return m.Remove(id.Slug)
+	}
+	copy := *rec
+	copy.SchemaVersion = state.SchemaVersion
+	return m.Save(copy)
+}
+
+var _ state.LifecycleStore = (*State)(nil)

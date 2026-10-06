@@ -1,0 +1,17 @@
+OVERVIEW: Manage container volumes
+
+USAGE: container volume [--debug] <subcommand>
+
+OPTIONS:
+  --debug                 Enable debug output [environment: CONTAINER_DEBUG]
+  --version               Show the version.
+  -h, --help              Show help information.
+
+SUBCOMMANDS:
+  create                  Create a new volume
+  delete, rm              Delete one or more volumes
+  list, ls                List volumes
+  inspect                 Display information about one or more volumes
+  prune                   Remove volumes with no container references
+
+  See 'container help volume <subcommand>' for detailed help.

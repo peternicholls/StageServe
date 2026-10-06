@@ -1,0 +1,17 @@
+OVERVIEW: Manage container networks
+
+USAGE: container network [--debug] <subcommand>
+
+OPTIONS:
+  --debug                 Enable debug output [environment: CONTAINER_DEBUG]
+  --version               Show the version.
+  -h, --help              Show help information.
+
+SUBCOMMANDS:
+  create                  Create a new network
+  delete, rm              Delete one or more networks
+  list, ls                List networks
+  inspect                 Display information about one or more networks
+  prune                   Remove networks with no container connections
+
+  See 'container help network <subcommand>' for detailed help.

@@ -1,0 +1,140 @@
+{
+  "version": "1.4.1",
+  "commit": "9a8917c",
+  "package_sha256": "c0d2716afefbb194c93fae662e9cae7cc186bcbcf746816608ec673dd648a6a4",
+  "source": "https://github.com/apple/container/releases/tag/1.4.1",
+  "capture_mode": "signed package extracted without installation; no runtime started",
+  "host": "macOS arm64",
+  "commands": [
+    {
+      "command": [
+        "--version"
+      ],
+      "exit_code": 0,
+      "timed_out": false,
+      "stdout": {
+        "file": "version.stdout",
+        "sha256": "78d7b2f3d061b337d01308d8e5553cceb11524d7022c3706dde2fb2db18324d3"
+      },
+      "stderr": {
+        "file": "version.stderr",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    {
+      "command": [
+        "--help"
+      ],
+      "exit_code": 0,
+      "timed_out": false,
+      "stdout": {
+        "file": "help.stdout",
+        "sha256": "269ed775130aa9df9d145d9934a3931c62f635ce85c5b7e0e6ee74f1bc392297"
+      },
+      "stderr": {
+        "file": "help.stderr",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    {
+      "command": [
+        "run",
+        "--help"
+      ],
+      "exit_code": 0,
+      "timed_out": false,
+      "stdout": {
+        "file": "run-help.stdout",
+        "sha256": "0d08ce7bd01a100bd6e1a44478341f34d70a055a399c267a5338820e3261e8d6"
+      },
+      "stderr": {
+        "file": "run-help.stderr",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    {
+      "command": [
+        "inspect",
+        "--help"
+      ],
+      "exit_code": 0,
+      "timed_out": false,
+      "stdout": {
+        "file": "inspect-help.stdout",
+        "sha256": "e28c42da429874b574bff680e23d0adf19887e2e940bcc025e9870729308a74b"
+      },
+      "stderr": {
+        "file": "inspect-help.stderr",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    {
+      "command": [
+        "network",
+        "--help"
+      ],
+      "exit_code": 0,
+      "timed_out": false,
+      "stdout": {
+        "file": "network-help.stdout",
+        "sha256": "585f5fe8ecbfcd53474eb14ccfe834a1fe1cbc2232b1da6cac11bd2c2f7f6ba0"
+      },
+      "stderr": {
+        "file": "network-help.stderr",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    {
+      "command": [
+        "network",
+        "create",
+        "--help"
+      ],
+      "exit_code": 0,
+      "timed_out": false,
+      "stdout": {
+        "file": "network-create-help.stdout",
+        "sha256": "dfc7ad97a00a9064ffce7433e4e44304e76cc7e6e01f648ab9a742697e1246f2"
+      },
+      "stderr": {
+        "file": "network-create-help.stderr",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    {
+      "command": [
+        "volume",
+        "--help"
+      ],
+      "exit_code": 0,
+      "timed_out": false,
+      "stdout": {
+        "file": "volume-help.stdout",
+        "sha256": "d53cba91cb769ce0c050663e504ccd0adbd28215ec376d2d98a14a1b11f6754b"
+      },
+      "stderr": {
+        "file": "volume-help.stderr",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    {
+      "command": [
+        "system",
+        "status",
+        "--format",
+        "json"
+      ],
+      "exit_code": 1,
+      "timed_out": false,
+      "stdout": {
+        "file": "system-status.stdout",
+        "sha256": "d1442531f434e40d83852adcd17e0136fad399b53e57f191a29af61ca00f103e"
+      },
+      "stderr": {
+        "file": "system-status.stderr",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    }
+  ],
+  "qualification": "unqualified; no running-service, inspect/run or connectivity evidence"
+}

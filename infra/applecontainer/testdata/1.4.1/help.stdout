@@ -1,0 +1,50 @@
+OVERVIEW: A container platform for macOS
+
+USAGE: container [--debug] <subcommand>
+
+OPTIONS:
+  --debug                 Enable debug output [environment: CONTAINER_DEBUG]
+  --version               Show the version.
+  -h, --help              Show help information.
+
+
+CONTAINER SUBCOMMANDS:
+  clean                   Clean one or more running containers
+  copy, cp                Copy files/folders between a container and the local
+                          filesystem
+  create                  Create a new container
+  delete, rm              Delete one or more containers
+  exec                    Run a new command in a running container
+  export                  Export a container's filesystem as a tar archive
+  inspect                 Display information about one or more containers
+  kill                    Kill or signal one or more running containers
+  list, ls                List running containers
+  logs                    Fetch container logs
+  run                     Run a container
+  start                   Start a container
+  stats                   Display resource usage statistics for containers
+  stop                    Stop one or more running containers
+  prune                   Remove all stopped containers
+
+
+IMAGE SUBCOMMANDS:
+  build                   Build an image from a Dockerfile or Containerfile
+  image, i                Manage images
+  registry, r             Manage registry logins
+
+
+MACHINE SUBCOMMANDS:
+  machine, m              Manage container machines
+
+
+VOLUME SUBCOMMANDS:
+  volume, v               Manage container volumes
+
+
+OTHER SUBCOMMANDS:
+  builder                 Manage an image builder instance
+  network, n              Manage container networks
+  system, s               Manage system components
+
+
+PLUGINS: not available, run `container system start`

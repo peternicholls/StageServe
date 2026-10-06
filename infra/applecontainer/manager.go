@@ -49,8 +49,7 @@ func (m *Manager) Capabilities() coreruntime.Capabilities {
 }
 
 func (m *Manager) Available(ctx context.Context) error {
-	_, err := m.Runner.Run(ctx, "system", "status", "--format", "json")
-	return err
+	return checkServiceStatus(ctx, m.Runner)
 }
 
 func (m *Manager) NetworkExists(ctx context.Context, name string) (bool, error) {
@@ -62,20 +61,17 @@ func (m *Manager) NetworkExists(ctx context.Context, name string) (bool, error) 
 }
 
 func (m *Manager) CreateNetwork(ctx context.Context, name string) error {
-	_, err := m.Runner.Run(ctx, "network", "create", "--label", "io.stageserve.managed=true", name)
-	return err
+	return fmt.Errorf("network creation requires an owned topology contract; T003 is pending")
 }
 
 func (m *Manager) RemoveNetwork(ctx context.Context, name string) error {
-	exists, err := m.NetworkExists(ctx, name)
-	if err != nil || !exists {
-		return err
-	}
-	_, err = m.Runner.Run(ctx, "network", "delete", name)
-	return err
+	return fmt.Errorf("network deletion requires recorded ownership; T003 is pending")
 }
 
 func (m *Manager) Start(ctx context.Context, opts coreruntime.StartOptions) error {
+	if err := validateMutation(ctx, opts.Ownership, opts.RecordResource); err != nil {
+		return err
+	}
 	definition, err := loadManifest(opts.Definition)
 	if err != nil {
 		return err
@@ -84,77 +80,165 @@ func (m *Manager) Start(ctx context.Context, opts coreruntime.StartOptions) erro
 	if err != nil {
 		return err
 	}
+	if err := validateVolumeMounts(definition, env); err != nil {
+		return err
+	}
 	m.mu.Lock()
 	m.manifests[opts.ProjectName] = resolvedManifest{Definition: opts.Definition, Env: env, Manifest: definition, Profiles: append([]string(nil), opts.Profiles...)}
 	m.mu.Unlock()
 
 	for _, volume := range definition.Volumes {
-		if err := m.ensureVolume(ctx, expand(volume, env)); err != nil {
+		if err := m.ensureOwnedVolume(ctx, expand(volume, env), opts.Ownership, opts.RecordResource); err != nil {
 			return err
 		}
 	}
 	selected := selectedServices(opts.Services)
-	started := []string{}
 	for _, service := range definition.Services {
-		if !profileEnabled(service, opts.Profiles) {
-			continue
-		}
-		if len(selected) > 0 && !selected[service.Name] {
+		if !profileEnabled(service, opts.Profiles) || (len(selected) > 0 && !selected[service.Name]) {
 			continue
 		}
 		name := serviceName(opts.ProjectName, service.Name)
-		if opts.ForceRecreate {
-			_, _ = m.Runner.Run(ctx, "delete", "--force", name)
-		}
-		exists, running, err := m.serviceState(ctx, name)
+		observed, err := m.observedService(ctx, name)
 		if err != nil {
 			return err
 		}
-		if exists && running {
-			continue
+		if observed == nil && hasRecorded(opts.Ownership, "container", name) {
+			return fmt.Errorf("recorded service %s is missing; reconcile before creation", name)
 		}
-		if exists {
-			if _, err := m.Runner.Run(ctx, "start", name); err != nil {
+		if observed != nil {
+			if observed.Project != opts.ProjectName || observed.Service != service.Name {
+				return fmt.Errorf("observed service metadata does not match expected project and role")
+			}
+			resource, err := ownedObserved(opts.Ownership, "container", observed.ID, name, service.Name, observed.Labels)
+			if err != nil {
 				return err
 			}
-		} else {
+			if opts.ForceRecreate {
+				if resource.CreationOperation == opts.Ownership.OperationID {
+					return fmt.Errorf("recreation requires a new operation UUID")
+				}
+				if _, err := m.mutateRun(ctx, "delete", "--force", resource.ID); err != nil {
+					return err
+				}
+				resource.Deleted = true
+				resource.Planned = false
+				if err := opts.RecordResource(ctx, resource); err != nil {
+					return err
+				}
+				observed = nil
+			} else {
+				if err := opts.RecordResource(ctx, resource); err != nil {
+					return err
+				}
+				if !strings.EqualFold(observed.Status, "running") {
+					if _, err := m.mutateRun(ctx, "start", resource.ID); err != nil {
+						return err
+					}
+				}
+			}
+		}
+		if observed == nil {
+			resource := newResource(opts.Ownership, "container", name, service.Name)
+			resource.Planned = true
+			if err := opts.RecordResource(ctx, resource); err != nil {
+				return err
+			}
 			if err := m.buildService(ctx, opts, service, env); err != nil {
-				m.rollback(ctx, started)
 				return err
 			}
-			if _, err := m.Runner.Run(ctx, m.runArgs(opts, service, env)...); err != nil {
-				m.rollback(ctx, started)
+			if _, err := m.mutateRun(ctx, m.runArgs(opts, service, env)...); err != nil {
+				return err
+			}
+			created, err := m.observedService(ctx, name)
+			if err != nil {
+				return err
+			}
+			if created == nil {
+				return fmt.Errorf("created service %s was not observed", name)
+			}
+			if created.Project != opts.ProjectName || created.Service != service.Name {
+				return fmt.Errorf("created service metadata does not match expected project and role")
+			}
+			expected := opts.Ownership
+			expected.Resources = []coreruntime.Resource{resource}
+			resource, err = ownedObserved(expected, "container", created.ID, created.Name, service.Name, created.Labels)
+			if err != nil {
+				return err
+			}
+			if err := opts.RecordResource(ctx, resource); err != nil {
 				return err
 			}
 		}
-		started = append(started, name)
 		if service.Health != nil {
 			if err := m.waitService(ctx, name, service.Health, opts.WaitTimeout); err != nil {
-				m.rollback(ctx, started)
 				return err
 			}
 		}
 	}
+
 	return nil
 }
 
 func (m *Manager) Stop(ctx context.Context, opts coreruntime.StopOptions) error {
-	services, err := m.ListServices(ctx, opts.ProjectName)
+	if err := validateMutation(ctx, opts.Ownership, opts.RecordResource); err != nil {
+		return err
+	}
+	services, err := m.ListServices(ctx, "")
 	if err != nil {
 		return err
 	}
 	for i := len(services) - 1; i >= 0; i-- {
-		_, _ = m.Runner.Run(ctx, "stop", services[i].ID)
-		if _, err := m.Runner.Run(ctx, "delete", services[i].ID); err != nil {
+		service := services[i]
+		if !hasRecorded(opts.Ownership, "container", service.ID) {
+			continue
+		}
+		resource, err := ownedObserved(opts.Ownership, "container", service.ID, service.Name, service.Service, service.Labels)
+		if err != nil {
+			return err
+		}
+		if _, err := m.mutateRun(ctx, "stop", resource.ID); err != nil {
+			return err
+		}
+		if _, err := m.mutateRun(ctx, "delete", resource.ID); err != nil {
+			return err
+		}
+		resource.Deleted = true
+		resource.Planned = false
+		if err := opts.RecordResource(ctx, resource); err != nil {
 			return err
 		}
 	}
 	if opts.RemoveVolumes {
-		volume := opts.ProjectName + "-db-data"
-		if exists, err := m.volumeExists(ctx, volume); err != nil {
+		definition, err := loadManifest(opts.Definition)
+		if err != nil {
 			return err
-		} else if exists {
-			if _, err := m.Runner.Run(ctx, "volume", "delete", volume); err != nil {
+		}
+		env, err := environment(opts.EnvFile, opts.Env)
+		if err != nil {
+			return err
+		}
+		for _, value := range definition.Volumes {
+			name := expand(value, env)
+			if !hasRecorded(opts.Ownership, "volume", name) {
+				continue
+			}
+			volume, err := m.observedVolume(ctx, name)
+			if err != nil {
+				return err
+			}
+			if volume == nil {
+				continue
+			}
+			resource, err := ownedObserved(opts.Ownership, "volume", volume.ID, name, "volume", volume.Labels)
+			if err != nil {
+				return err
+			}
+			if _, err := m.mutateRun(ctx, "volume", "delete", resource.ID); err != nil {
+				return err
+			}
+			resource.Deleted = true
+			resource.Planned = false
+			if err := opts.RecordResource(ctx, resource); err != nil {
 				return err
 			}
 		}
@@ -163,11 +247,31 @@ func (m *Manager) Stop(ctx context.Context, opts coreruntime.StopOptions) error 
 }
 
 func (m *Manager) Restart(ctx context.Context, opts coreruntime.RestartOptions) error {
-	name := serviceName(opts.ProjectName, opts.Service)
-	if _, err := m.Runner.Run(ctx, "stop", name); err != nil {
+	if err := validateMutation(ctx, opts.Ownership, opts.RecordResource); err != nil {
 		return err
 	}
-	_, err := m.Runner.Run(ctx, "start", name)
+	name := serviceName(opts.ProjectName, opts.Service)
+	service, err := m.observedService(ctx, name)
+	if err != nil {
+		return err
+	}
+	if service == nil {
+		return fmt.Errorf("owned service %s is missing", name)
+	}
+	if service.Project != opts.ProjectName || service.Service != opts.Service {
+		return fmt.Errorf("observed service metadata does not match expected project and role")
+	}
+	resource, err := ownedObserved(opts.Ownership, "container", service.ID, name, opts.Service, service.Labels)
+	if err != nil {
+		return err
+	}
+	if err := opts.RecordResource(ctx, resource); err != nil {
+		return err
+	}
+	if _, err := m.mutateRun(ctx, "stop", resource.ID); err != nil {
+		return err
+	}
+	_, err = m.mutateRun(ctx, "start", resource.ID)
 	return err
 }
 
@@ -240,6 +344,7 @@ func (m *Manager) runArgs(opts coreruntime.StartOptions, service serviceSpec, en
 		"--label", "io.stageserve.project=" + opts.ProjectName,
 		"--label", "io.stageserve.service=" + service.Name,
 		"--network", "default"}
+	args = append(args, ownershipLabels(opts.Ownership, service.Name)...)
 	if service.Workdir != "" {
 		args = append(args, "--workdir", expand(service.Workdir, env))
 	}
@@ -284,7 +389,7 @@ func (m *Manager) buildService(ctx context.Context, opts coreruntime.StartOption
 		args = append(args, "--file", manifestPath(base, expand(service.Build.File, env)))
 	}
 	args = append(args, manifestPath(base, expand(service.Build.Context, env)))
-	_, err := m.Runner.Run(ctx, args...)
+	_, err := m.mutateRun(ctx, args...)
 	return err
 }
 
@@ -311,59 +416,47 @@ func (m *Manager) waitService(ctx context.Context, name string, health *healthSp
 	return fmt.Errorf("service %s did not become healthy: %w", name, lastErr)
 }
 
-func (m *Manager) serviceState(ctx context.Context, name string) (bool, bool, error) {
-	services, err := m.ListServices(ctx, "")
-	if err != nil {
-		return false, false, err
-	}
-	for _, service := range services {
-		if service.ID == name || service.Name == name {
-			return true, strings.EqualFold(service.Status, "running"), nil
-		}
-	}
-	return false, false, nil
-}
-
-func (m *Manager) ensureVolume(ctx context.Context, name string) error {
-	exists, err := m.volumeExists(ctx, name)
-	if err != nil || exists {
-		return err
-	}
-	_, err = m.Runner.Run(ctx, "volume", "create", "--label", "io.stageserve.managed=true", name)
-	return err
-}
-
-func (m *Manager) volumeExists(ctx context.Context, name string) (bool, error) {
-	out, err := m.Runner.Run(ctx, "volume", "list", "--quiet")
-	if err != nil {
-		return false, err
-	}
-	return containsLine(out, name), nil
-}
-
-func (m *Manager) rollback(ctx context.Context, names []string) {
-	for i := len(names) - 1; i >= 0; i-- {
-		_, _ = m.Runner.Run(ctx, "stop", names[i])
-		_, _ = m.Runner.Run(ctx, "delete", names[i])
-	}
-}
-
 func parseServices(data []byte, projectName string) ([]coreruntime.Service, error) {
 	var items []map[string]any
 	if err := json.Unmarshal(data, &items); err != nil {
 		return nil, fmt.Errorf("parse container list JSON: %w", err)
 	}
-	prefix := projectName + "-"
 	services := []coreruntime.Service{}
 	for _, item := range items {
+		// 1.4.1 serializes ManagedContainer as id/configuration/status.
+		// Keep the flat status fields for older inspection payloads, but never
+		// infer project ownership from a container's name prefix.
+		configuration, _ := item["configuration"].(map[string]any)
+		labels := map[string]string{}
+		rawLabels, _ := configuration["labels"].(map[string]any)
+		if rawLabels == nil {
+			rawLabels, _ = item["labels"].(map[string]any)
+		}
+		for key, value := range rawLabels {
+			if label, ok := value.(string); ok {
+				labels[key] = label
+			}
+		}
 		id := stringField(item, "id", "ID", "name", "Name")
-		if projectName != "" && !strings.HasPrefix(id, prefix) {
+		configuredID := stringField(configuration, "id")
+		if id == "" {
+			id = configuredID
+		}
+		if id == "" || (configuredID != "" && configuredID != id) {
+			return nil, fmt.Errorf("parse container list JSON: missing or inconsistent container identity")
+		}
+		project := labels["io.stageserve.project"]
+		if projectName != "" && project != projectName {
 			continue
 		}
-		service := strings.TrimPrefix(id, prefix)
+		status := stringField(item, "state", "State", "status", "Status")
+		if nested, ok := item["status"].(map[string]any); ok {
+			status = stringField(nested, "state")
+		}
 		services = append(services, coreruntime.Service{
-			ID: id, Name: id, Project: projectName, Service: service,
-			Status:  stringField(item, "state", "State", "status", "Status"),
+			ID: id, Name: id, Project: project, Service: labels["io.stageserve.service"],
+			Labels:  labels,
+			Status:  status,
 			Address: stringField(item, "ip", "IP", "address", "Address"),
 		})
 	}
