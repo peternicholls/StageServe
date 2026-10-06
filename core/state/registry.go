@@ -7,6 +7,11 @@ package state
 func (s *Store) Registry() ([]RegistryRow, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	unlock, err := s.lockIdentityState()
+	if err != nil {
+		return nil, err
+	}
+	defer unlock()
 
 	files, err := s.listFiles()
 	if err != nil {
@@ -16,7 +21,7 @@ func (s *Store) Registry() ([]RegistryRow, error) {
 	for _, f := range files {
 		rec, err := s.loadFile(f)
 		if err != nil {
-			continue
+			return nil, err
 		}
 		rows = append(rows, recordToRow(rec))
 	}
@@ -26,6 +31,8 @@ func (s *Store) Registry() ([]RegistryRow, error) {
 func recordToRow(rec Record) RegistryRow {
 	p := rec.Project
 	return RegistryRow{
+		ProjectID:        rec.ProjectID,
+		InstallationID:   rec.InstallationID,
 		Slug:             p.Slug,
 		AttachmentState:  rec.AttachmentState,
 		Name:             p.Name,

@@ -37,7 +37,11 @@ type RuntimeIdentity struct {
 
 // Record is the persisted, per-project view that round-trips through the
 // state store. It is the on-disk schema; format/version live alongside.
+// When present, both UUIDs must match the independent registered identity ledger.
+// UUID-free records are retained without implicitly adopting ownership.
 type Record struct {
+	ProjectID       string               `json:"project_id,omitempty"`
+	InstallationID  string               `json:"installation_id,omitempty"`
 	SchemaVersion   int                  `json:"schema_version"`
 	Project         config.ProjectConfig `json:"project"`
 	AttachmentState AttachmentState      `json:"attachment_state"`
@@ -46,6 +50,8 @@ type Record struct {
 
 // RegistryRow is the typed projection of a single project across the registry.
 type RegistryRow struct {
+	ProjectID        string
+	InstallationID   string
 	Slug             string
 	AttachmentState  AttachmentState
 	Name             string

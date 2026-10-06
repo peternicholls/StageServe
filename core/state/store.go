@@ -1,7 +1,7 @@
 // State store: per-project JSON files, atomic writes, registry projection.
 //
 // Atomicity is enforced via temp-file + os.Rename (FR-008). Concurrent access
-// at the same project slug is serialised by the caller.
+// across Store instances and processes is serialised with the identity lock.
 package state
 
 import (
@@ -24,8 +24,9 @@ var ErrNotFound = errors.New("state: project not found")
 
 // Store is the default StateStore implementation.
 type Store struct {
-	stateDir string
-	mu       sync.Mutex
+	stateDir         string
+	mu               sync.Mutex
+	transactionFault func(string) error
 }
 
 // NewStore returns a Store rooted at stateDir. It ensures stateDir/projects exists.
@@ -48,8 +49,11 @@ func (s *Store) projectFile(slug string) string {
 
 // Save writes a project record to disk atomically.
 func (s *Store) Save(rec Record) error {
-	if rec.Project.Slug == "" {
+	if !validName(rec.Project.Slug) {
 		return errors.New("state: cannot save record with empty slug")
+	}
+	if rec.SchemaVersion != 0 && rec.SchemaVersion != SchemaVersion {
+		return ErrSchema
 	}
 	if err := normalizeRecord(&rec); err != nil {
 		return err
@@ -57,46 +61,51 @@ func (s *Store) Save(rec Record) error {
 	rec.SchemaVersion = SchemaVersion
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	unlock, err := s.lockIdentityState()
+	if err != nil {
+		return err
+	}
+	defer unlock()
 
 	if err := os.MkdirAll(filepath.Join(s.stateDir, "projects"), 0o755); err != nil {
 		return err
 	}
 	target := s.projectFile(rec.Project.Slug)
 
-	data, err := json.MarshalIndent(rec, "", "  ")
-	if err != nil {
-		return fmt.Errorf("state: marshal record: %w", err)
-	}
-	tmp, err := os.CreateTemp(filepath.Dir(target), "."+rec.Project.Slug+".*.json.tmp")
-	if err != nil {
+	old, err := s.loadRecordFile(target, false)
+	if err != nil && !errors.Is(err, ErrNotFound) {
 		return err
 	}
-	tmpName := tmp.Name()
-	if _, err := tmp.Write(data); err != nil {
-		tmp.Close()
-		os.Remove(tmpName)
+	if err == nil && (old.ProjectID != rec.ProjectID || old.InstallationID != rec.InstallationID) {
+		return ErrOwnerMismatch
+	}
+	if err := s.validateRecordIdentity(rec, true); err != nil {
 		return err
 	}
-	if err := tmp.Sync(); err != nil {
-		tmp.Close()
-		os.Remove(tmpName)
-		return err
-	}
-	if err := tmp.Close(); err != nil {
-		os.Remove(tmpName)
-		return err
-	}
-	return os.Rename(tmpName, target)
+	return durableJSON(target, rec)
 }
 
 // Load reads the recorded state for slug.
 func (s *Store) Load(slug string) (Record, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	unlock, err := s.lockIdentityState()
+	if err != nil {
+		return Record{}, err
+	}
+	defer unlock()
+	if !validName(slug) {
+		return Record{}, ErrInvalidIdentity
+	}
 	return s.loadFile(s.projectFile(slug))
 }
 
 func (s *Store) loadFile(path string) (Record, error) {
+	return s.loadRecordFile(path, true)
+}
+
+// Callers hold both the Store mutex and the cross-process identity lock.
+func (s *Store) loadRecordFile(path string, registered bool) (Record, error) {
 	var rec Record
 	data, err := os.ReadFile(path)
 	if err != nil {
@@ -108,13 +117,56 @@ func (s *Store) loadFile(path string) (Record, error) {
 	if err := json.Unmarshal(data, &rec); err != nil {
 		return rec, fmt.Errorf("state: parse %s: %w", path, err)
 	}
+	if rec.SchemaVersion != SchemaVersion {
+		return rec, ErrSchema
+	}
 	if err := normalizeRecord(&rec); err != nil {
 		return rec, fmt.Errorf("state: parse %s: %w", path, err)
+	}
+	if rec.Project.Slug != strings.TrimSuffix(filepath.Base(path), ".json") {
+		return rec, ErrOwnerMismatch
+	}
+	if err := s.validateRecordIdentity(rec, registered); err != nil {
+		return rec, err
 	}
 	return rec, nil
 }
 
+// UUID-free records remain readable without creating or adopting ownership.
+func (s *Store) validateRecordIdentity(rec Record, registered bool) error {
+	if rec.ProjectID == "" && rec.InstallationID == "" {
+		return nil
+	}
+	if !validUUID(rec.ProjectID) || !validUUID(rec.InstallationID) {
+		return ErrInvalidIdentity
+	}
+	if rec.ProjectID == rec.InstallationID {
+		return ErrOwnerMismatch
+	}
+	identity, err := s.identity(rec.ProjectID)
+	if errors.Is(err, ErrNotFound) {
+		return ErrOwnerMismatch
+	}
+	if err != nil {
+		return err
+	}
+	if identity.InstallationID != rec.InstallationID || identity.Slug != rec.Project.Slug || (registered && !identity.Registered) {
+		return ErrOwnerMismatch
+	}
+	path, err := canonical(rec.Project.Dir)
+	if err != nil {
+		return err
+	}
+	if path != identity.CanonicalPath {
+		return ErrOwnerMismatch
+	}
+	return nil
+}
+
 func normalizeRecord(rec *Record) error {
+	if rec.Project.RuntimeBackend == "" || rec.Project.RuntimeBackend == "docker" {
+		return ErrLegacyState
+	}
 	backend, err := runtime.ParseBackend(string(rec.Project.RuntimeBackend))
 	if err != nil {
 		return err
@@ -125,6 +177,9 @@ func normalizeRecord(rec *Record) error {
 	} else if _, err := runtime.ParseBackend(string(rec.Runtime.Backend)); err != nil {
 		return err
 	}
+	if rec.Runtime.Backend != backend {
+		return ErrOwnerMismatch
+	}
 	return nil
 }
 
@@ -132,7 +187,18 @@ func normalizeRecord(rec *Record) error {
 func (s *Store) Remove(slug string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	err := os.Remove(s.projectFile(slug))
+	unlock, err := s.lockIdentityState()
+	if err != nil {
+		return err
+	}
+	defer unlock()
+	if !validName(slug) {
+		return ErrInvalidIdentity
+	}
+	if _, err := s.loadRecordFile(s.projectFile(slug), false); err != nil && !errors.Is(err, ErrNotFound) {
+		return err
+	}
+	err = os.Remove(s.projectFile(slug))
 	if err != nil && !os.IsNotExist(err) {
 		return err
 	}
@@ -169,6 +235,11 @@ func (s *Store) listFiles() ([]string, error) {
 func (s *Store) StateFileForSelector(selector string) (Record, string, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	unlock, err := s.lockIdentityState()
+	if err != nil {
+		return Record{}, "", err
+	}
+	defer unlock()
 
 	files, err := s.listFiles()
 	if err != nil {
@@ -177,7 +248,7 @@ func (s *Store) StateFileForSelector(selector string) (Record, string, error) {
 	for _, f := range files {
 		rec, err := s.loadFile(f)
 		if err != nil {
-			continue
+			return Record{}, "", err
 		}
 		p := rec.Project
 		if selector == p.Slug || selector == p.Name || selector == p.Hostname || selector == p.Dir {

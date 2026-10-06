@@ -18,6 +18,7 @@ func TestStore_SaveLoadRoundTrip(t *testing.T) {
 	}
 	rec := Record{
 		Project: config.ProjectConfig{
+			RuntimeBackend:     runtime.BackendAppleContainer,
 			Slug:               "demo",
 			Name:               "demo",
 			Dir:                "/tmp/demo",
@@ -45,7 +46,7 @@ func TestStore_SaveLoadRoundTrip(t *testing.T) {
 	}
 }
 
-func TestStore_LoadRecordDefaultsToAppleContainer(t *testing.T) {
+func TestStore_LoadRecordRejectsLegacy(t *testing.T) {
 	dir := t.TempDir()
 	store, err := NewStore(dir)
 	if err != nil {
@@ -55,12 +56,8 @@ func TestStore_LoadRecordDefaultsToAppleContainer(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(dir, "projects", "legacy.json"), []byte(legacy), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	rec, err := store.Load("legacy")
-	if err != nil {
-		t.Fatalf("load legacy record: %v", err)
-	}
-	if rec.Project.RuntimeBackend != runtime.BackendAppleContainer || rec.Runtime.Backend != runtime.BackendAppleContainer {
-		t.Fatalf("backend project=%q observed=%q want apple-container", rec.Project.RuntimeBackend, rec.Runtime.Backend)
+	if _, err := store.Load("legacy"); err == nil {
+		t.Fatal("legacy record must not be adopted as Apple")
 	}
 }
 
@@ -88,7 +85,8 @@ func TestStore_RegistryProjection(t *testing.T) {
 	for _, slug := range []string{"alpha", "beta"} {
 		rec := Record{
 			Project: config.ProjectConfig{
-				Slug: slug, Name: slug, Hostname: slug + ".test",
+				RuntimeBackend: runtime.BackendAppleContainer,
+				Slug:           slug, Name: slug, Hostname: slug + ".test",
 				ComposeProjectName: "stage-" + slug,
 			},
 			AttachmentState: StateAttached,
@@ -112,7 +110,7 @@ func TestStore_RegistryProjection(t *testing.T) {
 func TestStore_Remove(t *testing.T) {
 	dir := t.TempDir()
 	store, _ := NewStore(dir)
-	rec := Record{Project: config.ProjectConfig{Slug: "gone"}}
+	rec := Record{Project: config.ProjectConfig{Slug: "gone", RuntimeBackend: runtime.BackendAppleContainer}}
 	_ = store.Save(rec)
 	if err := store.Remove("gone"); err != nil {
 		t.Fatalf("remove: %v", err)
