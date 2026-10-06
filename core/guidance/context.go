@@ -2,7 +2,6 @@ package guidance
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -96,18 +95,18 @@ func readRecord(stateDir, slug string) (state.Record, error) {
 		return state.Record{}, state.ErrNotFound
 	}
 	path := filepath.Join(stateDir, "projects", slug+".json")
-	data, err := os.ReadFile(path)
+	_, err := os.Stat(path)
 	if err != nil {
 		if os.IsNotExist(err) {
 			return state.Record{}, state.ErrNotFound
 		}
 		return state.Record{}, err
 	}
-	var record state.Record
-	if err := json.Unmarshal(data, &record); err != nil {
+	store, err := state.NewStore(stateDir)
+	if err != nil {
 		return state.Record{}, err
 	}
-	return record, nil
+	return store.Load(slug)
 }
 
 func localURL(cfg config.ProjectConfig) string {
