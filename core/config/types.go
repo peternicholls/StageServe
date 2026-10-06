@@ -8,7 +8,7 @@ import "github.com/peternicholls/stageserve/core/runtime"
 
 // CLIFlags carries the highest-precedence configuration source: command-line flags
 // the operator passed in. Empty fields fall through to the next layer
-// (project .env.stageserve -> shell env -> stack .env.stageserve -> defaults).
+// (project .env.stageserve -> shell env -> stack .env.stageserve -> application DB fallback -> defaults).
 type CLIFlags struct {
 	ProjectDir      string
 	SiteName        string
@@ -99,10 +99,24 @@ type StackMetadata struct {
 	Compatibility      StackCompatibility
 }
 
+// ConfigSource identifies a setting's winning layer without retaining values,
+// passwords, file contents or paths. Keys in Origins are canonical environment names.
+type ConfigSource string
+
+const (
+	SourceDefault     ConfigSource = "default"
+	SourceApplication ConfigSource = "application-env"
+	SourceStack       ConfigSource = "stack-env"
+	SourceShell       ConfigSource = "shell-env"
+	SourceProject     ConfigSource = "project-env"
+	SourceFlag        ConfigSource = "flag"
+)
+
 // ProjectConfig is the resolved view of a single project's settings after the
 // precedence chain has been applied. Replaces the loose set of global shell
 // values for the current project.
 type ProjectConfig struct {
+	Origins map[string]ConfigSource `json:"origins,omitempty"`
 	// Identity
 	StackKind          string              // STAGESERVE_STACK
 	RuntimeBackend     runtime.BackendName // always apple-container
@@ -148,7 +162,7 @@ type ProjectConfig struct {
 }
 
 // ConfigLoader resolves the full precedence chain (CLI flags -> project
-// .env.stageserve -> shell env -> stack .env.stageserve -> defaults) and returns
+// .env.stageserve -> shell env -> stack .env.stageserve -> application DB fallback -> defaults) and returns
 // a populated ProjectConfig.
 // STAGESERVE_POST_UP_COMMAND is the one project-scoped exception: it is honored
 // only when set in project .env.stageserve.

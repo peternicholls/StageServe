@@ -5,7 +5,8 @@
 //  2. .env.stageserve in the project directory
 //  3. shell environment
 //  4. .env.stageserve in the stack home (canonical stack-owned defaults file)
-//  5. built-in defaults (lowest)
+//  5. application .env DB fallback
+//  6. built-in defaults (lowest)
 //
 // STAGESERVE_POST_UP_COMMAND is a special-case bootstrap setting that is only
 // honored when set in the project's .env.stageserve file. It is intentionally
@@ -131,24 +132,6 @@ func loadStackEnv(stackHome string) (map[string]string, error) {
 
 var osStat = os.Stat
 
-func applyProjectRuntimeDBFallback(merged, runtimeEnv map[string]string) {
-	defaults := defaults()
-	for projectKey, stageserveKey := range map[string]string{
-		"DB_DATABASE": "MYSQL_DATABASE",
-		"DB_USERNAME": "MYSQL_USER",
-		"DB_PASSWORD": "MYSQL_PASSWORD",
-	} {
-		value := strings.TrimSpace(runtimeEnv[projectKey])
-		if value == "" {
-			continue
-		}
-		if merged[stageserveKey] == defaults[stageserveKey] {
-			merged[stageserveKey] = value
-			merged["STAGESERVE_PROJECT_ENV_"+stageserveKey] = "1"
-		}
-	}
-}
-
 // resolveStackHome reproduces stageserve_default_stack_home.
 func (l *Loader) resolveStackHome() (string, error) {
 	if l.StackHomeOverride != "" {
@@ -209,73 +192,101 @@ func (l *Loader) Load(projectDir string, flags CLIFlags) (ProjectConfig, error) 
 	cfg.StateDir = project.AbsPathFromBase(stackHome, stateDir)
 
 	// 3. Build the precedence-merged map. Lower precedence first; higher
-	// precedence overwrites by key. Order: defaults -> stageserve .env ->
-	// project runtime .env DB fallback -> shell env -> project .env.stageserve ->
+	// precedence overwrites by key. Order: defaults -> application DB fallback ->
+	// stack .env.stageserve -> shell env -> project .env.stageserve ->
 	// CLI flags.
 	merged := defaults()
+	origins := map[string]ConfigSource{}
+	for _, key := range trackedEnvKeys {
+		origins[key] = SourceDefault
+	}
+	origins["STAGESERVE_POST_UP_COMMAND"] = SourceDefault
+	// Application DB values are the lowest-priority explicit source.
+	if values, err := loadProjectRuntimeEnv(pdAbs); err != nil {
+		return cfg, fmt.Errorf("read project .env: %w", err)
+	} else {
+		for appKey, key := range map[string]string{"DB_DATABASE": "MYSQL_DATABASE", "DB_USERNAME": "MYSQL_USER", "DB_PASSWORD": "MYSQL_PASSWORD"} {
+			if value, present := values[appKey]; present {
+				merged[key] = value
+				origins[key] = SourceApplication
+			}
+		}
+	}
+	merge := func(values map[string]string, source ConfigSource) {
+		for key, value := range values {
+			if _, known := origins[key]; !known {
+				continue
+			}
+			if key == "STACK_HOME" || key == "STAGESERVE_STATE_DIR" {
+				continue
+			}
+			if key == "STAGESERVE_POST_UP_COMMAND" && source != SourceProject {
+				continue
+			}
+			merged[key] = value
+			origins[key] = source
+		}
+	}
 
 	// .env.stageserve in the stack home applies just above built-in defaults.
 	// STAGESERVE_POST_UP_COMMAND is excluded from this merge: bootstrap is a
 	// project-scoped declaration sourced only from project .env.stageserve.
-	if envMap, err := loadStackEnv(stackHome); err == nil {
-		for k, v := range envMap {
-			if k == "STAGESERVE_POST_UP_COMMAND" {
-				continue
-			}
-			merged[k] = v
+	if values, err := loadStackEnv(stackHome); err != nil {
+		return cfg, fmt.Errorf("read stack .env.stageserve: %w", err)
+	} else {
+		merge(values, SourceStack)
+	}
+	for _, key := range trackedEnvKeys {
+		if value, present := l.lookupEnv(key); present {
+			merged[key] = value
+			origins[key] = SourceShell
 		}
 	}
-	// Project runtime .env stays separate from StageServe config. We only use it
-	// as a fallback source for the app's DB identity so the provisioned MariaDB
-	// service can match the mounted project.
-	if envMap, err := loadProjectRuntimeEnv(pdAbs); err == nil {
-		applyProjectRuntimeDBFallback(merged, envMap)
-	}
-	// shell env: only consider keys we care about, to avoid leaking unrelated env.
-	for _, k := range trackedEnvKeys {
-		if v, ok := l.lookupEnv(k); ok && v != "" {
-			merged[k] = v
-		}
-	}
-	// Project .env.stageserve
-	if envMap, err := loadProjectStageserveEnv(pdAbs); err == nil {
-		for k, v := range envMap {
-			if projectEnvDisallowedKeys[k] {
-				continue
-			}
-			merged[k] = v
-		}
+	if values, err := loadProjectStageserveEnv(pdAbs); err != nil {
+		return cfg, fmt.Errorf("read project .env.stageserve: %w", err)
+	} else {
+		merge(values, SourceProject)
 	}
 	// CLI flags
 	if flags.SiteName != "" {
 		merged["SITE_NAME"] = flags.SiteName
+		origins["SITE_NAME"] = SourceFlag
 	}
 	if flags.SiteHostname != "" {
 		merged["SITE_HOSTNAME"] = flags.SiteHostname
+		origins["SITE_HOSTNAME"] = SourceFlag
 	}
 	if flags.SiteSuffix != "" {
 		merged["SITE_SUFFIX"] = flags.SiteSuffix
+		origins["SITE_SUFFIX"] = SourceFlag
 	}
 	if flags.DocRoot != "" {
 		merged["DOCROOT"] = flags.DocRoot
+		origins["DOCROOT"] = SourceFlag
 	}
 	if flags.PHPVersion != "" {
 		merged["PHP_VERSION"] = flags.PHPVersion
+		origins["PHP_VERSION"] = SourceFlag
 	}
 	if flags.MySQLDatabase != "" {
 		merged["MYSQL_DATABASE"] = flags.MySQLDatabase
+		origins["MYSQL_DATABASE"] = SourceFlag
 	}
 	if flags.MySQLUser != "" {
 		merged["MYSQL_USER"] = flags.MySQLUser
+		origins["MYSQL_USER"] = SourceFlag
 	}
 	if flags.MySQLPort != "" {
 		merged["MYSQL_PORT"] = flags.MySQLPort
+		origins["MYSQL_PORT"] = SourceFlag
 	}
 	if flags.PMAPort != "" {
 		merged["PMA_PORT"] = flags.PMAPort
+		origins["PMA_PORT"] = SourceFlag
 	}
 	if flags.HostPort != "" {
 		merged["HOST_PORT"] = flags.HostPort
+		origins["HOST_PORT"] = SourceFlag
 	}
 
 	// 4. Materialise ProjectConfig from the merged map.
@@ -288,7 +299,11 @@ func (l *Loader) Load(projectDir string, flags CLIFlags) (ProjectConfig, error) 
 		return cfg, fmt.Errorf("unsupported STAGESERVE_STACK %q: only 20i is implemented today", stackKind)
 	}
 	cfg.StackKind = stackDef.Kind
+	if selected := strings.TrimSpace(merged["STAGESERVE_RUNTIME"]); selected != "" && selected != string(runtime.BackendAppleContainer) {
+		return cfg, fmt.Errorf("unsupported STAGESERVE_RUNTIME: only apple-container is supported")
+	}
 	cfg.RuntimeBackend = runtime.BackendAppleContainer
+	cfg.Origins = origins
 	cfg.Stack = stackDef
 	cfg.StackFile = stackDef.projectFilePath(stackHome)
 	cfg.SharedFile = stackDef.sharedFilePath(stackHome)
@@ -322,16 +337,16 @@ func (l *Loader) Load(projectDir string, flags CLIFlags) (ProjectConfig, error) 
 
 	// MySQL defaults key off the slug.
 	cfg.MySQL.Version = strOr(merged["MYSQL_VERSION"], "10.6")
-	cfg.MySQL.RootPassword = strOr(merged["MYSQL_ROOT_PASSWORD"], "root")
-	cfg.MySQL.Database = strOr(merged["MYSQL_DATABASE"], "devdb")
-	if cfg.MySQL.Database == "devdb" && merged["STAGESERVE_PROJECT_ENV_MYSQL_DATABASE"] != "1" {
+	cfg.MySQL.RootPassword = merged["MYSQL_ROOT_PASSWORD"]
+	cfg.MySQL.Database = merged["MYSQL_DATABASE"]
+	if origins["MYSQL_DATABASE"] == SourceDefault {
 		cfg.MySQL.Database = cfg.Slug
 	}
-	cfg.MySQL.User = strOr(merged["MYSQL_USER"], "devuser")
-	if cfg.MySQL.User == "devuser" && merged["STAGESERVE_PROJECT_ENV_MYSQL_USER"] != "1" {
+	cfg.MySQL.User = merged["MYSQL_USER"]
+	if origins["MYSQL_USER"] == SourceDefault {
 		cfg.MySQL.User = cfg.Slug
 	}
-	cfg.MySQL.Password = strOr(merged["MYSQL_PASSWORD"], "devpass")
+	cfg.MySQL.Password = merged["MYSQL_PASSWORD"]
 
 	// Shared gateway settings are runtime-owned, not env-configurable.
 	cfg.SharedGateway.Network = "default"
@@ -356,6 +371,7 @@ func (l *Loader) Load(projectDir string, flags CLIFlags) (ProjectConfig, error) 
 	switch {
 	case flags.WaitTimeoutSecs > 0:
 		cfg.WaitTimeoutSecs = flags.WaitTimeoutSecs
+		origins["STAGESERVE_WAIT_TIMEOUT"] = SourceFlag
 	case merged["STAGESERVE_WAIT_TIMEOUT"] != "":
 		cfg.WaitTimeoutSecs = atoiOr(merged["STAGESERVE_WAIT_TIMEOUT"], 120)
 	default:
@@ -370,7 +386,7 @@ func (l *Loader) Load(projectDir string, flags CLIFlags) (ProjectConfig, error) 
 // STAGESERVE_POST_UP_COMMAND is intentionally absent: bootstrap is sourced
 // only from project .env.stageserve (FR-016).
 var trackedEnvKeys = []string{
-	"STAGESERVE_STACK",
+	"STAGESERVE_STACK", "STAGESERVE_RUNTIME",
 	"SITE_NAME", "SITE_HOSTNAME", "SITE_SUFFIX", "DOCROOT", "CODE_DIR",
 	"PHP_VERSION", "MYSQL_VERSION", "MYSQL_ROOT_PASSWORD",
 	"MYSQL_DATABASE", "MYSQL_USER", "MYSQL_PASSWORD", "MYSQL_PORT", "PMA_PORT",
@@ -378,8 +394,6 @@ var trackedEnvKeys = []string{
 	"LOCAL_DNS_PROVIDER", "LOCAL_DNS_IP", "LOCAL_DNS_PORT", "LOCAL_DNS_SUFFIX",
 	"STACK_HOME", "STAGESERVE_STATE_DIR", "STAGESERVE_WAIT_TIMEOUT",
 }
-
-var projectEnvDisallowedKeys = map[string]bool{}
 
 func (l *Loader) lookupEnv(k string) (string, bool) {
 	get := l.Env

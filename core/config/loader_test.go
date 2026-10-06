@@ -526,3 +526,131 @@ func TestLoader_HostnameDerivation(t *testing.T) {
 		t.Errorf("hostname=%q want my-cool-site.test", cfg.Hostname)
 	}
 }
+
+func TestLoader_ExplicitDefaultDBValuesWin(t *testing.T) {
+	for _, source := range []string{"stack", "shell", "project", "flag"} {
+		t.Run(source, func(t *testing.T) {
+			stack, dir := t.TempDir(), t.TempDir()
+			body := "DB_DATABASE=application\nDB_USERNAME=application\nDB_PASSWORD=application\n"
+			writeFile(t, filepath.Join(dir, ".env"), body)
+			settings := "MYSQL_DATABASE=devdb\nMYSQL_USER=devuser\nMYSQL_PASSWORD=devpass\n"
+			env := map[string]string{}
+			flags := CLIFlags{}
+			switch source {
+			case "stack":
+				writeFile(t, filepath.Join(stack, ".env.stageserve"), settings)
+			case "project":
+				writeFile(t, filepath.Join(dir, ".env.stageserve"), settings)
+			case "shell":
+				env = map[string]string{"MYSQL_DATABASE": "devdb", "MYSQL_USER": "devuser", "MYSQL_PASSWORD": "devpass"}
+			case "flag":
+				flags.MySQLDatabase = "devdb"
+				flags.MySQLUser = "devuser"
+			}
+			cfg, err := newLoader(t, env, stack).Load(dir, flags)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if cfg.MySQL.Database != "devdb" || cfg.MySQL.User != "devuser" {
+				t.Fatalf("explicit defaults lost: %+v", cfg.MySQL)
+			}
+			if source != "flag" && cfg.MySQL.Password != "devpass" {
+				t.Fatal("explicit password lost")
+			}
+			got, _ := os.ReadFile(filepath.Join(dir, ".env"))
+			if string(got) != body {
+				t.Fatal("application source modified")
+			}
+		})
+	}
+}
+
+func TestLoader_OriginsAndPresence(t *testing.T) {
+	stack, dir := t.TempDir(), t.TempDir()
+	writeFile(t, filepath.Join(stack, ".env.stageserve"), "MYSQL_DATABASE=devdb\nPHP_VERSION=8.3\n")
+	writeFile(t, filepath.Join(dir, ".env"), "DB_DATABASE=app\nDB_PASSWORD=secret-app-value\nSITE_NAME=ignored\n")
+	writeFile(t, filepath.Join(dir, ".env.stageserve"), "MYSQL_PASSWORD=\nPHP_VERSION=8.5\n")
+	cfg, err := newLoader(t, map[string]string{"PHP_VERSION": "8.4", "MYSQL_USER": "devuser"}, stack).Load(dir, CLIFlags{PHPVersion: "8.5"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.MySQL.Password != "" {
+		t.Fatal("explicit empty password did not win")
+	}
+	want := map[string]ConfigSource{"MYSQL_DATABASE": SourceStack, "MYSQL_USER": SourceShell, "MYSQL_PASSWORD": SourceProject, "PHP_VERSION": SourceFlag, "SITE_NAME": SourceDefault}
+	for key, source := range want {
+		if cfg.Origins[key] != source {
+			t.Errorf("%s origin=%s want %s", key, cfg.Origins[key], source)
+		}
+	}
+	for key, source := range cfg.Origins {
+		if strings.Contains(key, "secret-app-value") || strings.Contains(string(source), "secret-app-value") {
+			t.Fatal("secret in origin metadata")
+		}
+	}
+}
+
+func TestLoader_ApplicationFallbackPresence(t *testing.T) {
+	for _, body := range []string{"DB_PASSWORD=\n", "OTHER=ignored\n"} {
+		stack, dir := t.TempDir(), t.TempDir()
+		writeFile(t, filepath.Join(dir, ".env"), body)
+		cfg, err := newLoader(t, nil, stack).Load(dir, CLIFlags{})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if cfg.MySQL.Database != cfg.Slug || cfg.Origins["MYSQL_DATABASE"] != SourceDefault {
+			t.Fatal("omitted application database overrides defaults")
+		}
+		if strings.HasPrefix(body, "DB_PASSWORD") && (cfg.MySQL.Password != "" || cfg.Origins["MYSQL_PASSWORD"] != SourceApplication) {
+			t.Fatal("present application password lost")
+		}
+	}
+}
+
+func TestLoader_RejectsUnsupportedRuntimeSources(t *testing.T) {
+	for _, source := range []string{"stack", "shell", "project"} {
+		t.Run(source, func(t *testing.T) {
+			stack, dir := t.TempDir(), t.TempDir()
+			env := map[string]string{}
+			switch source {
+			case "stack":
+				writeFile(t, filepath.Join(stack, ".env.stageserve"), "STAGESERVE_RUNTIME=docker\n")
+			case "project":
+				writeFile(t, filepath.Join(dir, ".env.stageserve"), "STAGESERVE_RUNTIME=docker\n")
+			case "shell":
+				env["STAGESERVE_RUNTIME"] = "docker"
+			}
+			if _, err := newLoader(t, env, stack).Load(dir, CLIFlags{}); err == nil || !strings.Contains(err.Error(), "only apple-container") {
+				t.Fatalf("unsupported runtime error=%v", err)
+			}
+		})
+	}
+}
+
+// Application credentials are a presence-based fallback and never configure
+// host/runtime settings or rewrite the application's source file.
+func TestLoader_ApplicationFallbackContract(t *testing.T) {
+	stack, dir := t.TempDir(), t.TempDir()
+	const body = "DB_DATABASE=app_db\nDB_USERNAME=app_user\nDB_PASSWORD=app_password\nSTAGESERVE_RUNTIME=docker\nSITE_SUFFIX=ignored\n"
+	path := filepath.Join(dir, ".env")
+	writeFile(t, path, body)
+	cfg, err := newLoader(t, nil, stack).Load(dir, CLIFlags{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.MySQL.Database != "app_db" || cfg.MySQL.User != "app_user" || cfg.MySQL.Password != "app_password" {
+		t.Fatalf("application fallback: %+v", cfg.MySQL)
+	}
+	for _, key := range []string{"MYSQL_DATABASE", "MYSQL_USER", "MYSQL_PASSWORD"} {
+		if cfg.Origins[key] != SourceApplication {
+			t.Errorf("%s origin=%q", key, cfg.Origins[key])
+		}
+	}
+	if cfg.SiteSuffix != "test" || cfg.Origins["SITE_SUFFIX"] != SourceDefault {
+		t.Fatalf("application supplied host config: %q", cfg.SiteSuffix)
+	}
+	got, err := os.ReadFile(path)
+	if err != nil || string(got) != body {
+		t.Fatalf("application source changed: %q, %v", got, err)
+	}
+}
