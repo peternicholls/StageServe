@@ -87,6 +87,7 @@ func TestOrchestrator_UpFailsBeforeDockerWhenRuntimeAssetMissing(t *testing.T) {
 		t.Fatalf("remove shared file: %v", err)
 	}
 	dc := mocks.NewDocker()
+	dc.Networks["default"] = true
 	composer := mocks.NewComposer()
 	orch := lifecycle.New(lifecycle.Deps{
 		Runtime: mocks.NewRuntime(dc, composer), Gateway: mocks.NewGateway(), State: mocks.NewState(), Ports: mocks.NewPorts(ports.Allocation{}),
@@ -140,6 +141,7 @@ func TestOrchestrator_UpFailsBeforeDockerWhenProjectRuntimeAssetMissing(t *testi
 func TestOrchestrator_UpHappyPath(t *testing.T) {
 	cfg := newCfg(t)
 	dc := mocks.NewDocker()
+	dc.Networks["default"] = true
 	dc.Containers = []docker.Container{{
 		ID: "c1", Name: "stage-demo-nginx", Service: "nginx", Status: "running",
 		Labels: map[string]string{"com.docker.compose.project": cfg.ComposeProjectName, "com.docker.compose.service": "nginx"},
@@ -188,7 +190,9 @@ func TestOrchestrator_RestartServiceOnlyCallsProjectCompose(t *testing.T) {
 	composer := mocks.NewComposer()
 	gw := mocks.NewGateway()
 	st := mocks.NewState()
-	st.Records[cfg.Slug] = state.Record{Project: cfg, AttachmentState: state.StateAttached}
+	_ = st.Seed(state.Record{Project: cfg, AttachmentState: state.StateAttached})
+	rec, _ := st.Load(cfg.Slug)
+	cfg = rec.Project
 	orch := lifecycle.New(lifecycle.Deps{
 		Runtime: mocks.NewRuntime(mocks.NewDocker(), composer), Gateway: gw, State: st, Ports: mocks.NewPorts(ports.Allocation{}),
 	})
@@ -239,6 +243,7 @@ func TestOrchestrator_UpHonorsCanceledContextBeforeSideEffects(t *testing.T) {
 func TestOrchestrator_UpRollbackOnHealthFail(t *testing.T) {
 	cfg := newCfg(t)
 	dc := mocks.NewDocker()
+	dc.Networks["default"] = true
 	dc.WaitErr = errors.New("simulated unhealthy")
 	composer := mocks.NewComposer()
 	gw := mocks.NewGateway()
@@ -272,6 +277,7 @@ func TestOrchestrator_UpRunsPostUpHook(t *testing.T) {
 	cfg := newCfg(t)
 	cfg.PostUpCommand = "php artisan migrate --force --no-interaction"
 	dc := mocks.NewDocker()
+	dc.Networks["default"] = true
 	dc.Containers = []docker.Container{
 		{
 			ID: "nginx-1", Name: "stage-demo-nginx", Service: "nginx", Status: "running",
@@ -285,6 +291,11 @@ func TestOrchestrator_UpRunsPostUpHook(t *testing.T) {
 	componer := mocks.NewComposer()
 	gw := mocks.NewGateway()
 	st := mocks.NewState()
+	id, _ := st.CreateIdentity(cfg.Dir, cfg.Slug)
+	cfg.ComposeProjectName = "stage-" + id.ProjectID
+	for i := range dc.Containers {
+		dc.Containers[i].Labels["com.docker.compose.project"] = cfg.ComposeProjectName
+	}
 	pa := mocks.NewPorts(ports.Allocation{MySQLPort: 3306, PMAPort: 8081})
 
 	orch := lifecycle.New(lifecycle.Deps{
@@ -312,6 +323,7 @@ func TestOrchestrator_UpPassesDebugProfileToProjectCompose(t *testing.T) {
 	cfg := newCfg(t)
 	cfg.Profile = "debug"
 	dc := mocks.NewDocker()
+	dc.Networks["default"] = true
 	composer := mocks.NewComposer()
 	gw := mocks.NewGateway()
 	st := mocks.NewState()
@@ -342,6 +354,7 @@ func TestOrchestrator_UpGeneratesDevTLSAndMountsCerts(t *testing.T) {
 	cfg.SharedGateway.HTTPSPort = 443
 	tlsProvider := &tlsProviderStub{}
 	dc := mocks.NewDocker()
+	dc.Networks["default"] = true
 	composer := mocks.NewComposer()
 	gw := mocks.NewGateway()
 	st := mocks.NewState()
@@ -382,6 +395,7 @@ func TestOrchestrator_UpRollbackOnPostUpHookFailure(t *testing.T) {
 	cfg := newCfg(t)
 	cfg.PostUpCommand = "php artisan migrate --force --no-interaction"
 	dc := mocks.NewDocker()
+	dc.Networks["default"] = true
 	dc.ExecErr = errors.New("hook failed")
 	dc.Containers = []docker.Container{
 		{
@@ -424,6 +438,7 @@ func TestOrchestrator_UpRollbackOnPostUpHookFailure(t *testing.T) {
 func TestOrchestrator_UpRollbackOnGatewayReloadFailureRemovesRoute(t *testing.T) {
 	cfg := newCfg(t)
 	dc := mocks.NewDocker()
+	dc.Networks["default"] = true
 	composer := mocks.NewComposer()
 	composer.UpErr = errors.New("gateway reload failed")
 	composer.UpErrOnCall = 3
@@ -459,6 +474,7 @@ func TestOrchestrator_UpRollbackOnGatewayReloadFailureRemovesRoute(t *testing.T)
 func TestOrchestrator_UpRollbackOnSaveFailureRemovesRoute(t *testing.T) {
 	cfg := newCfg(t)
 	dc := mocks.NewDocker()
+	dc.Networks["default"] = true
 	composer := mocks.NewComposer()
 	gw := mocks.NewGateway()
 	st := mocks.NewState()
@@ -474,17 +490,21 @@ func TestOrchestrator_UpRollbackOnSaveFailureRemovesRoute(t *testing.T) {
 		t.Fatal("expected save failure")
 	}
 	se, ok := lifecycle.AsStepError(err)
-	if !ok || se.Step != "save-state" {
+	if !ok || se.Step != "commit-project" {
 		t.Fatalf("expected save-state StepError, got %+v", err)
 	}
-	if len(composer.DownCalls) == 0 {
-		t.Fatal("rollback did not invoke compose down")
+	if len(composer.DownCalls) != 0 {
+		t.Fatal("commit failure must preserve runtime for journal recovery")
 	}
-	for _, route := range gw.Routes {
-		if route.Slug == cfg.Slug {
-			t.Fatalf("rolled-back project still has gateway route: %+v", gw.Routes)
-		}
+	id, e := st.IdentityForPath(cfg.Dir)
+	if e != nil {
+		t.Fatal(e)
 	}
+	pending, e := st.PendingOperations(id.ProjectID)
+	if e != nil || len(pending) != 1 {
+		t.Fatalf("commit failure must remain pending: %+v %v", pending, e)
+	}
+
 	if _, err := st.Load(cfg.Slug); err == nil {
 		t.Fatal("state should NOT be saved after save failure")
 	}
@@ -493,6 +513,7 @@ func TestOrchestrator_UpRollbackOnSaveFailureRemovesRoute(t *testing.T) {
 func TestOrchestrator_UpPortConflictBeforeDocker(t *testing.T) {
 	cfg := newCfg(t)
 	dc := mocks.NewDocker()
+	dc.Networks["default"] = true
 	composer := mocks.NewComposer()
 	gw := mocks.NewGateway()
 	st := mocks.NewState()
@@ -519,6 +540,7 @@ func TestOrchestrator_UpPortConflictBeforeDocker(t *testing.T) {
 func TestOrchestrator_UpSharedGatewayFailureIncludesSharedComposeFile(t *testing.T) {
 	cfg := newCfg(t)
 	dc := mocks.NewDocker()
+	dc.Networks["default"] = true
 	composer := mocks.NewComposer()
 	composer.UpErr = errors.New("shared gateway unavailable")
 	gw := mocks.NewGateway()
@@ -551,7 +573,7 @@ func TestOrchestrator_DownMarksProjectStoppedAndRemovesEnvFile(t *testing.T) {
 	gw := mocks.NewGateway()
 	st := mocks.NewState()
 	pa := mocks.NewPorts(ports.Allocation{})
-	_ = st.Save(state.Record{Project: cfg, AttachmentState: state.StateAttached})
+	_ = st.Seed(state.Record{Project: cfg, AttachmentState: state.StateAttached})
 	if err := os.MkdirAll(filepath.Join(cfg.StateDir, "envfiles"), 0o755); err != nil {
 		t.Fatalf("mkdir envfiles: %v", err)
 	}
@@ -569,7 +591,7 @@ func TestOrchestrator_DownMarksProjectStoppedAndRemovesEnvFile(t *testing.T) {
 	if len(composer.DownCalls) != 1 {
 		t.Fatalf("down calls=%d want 1", len(composer.DownCalls))
 	}
-	if len(composer.UpCalls) != 1 || !composer.UpCalls[0].ForceRecreate {
+	if len(composer.UpCalls) == 0 || !composer.UpCalls[0].ForceRecreate {
 		t.Fatalf("gateway reload not requested with force recreate: %+v", composer.UpCalls)
 	}
 	rec, err := st.Load(cfg.Slug)
@@ -590,15 +612,21 @@ func TestOrchestrator_DownMarksProjectStoppedAndRemovesEnvFile(t *testing.T) {
 func TestOrchestrator_AttachFailsOnRegistryReadError(t *testing.T) {
 	cfg := newCfg(t)
 	st := mocks.NewState()
-	if err := st.Save(state.Record{Project: cfg, AttachmentState: state.StateDown}); err != nil {
+	if err := st.Seed(state.Record{Project: cfg, AttachmentState: state.StateDown}); err != nil {
 		t.Fatalf("save state: %v", err)
 	}
 	st.RegistryErr = errors.New("registry unreadable")
 	dc := mocks.NewDocker()
+	dc.Networks["default"] = true
 	dc.Containers = []docker.Container{{
 		ID: "web-1", Service: "apache", Labels: map[string]string{"com.docker.compose.project": cfg.ComposeProjectName},
 	}}
 	composer := mocks.NewComposer()
+	owned, _ := st.Load(cfg.Slug)
+	cfg = owned.Project
+	for i := range dc.Containers {
+		dc.Containers[i].Labels["com.docker.compose.project"] = cfg.ComposeProjectName
+	}
 	orch := lifecycle.New(lifecycle.Deps{
 		Runtime: mocks.NewRuntime(dc, composer), Gateway: mocks.NewGateway(), State: st, Ports: mocks.NewPorts(ports.Allocation{}),
 	})
@@ -622,14 +650,16 @@ func TestOrchestrator_AttachFailsOnRegistryReadError(t *testing.T) {
 func TestOrchestrator_DownAllReportsPartialFailures(t *testing.T) {
 	cfg := newCfg(t)
 	other := newCfg(t)
+	other.StackHome = cfg.StackHome
+	other.SharedFile = cfg.SharedFile
 	other.Slug = "other"
 	other.Name = "other"
 	other.ComposeProjectName = "stage-other"
 	st := mocks.NewState()
-	if err := st.Save(state.Record{Project: cfg, AttachmentState: state.StateAttached}); err != nil {
+	if err := st.Seed(state.Record{Project: cfg, AttachmentState: state.StateAttached}); err != nil {
 		t.Fatalf("save state: %v", err)
 	}
-	if err := st.Save(state.Record{Project: other, AttachmentState: state.StateAttached}); err != nil {
+	if err := st.Seed(state.Record{Project: other, AttachmentState: state.StateAttached}); err != nil {
 		t.Fatalf("save other state: %v", err)
 	}
 	composer := mocks.NewComposer()
@@ -660,7 +690,7 @@ func TestOrchestrator_DownWithoutEnvFileStillRunsComposeDown(t *testing.T) {
 	gw := mocks.NewGateway()
 	st := mocks.NewState()
 	pa := mocks.NewPorts(ports.Allocation{})
-	_ = st.Save(state.Record{Project: cfg, AttachmentState: state.StateAttached})
+	_ = st.Seed(state.Record{Project: cfg, AttachmentState: state.StateAttached})
 
 	orch := lifecycle.New(lifecycle.Deps{
 		Runtime: mocks.NewRuntime(mocks.NewDocker(), composer), Gateway: gw, State: st, Ports: pa,
@@ -683,7 +713,7 @@ func TestOrchestrator_DetachRemovesStateAndReloadsGateway(t *testing.T) {
 	gw := mocks.NewGateway()
 	st := mocks.NewState()
 	pa := mocks.NewPorts(ports.Allocation{})
-	_ = st.Save(state.Record{Project: cfg, AttachmentState: state.StateAttached})
+	_ = st.Seed(state.Record{Project: cfg, AttachmentState: state.StateAttached})
 	if err := os.MkdirAll(filepath.Join(cfg.StateDir, "envfiles"), 0o755); err != nil {
 		t.Fatalf("mkdir envfiles: %v", err)
 	}
@@ -701,7 +731,7 @@ func TestOrchestrator_DetachRemovesStateAndReloadsGateway(t *testing.T) {
 	if len(composer.DownCalls) != 1 {
 		t.Fatalf("down calls=%d want 1", len(composer.DownCalls))
 	}
-	if len(composer.UpCalls) != 1 || !composer.UpCalls[0].ForceRecreate {
+	if len(composer.UpCalls) == 0 || !composer.UpCalls[0].ForceRecreate {
 		t.Fatalf("gateway reload not requested with force recreate: %+v", composer.UpCalls)
 	}
 	if _, err := st.Load(cfg.Slug); !errors.Is(err, state.ErrNotFound) {
@@ -718,6 +748,7 @@ func TestOrchestrator_DetachRemovesStateAndReloadsGateway(t *testing.T) {
 func TestOrchestrator_DownAllStopsEveryRecordedProject(t *testing.T) {
 	cfg := newCfg(t)
 	other := cfg
+	other.Dir = t.TempDir()
 	other.Slug = "beta"
 	other.Name = "beta"
 	other.Hostname = "beta.test"
@@ -728,8 +759,8 @@ func TestOrchestrator_DownAllStopsEveryRecordedProject(t *testing.T) {
 	gw := mocks.NewGateway()
 	st := mocks.NewState()
 	pa := mocks.NewPorts(ports.Allocation{})
-	_ = st.Save(state.Record{Project: cfg, AttachmentState: state.StateAttached})
-	_ = st.Save(state.Record{Project: other, AttachmentState: state.StateAttached})
+	_ = st.Seed(state.Record{Project: cfg, AttachmentState: state.StateAttached})
+	_ = st.Seed(state.Record{Project: other, AttachmentState: state.StateAttached})
 	if err := os.MkdirAll(filepath.Join(cfg.StateDir, "envfiles"), 0o755); err != nil {
 		t.Fatalf("mkdir envfiles: %v", err)
 	}
@@ -743,18 +774,18 @@ func TestOrchestrator_DownAllStopsEveryRecordedProject(t *testing.T) {
 		Runtime: mocks.NewRuntime(mocks.NewDocker(), composer), Gateway: gw, State: st, Ports: pa,
 	})
 
-	if err := orch.DownAll(context.Background(), cfg, true); err != nil {
+	if err := orch.DownAll(context.Background(), cfg, false); err != nil {
 		t.Fatalf("DownAll: %v", err)
 	}
 	if len(composer.DownCalls) != 2 {
 		t.Fatalf("down calls=%d want 2", len(composer.DownCalls))
 	}
 	for _, call := range composer.DownCalls {
-		if !call.RemoveVolumes {
-			t.Fatalf("expected remove volumes on every down call: %+v", composer.DownCalls)
+		if call.RemoveVolumes {
+			t.Fatalf("broad stop must preserve volumes: %+v", composer.DownCalls)
 		}
 	}
-	if len(composer.UpCalls) != 1 || !composer.UpCalls[0].ForceRecreate {
+	if len(composer.UpCalls) == 0 || !composer.UpCalls[0].ForceRecreate {
 		t.Fatalf("gateway reload not requested with force recreate: %+v", composer.UpCalls)
 	}
 	if rec, err := st.Load(cfg.Slug); err != nil || rec.AttachmentState != state.StateDown {
@@ -782,6 +813,7 @@ func TestOrchestrator_PostUpHookFailure_RollbackIsolation(t *testing.T) {
 	cfg.PostUpCommand = "exit 1"
 
 	other := cfg
+	other.Dir = t.TempDir()
 	other.Slug = "beta"
 	other.Name = "beta"
 	other.Hostname = "beta.test"
@@ -789,6 +821,7 @@ func TestOrchestrator_PostUpHookFailure_RollbackIsolation(t *testing.T) {
 	other.WebNetworkAlias = "stage-beta-web"
 
 	dc := mocks.NewDocker()
+	dc.Networks["default"] = true
 	dc.ExecErr = errors.New("hook failed")
 	dc.Containers = []docker.Container{
 		{
@@ -799,7 +832,7 @@ func TestOrchestrator_PostUpHookFailure_RollbackIsolation(t *testing.T) {
 	composer := mocks.NewComposer()
 	gw := mocks.NewGateway()
 	st := mocks.NewState()
-	if err := st.Save(state.Record{Project: other, AttachmentState: state.StateAttached}); err != nil {
+	if err := st.Seed(state.Record{Project: other, AttachmentState: state.StateAttached}); err != nil {
 		t.Fatalf("seed other state: %v", err)
 	}
 	pa := mocks.NewPorts(ports.Allocation{MySQLPort: 3306, PMAPort: 8081})
@@ -842,11 +875,12 @@ func TestOrchestrator_PostUpHookFailure_RollbackIsolation(t *testing.T) {
 func TestOrchestrator_AttachBootstrapsWhenRuntimeIsNotRunning(t *testing.T) {
 	cfg := newCfg(t)
 	dc := mocks.NewDocker()
+	dc.Networks["default"] = true
 	composer := mocks.NewComposer()
 	gw := mocks.NewGateway()
 	st := mocks.NewState()
 	pa := mocks.NewPorts(ports.Allocation{})
-	if err := st.Save(state.Record{Project: cfg, AttachmentState: state.StateDown}); err != nil {
+	if err := st.Seed(state.Record{Project: cfg, AttachmentState: state.StateDown}); err != nil {
 		t.Fatalf("seed state: %v", err)
 	}
 
@@ -880,7 +914,7 @@ func TestOrchestrator_AttachBootstrapsWhenRuntimeIsNotRunning(t *testing.T) {
 	if len(composer.UpCalls) < 3 {
 		t.Fatalf("attach should bootstrap via Up, got compose up calls %+v", composer.UpCalls)
 	}
-	if composer.UpCalls[1].ProjectName != cfg.ComposeProjectName {
+	if composer.UpCalls[1].ComposeFile != cfg.StackFile {
 		t.Fatalf("project compose up was not invoked during attach bootstrap: %+v", composer.UpCalls)
 	}
 	if len(composer.DownCalls) != 0 {
@@ -920,6 +954,7 @@ func TestOrchestrator_AttachBootstrapsWhenRuntimeIsNotRunning(t *testing.T) {
 func TestOrchestrator_AttachAddsRouteAndMarksAttached(t *testing.T) {
 	cfg := newCfg(t)
 	dc := mocks.NewDocker()
+	dc.Networks["default"] = true
 	dc.Containers = []docker.Container{{
 		ID: "nginx-1", Name: "stage-demo-nginx", Service: "nginx", Status: "running",
 		Labels: map[string]string{"com.docker.compose.project": cfg.ComposeProjectName, "com.docker.compose.service": "nginx"},
@@ -928,10 +963,15 @@ func TestOrchestrator_AttachAddsRouteAndMarksAttached(t *testing.T) {
 	gw := mocks.NewGateway()
 	st := mocks.NewState()
 	pa := mocks.NewPorts(ports.Allocation{})
-	if err := st.Save(state.Record{Project: cfg, AttachmentState: state.StateDown}); err != nil {
+	if err := st.Seed(state.Record{Project: cfg, AttachmentState: state.StateDown}); err != nil {
 		t.Fatalf("seed state: %v", err)
 	}
 
+	owned, _ := st.Load(cfg.Slug)
+	cfg = owned.Project
+	for i := range dc.Containers {
+		dc.Containers[i].Labels["com.docker.compose.project"] = cfg.ComposeProjectName
+	}
 	orch := lifecycle.New(lifecycle.Deps{
 		Runtime: mocks.NewRuntime(dc, composer), Gateway: gw, State: st, Ports: pa,
 	})

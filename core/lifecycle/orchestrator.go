@@ -27,7 +27,7 @@ import (
 type Deps struct {
 	Runtime coreruntime.Manager
 	Gateway gateway.GatewayManager
-	State   state.StateStore
+	State   state.LifecycleStore
 	Ports   ports.PortAllocator
 	TLS     stls.Provider
 }
@@ -45,7 +45,7 @@ var sharedGatewayListen = net.Listen
 func New(d Deps) *Orchestrator { return &Orchestrator{D: d} }
 
 // Up runs the documented 11-step flow.
-func (o *Orchestrator) Up(ctx context.Context, cfg config.ProjectConfig) error {
+func (o *Orchestrator) up(ctx context.Context, cfg config.ProjectConfig) error {
 	cfg = resolveSharedGatewayPorts(cfg)
 	if err := o.validateRuntimeCapabilities(cfg); err != nil {
 		return err
@@ -88,7 +88,7 @@ func (o *Orchestrator) Up(ctx context.Context, cfg config.ProjectConfig) error {
 		return Wrap("tls-cert", cfg.Slug, err, "Install mkcert and trust the local CA with `mkcert -install`, then retry.")
 	}
 
-	if err := o.prepareSharedGatewayConfig(cfg, registryRoutes, ""); err != nil {
+	if err := o.prepareSharedGatewayConfig(ctx, cfg, registryRoutes, ""); err != nil {
 		return Wrap("gateway-config", "", err, "Inspect the gateway config path under the state directory.")
 	}
 
@@ -105,6 +105,7 @@ func (o *Orchestrator) Up(ctx context.Context, cfg config.ProjectConfig) error {
 
 	// Step 6: start the Apple Container project services.
 	runtimeOpts := coreruntime.StartOptions{
+		Ownership: transactionFrom(ctx).ownership(), RecordResource: transactionFrom(ctx).recordResource,
 		ProjectDir:  cfg.Dir,
 		Definition:  cfg.StackFile,
 		ProjectName: cfg.ComposeProjectName,
@@ -112,6 +113,7 @@ func (o *Orchestrator) Up(ctx context.Context, cfg config.ProjectConfig) error {
 		Profiles:    runtimeProfiles(cfg),
 		WaitTimeout: time.Duration(cfg.WaitTimeoutSecs) * time.Second,
 	}
+	transactionFrom(ctx).needsCleanup = true
 	if err := o.D.Runtime.Start(ctx, runtimeOpts); err != nil {
 		o.rollbackProject(ctx, cfg)
 		return Wrap("runtime-up", cfg.Slug, err, "Check `stage logs` for the failing service.")
@@ -139,7 +141,7 @@ func (o *Orchestrator) Up(ctx context.Context, cfg config.ProjectConfig) error {
 		o.rollbackProject(ctx, cfg)
 		return Wrap("tls-cert", cfg.Slug, err, "Install mkcert and trust the local CA with `mkcert -install`, then retry.")
 	}
-	if err := o.prepareSharedGatewayConfig(cfg, nextRoutes, cfg.Slug); err != nil {
+	if err := o.prepareSharedGatewayConfig(ctx, cfg, nextRoutes, cfg.Slug); err != nil {
 		o.rollbackProject(ctx, cfg)
 		return Wrap("gateway-config", cfg.Slug, err, "Inspect the gateway config path under the state directory.")
 	}
@@ -155,7 +157,7 @@ func (o *Orchestrator) Up(ctx context.Context, cfg config.ProjectConfig) error {
 		AttachmentState: state.StateAttached,
 		Runtime:         observedRuntime(ctx, o.D.Runtime, cfg),
 	}
-	if err := o.D.State.Save(rec); err != nil {
+	if err := transactionFrom(ctx).setRecord(rec); err != nil {
 		o.rollbackProject(ctx, cfg)
 		return Wrap("save-state", cfg.Slug, err, "Inspect permissions on the state directory.")
 	}
@@ -227,7 +229,7 @@ func runtimeAssetRemedy(cfg config.ProjectConfig, label, path string) string {
 }
 
 // Down stops the project, removes project-owned runtime state, and clears any active route.
-func (o *Orchestrator) Down(ctx context.Context, cfg config.ProjectConfig, removeVolumes bool) error {
+func (o *Orchestrator) down(ctx context.Context, cfg config.ProjectConfig, removeVolumes bool) error {
 	cfg = resolveSharedGatewayPorts(cfg)
 	if err := lifecycleContextErr(ctx, cfg); err != nil {
 		return err
@@ -241,7 +243,7 @@ func (o *Orchestrator) Down(ctx context.Context, cfg config.ProjectConfig, remov
 		Project:         cfg,
 		AttachmentState: state.StateDown,
 	}
-	if err := o.D.State.Save(rec); err != nil {
+	if err := transactionFrom(ctx).setRecord(rec); err != nil {
 		return Wrap("save-state", cfg.Slug, err, "Inspect permissions on the state directory.")
 	}
 	if err := o.syncSharedGateway(ctx, cfg, ""); err != nil {
@@ -256,48 +258,32 @@ func (o *Orchestrator) Down(ctx context.Context, cfg config.ProjectConfig, remov
 // DownAll stops every recorded project runtime, removes all state records, and
 // clears the shared gateway route set plus any generated per-project envfiles.
 func (o *Orchestrator) DownAll(ctx context.Context, cfg config.ProjectConfig, removeVolumes bool) error {
-	cfg = resolveSharedGatewayPorts(cfg)
-
-	registry, err := o.D.State.Registry()
-	if err != nil {
-		return Wrap("registry", "", err, "Inspect the state directory for unreadable JSON files.")
+	if removeVolumes {
+		return Wrap("down-all", "", errors.New("broad volume deletion is not supported"), "Select one immutable project identity for explicit data deletion.")
 	}
-	projects := make([]config.ProjectConfig, 0, len(registry))
+	rows, err := o.D.State.Registry()
+	if err != nil {
+		return Wrap("registry", "", err, "Inspect the recorded project state.")
+	}
+	sort.Slice(rows, func(i, j int) bool { return rows[i].ProjectID < rows[j].ProjectID })
 	var failures []string
-	for _, row := range registry {
+	for _, row := range rows {
 		rec, err := o.D.State.Load(row.Slug)
+		if err == nil {
+			err = o.Down(ctx, rec.Project, false)
+		}
 		if err != nil {
-			failures = append(failures, fmt.Sprintf("%s load-state: %v", row.Slug, err))
-			continue
-		}
-		projects = append(projects, rec.Project)
-		if err := o.stopProject(ctx, rec.Project, removeVolumes); err != nil {
 			failures = append(failures, fmt.Sprintf("%s runtime-down: %v", row.Slug, err))
-			continue
-		}
-		rec.AttachmentState = state.StateDown
-		rec.Runtime = state.RuntimeIdentity{}
-		if err := o.D.State.Save(rec); err != nil {
-			failures = append(failures, fmt.Sprintf("%s save-state: %v", row.Slug, err))
-			continue
 		}
 	}
 	if len(failures) > 0 {
-		return Wrap("down-all", "", errors.New(strings.Join(failures, "; ")), "Some projects may already be stopped. Run `stage status --all`, inspect the listed project errors, then retry `stage down --all`.")
-	}
-	if err := o.syncSharedGateway(ctx, cfg, ""); err != nil {
-		return Wrap("gateway-reload", "", err, sharedRuntimeRemedy("."))
-	}
-	for _, project := range projects {
-		if err := removeEnvFile(project); err != nil {
-			return Wrap("remove-env-file", project.Slug, err, "Inspect permissions on the generated runtime env file under the state directory.")
-		}
+		return Wrap("down-all", "", errors.New(strings.Join(failures, "; ")), "Run `stage status --all` and inspect each project before retrying.")
 	}
 	return nil
 }
 
 // Attach updates state + gateway to mark the project routed.
-func (o *Orchestrator) Attach(ctx context.Context, cfg config.ProjectConfig) error {
+func (o *Orchestrator) attach(ctx context.Context, cfg config.ProjectConfig) error {
 	cfg = resolveSharedGatewayPorts(cfg)
 	if err := lifecycleContextErr(ctx, cfg); err != nil {
 		return err
@@ -306,7 +292,7 @@ func (o *Orchestrator) Attach(ctx context.Context, cfg config.ProjectConfig) err
 	rec, err := o.D.State.Load(cfg.Slug)
 	if err != nil {
 		if errors.Is(err, state.ErrNotFound) {
-			return o.Up(ctx, cfg)
+			return o.up(ctx, cfg)
 		}
 		return Wrap("attach", cfg.Slug, err, "Inspect the recorded state for this project.")
 	}
@@ -315,10 +301,10 @@ func (o *Orchestrator) Attach(ctx context.Context, cfg config.ProjectConfig) err
 		return Wrap("attach", cfg.Slug, err, "Inspect Apple Container service availability and the current project containers.")
 	}
 	if len(containers) == 0 {
-		return o.Up(ctx, cfg)
+		return o.up(ctx, cfg)
 	}
 	rec.AttachmentState = state.StateAttached
-	if err := o.D.State.Save(rec); err != nil {
+	if err := transactionFrom(ctx).setRecord(rec); err != nil {
 		return Wrap("save-state", cfg.Slug, err, "Inspect permissions on the state directory, then retry `stage attach`.")
 	}
 	registry, err := o.D.State.Registry()
@@ -330,7 +316,7 @@ func (o *Orchestrator) Attach(ctx context.Context, cfg config.ProjectConfig) err
 	if err := o.ensureSharedGatewayTLS(cfg, nextRoutes); err != nil {
 		return Wrap("tls-cert", cfg.Slug, err, "Install mkcert and trust the local CA with `mkcert -install`, then retry.")
 	}
-	if err := o.prepareSharedGatewayConfig(cfg, nextRoutes, cfg.Slug); err != nil {
+	if err := o.prepareSharedGatewayConfig(ctx, cfg, nextRoutes, cfg.Slug); err != nil {
 		return Wrap("gateway-config", cfg.Slug, err, "Inspect the gateway config path under the state directory.")
 	}
 	if err := o.reloadSharedGateway(ctx, cfg); err != nil {
@@ -340,7 +326,7 @@ func (o *Orchestrator) Attach(ctx context.Context, cfg config.ProjectConfig) err
 }
 
 // Detach stops the project, removes its runtime state, and clears its route.
-func (o *Orchestrator) Detach(ctx context.Context, cfg config.ProjectConfig) error {
+func (o *Orchestrator) detach(ctx context.Context, cfg config.ProjectConfig) error {
 	cfg = resolveSharedGatewayPorts(cfg)
 	if err := lifecycleContextErr(ctx, cfg); err != nil {
 		return err
@@ -349,7 +335,7 @@ func (o *Orchestrator) Detach(ctx context.Context, cfg config.ProjectConfig) err
 	if err := o.stopProject(ctx, cfg, false); err != nil {
 		return Wrap("runtime-down", cfg.Slug, err, "Inspect the Apple Container error above.")
 	}
-	if err := o.D.State.Remove(cfg.Slug); err != nil {
+	if err := transactionFrom(ctx).detach(); err != nil {
 		return Wrap("remove-state", cfg.Slug, err, "Inspect permissions on the state directory.")
 	}
 	if err := o.syncSharedGateway(ctx, cfg, ""); err != nil {
@@ -363,7 +349,7 @@ func (o *Orchestrator) Detach(ctx context.Context, cfg config.ProjectConfig) err
 
 // RestartService restarts one explicit project service without changing
 // routing, state records, or project files.
-func (o *Orchestrator) RestartService(ctx context.Context, cfg config.ProjectConfig, service string) error {
+func (o *Orchestrator) restartService(ctx context.Context, cfg config.ProjectConfig, service string) error {
 	service = strings.TrimSpace(service)
 	if service == "" {
 		return Wrap("restart-service", cfg.Slug, errors.New("service name is required"), "Choose a specific service before restarting it.")
@@ -381,6 +367,7 @@ func (o *Orchestrator) RestartService(ctx context.Context, cfg config.ProjectCon
 		return Wrap("restart-service", cfg.Slug, err, "Inspect permissions on the generated runtime env file under the state directory.")
 	}
 	if err := o.D.Runtime.Restart(ctx, coreruntime.RestartOptions{
+		Ownership: transactionFrom(ctx).ownership(), RecordResource: transactionFrom(ctx).recordResource,
 		ProjectDir:  cfg.Dir,
 		Definition:  cfg.StackFile,
 		ProjectName: cfg.ComposeProjectName,
@@ -402,7 +389,7 @@ func (o *Orchestrator) ensureSharedNetwork(ctx context.Context, cfg config.Proje
 	if exists {
 		return nil
 	}
-	return o.D.Runtime.CreateNetwork(ctx, cfg.SharedGateway.Network)
+	return errors.New("shared network is unavailable; StageServe will not create an unowned network")
 }
 
 func sharedRuntimeRemedy(suffix string) string {
@@ -413,17 +400,23 @@ func sharedRuntimeRemedy(suffix string) string {
 }
 
 func (o *Orchestrator) ensureSharedGateway(ctx context.Context, cfg config.ProjectConfig) error {
-	return o.D.Runtime.Start(ctx, coreruntime.StartOptions{
+	err := o.D.Runtime.Start(ctx, coreruntime.StartOptions{
+		Ownership: installationTransactionFrom(ctx).ownership(), RecordResource: installationTransactionFrom(ctx).recordResource,
 		ProjectDir:  cfg.StackHome,
 		Definition:  cfg.SharedFile,
 		ProjectName: cfg.SharedGateway.ComposeProjectName,
 		Env:         sharedGatewayEnv(cfg),
 		WaitTimeout: time.Duration(cfg.WaitTimeoutSecs) * time.Second,
 	})
+	if err != nil {
+		return err
+	}
+	return installationTransactionFrom(ctx).commit()
 }
 
 func (o *Orchestrator) reloadSharedGateway(ctx context.Context, cfg config.ProjectConfig) error {
-	return o.D.Runtime.Start(ctx, coreruntime.StartOptions{
+	err := o.D.Runtime.Start(ctx, coreruntime.StartOptions{
+		Ownership: installationTransactionFrom(ctx).ownership(), RecordResource: installationTransactionFrom(ctx).recordResource,
 		ProjectDir:    cfg.StackHome,
 		Definition:    cfg.SharedFile,
 		ProjectName:   cfg.SharedGateway.ComposeProjectName,
@@ -431,6 +424,10 @@ func (o *Orchestrator) reloadSharedGateway(ctx context.Context, cfg config.Proje
 		ForceRecreate: true,
 		Services:      []string{"gateway"},
 	})
+	if err != nil {
+		return err
+	}
+	return installationTransactionFrom(ctx).commit()
 }
 
 func (o *Orchestrator) stopProject(ctx context.Context, cfg config.ProjectConfig, removeVolumes bool) error {
@@ -441,6 +438,7 @@ func (o *Orchestrator) stopProject(ctx context.Context, cfg config.ProjectConfig
 		return err
 	}
 	return o.D.Runtime.Stop(ctx, coreruntime.StopOptions{
+		Ownership: transactionFrom(ctx).ownership(), RecordResource: transactionFrom(ctx).recordResource,
 		ProjectDir:    cfg.Dir,
 		Definition:    cfg.StackFile,
 		ProjectName:   cfg.ComposeProjectName,
@@ -461,13 +459,16 @@ func (o *Orchestrator) syncSharedGateway(ctx context.Context, cfg config.Project
 	if err != nil {
 		return err
 	}
-	if err := o.prepareSharedGatewayConfig(cfg, routesFromRegistry(registry), preferredSlug); err != nil {
+	if err := o.prepareSharedGatewayConfig(ctx, cfg, routesWithoutProject(routesFromRegistry(registry), cfg.Slug), preferredSlug); err != nil {
 		return err
 	}
 	return o.reloadSharedGateway(ctx, cfg)
 }
 
-func (o *Orchestrator) prepareSharedGatewayConfig(cfg config.ProjectConfig, routes []gateway.Route, preferredSlug string) error {
+func (o *Orchestrator) prepareSharedGatewayConfig(ctx context.Context, cfg config.ProjectConfig, routes []gateway.Route, preferredSlug string) error {
+	if err := installationTransactionFrom(ctx).ensureActive(); err != nil {
+		return err
+	}
 	_, _, err := o.D.Gateway.WriteConfig(gateway.RenderInput{
 		Routes:        routes,
 		PreferredSlug: preferredSlug,
@@ -490,15 +491,7 @@ func (o *Orchestrator) runPostUpHook(ctx context.Context, cfg config.ProjectConf
 }
 
 func (o *Orchestrator) rollbackProject(ctx context.Context, cfg config.ProjectConfig) {
-	envFile := envFilePath(cfg)
-	_ = o.D.Runtime.Stop(ctx, coreruntime.StopOptions{
-		ProjectDir:  cfg.Dir,
-		Definition:  cfg.StackFile,
-		ProjectName: cfg.ComposeProjectName,
-		EnvFile:     envFile,
-	})
-	o.rollbackGatewayRoute(ctx, cfg)
-	_ = removeEnvFile(cfg)
+	transactionFrom(ctx).needsCleanup = true
 }
 
 func (o *Orchestrator) rollbackGatewayRoute(ctx context.Context, cfg config.ProjectConfig) {
@@ -506,7 +499,7 @@ func (o *Orchestrator) rollbackGatewayRoute(ctx context.Context, cfg config.Proj
 	if err != nil {
 		return
 	}
-	if err := o.prepareSharedGatewayConfig(cfg, routesFromRegistry(registry), ""); err != nil {
+	if err := o.prepareSharedGatewayConfig(ctx, cfg, routesFromRegistry(registry), ""); err != nil {
 		return
 	}
 	_ = o.reloadSharedGateway(ctx, cfg)
@@ -734,7 +727,7 @@ func (o *Orchestrator) validateRuntimeCapabilities(cfg config.ProjectConfig) err
 		return Wrap("runtime-capability", cfg.Slug, fmt.Errorf("Apple Container does not support the required multi-service shared-gateway profile"), "Update Apple Container and run `stage doctor` before retrying.")
 	}
 	if strings.TrimSpace(cfg.Profile) != "" && !capabilities.DebugProfile {
-		return Wrap("runtime-capability", cfg.Slug, fmt.Errorf("runtime %q does not support profile %q", cfg.RuntimeBackend, cfg.Profile), "Use STAGESERVE_RUNTIME=docker or remove the unsupported profile.")
+		return Wrap("runtime-capability", cfg.Slug, fmt.Errorf("runtime %q does not support profile %q", cfg.RuntimeBackend, cfg.Profile), "Update Apple Container or remove the unsupported profile.")
 	}
 	return nil
 }
