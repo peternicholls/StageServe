@@ -11,13 +11,21 @@ import (
 func buildMachineReadinessResult(shared *SharedFlags, suffix string) (onboarding.CommandResult, error) {
 	cfg, err := loadConfig(shared)
 	if err != nil {
-		return onboarding.CommandResult{}, err
+		return onboardingConfigErrorResult(), nil
 	}
 	checkSuffix := cfg.SiteSuffix
 	if suffix != "" {
 		checkSuffix = suffix
 	}
-	return onboarding.BuildResult(machineReadinessSteps(cfg, checkSuffix), nil, nil), nil
+	steps := machineReadinessSteps(cfg, checkSuffix)
+	scope, scopeErr := onboardingProjectScope(cfg)
+	if scopeErr != nil {
+		scope.ProjectID = ""
+		steps = append(steps, onboardingScopeErrorStep())
+	}
+	result := onboarding.BuildResult(steps, nil, nil)
+	result.ProjectScope = scope
+	return result, nil
 }
 
 func buildMachineReadinessResultForConfig(cfg config.ProjectConfig) onboarding.CommandResult {

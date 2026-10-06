@@ -48,11 +48,21 @@ type StepResult struct {
 
 // CommandResult is the top-level envelope returned by every onboarding command.
 type CommandResult struct {
+	SchemaVersion int            `json:"schema_version"`
+	ProjectScope  *ProjectScope  `json:"project_scope,omitempty"`
 	OverallStatus OverallStatus  `json:"overall_status"`
 	ExitCode      ExitCode       `json:"exit_code"`
 	Steps         []StepResult   `json:"steps"`
 	Result        map[string]any `json:"result,omitempty"`
 	NextSteps     []string       `json:"next_steps,omitempty"`
+}
+
+// ProjectScope identifies the resolved project without exposing configuration secrets.
+// ProjectID is populated only from validated, registered state.
+type ProjectScope struct {
+	Dir       string `json:"dir"`
+	Slug      string `json:"slug"`
+	ProjectID string `json:"project_id,omitempty"`
 }
 
 // OutputMode selects the output projection adapter.

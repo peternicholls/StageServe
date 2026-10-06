@@ -32,6 +32,15 @@ func NewInit(shared *SharedFlags) *cobra.Command {
 		Long:  "Creates a starter .env.stageserve with documented defaults. In an interactive terminal, stage init opens the guided settings form before it writes anything. It also validates the web folder and protects existing project settings from accidental overwrite.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			mode := resolveOutputMode(f.JSON, plainTextOutputRequested(f.NotUI, f.CLI, f.NoTUI), f.NonInteractive)
+			configFailure := func(err error) error {
+				if mode != onboarding.OutputModeJSON {
+					return err
+				}
+				if projectErr := onboarding.NewProjector(mode, cmd.OutOrStdout()).Project(onboardingConfigErrorResult()); projectErr != nil {
+					return projectErr
+				}
+				return &initExitError{code: int(onboarding.ExitError)}
+			}
 
 			// Determine project directory.
 			projectDir := initProjectDir(shared, f)
@@ -39,21 +48,21 @@ func NewInit(shared *SharedFlags) *cobra.Command {
 				var err error
 				projectDir, err = os.Getwd()
 				if err != nil {
-					return fmt.Errorf("cannot determine current directory: %w", err)
+					return configFailure(fmt.Errorf("cannot determine current directory: %w", err))
 				}
 			}
 
 			// Validate project root.
 			root, err := onboarding.ValidateProjectRoot(projectDir)
 			if err != nil {
-				return err
+				return configFailure(err)
 			}
 
 			// Validate docroot (only if supplied).
 			docRoot := initDocRoot(shared, f)
 			if docRoot != "" {
 				if err := onboarding.ValidateDocroot(root, docRoot); err != nil {
-					return err
+					return configFailure(err)
 				}
 			}
 
@@ -69,6 +78,24 @@ func NewInit(shared *SharedFlags) *cobra.Command {
 			}
 
 			settings := projectEnvSettingsFromInitFlags(shared, f)
+			var scope *onboarding.ProjectScope
+			if mode == onboarding.OutputModeJSON {
+				cfg, err := loadInitGuidedConfig(shared, f)
+				if err != nil {
+					return configFailure(err)
+				}
+				var scopeErr error
+				scope, scopeErr = onboardingProjectScope(cfg)
+				if scopeErr != nil {
+					scope.ProjectID = ""
+					result := onboarding.BuildResult([]onboarding.StepResult{onboardingScopeErrorStep()}, nil, nil)
+					result.ProjectScope = scope
+					if err := onboarding.NewProjector(mode, cmd.OutOrStdout()).Project(result); err != nil {
+						return err
+					}
+					return &initExitError{code: int(onboarding.ExitError)}
+				}
+			}
 
 			// Write the project env file unless dry-run is requested.
 			action := onboarding.InitActionSkipped
@@ -120,6 +147,7 @@ func NewInit(shared *SharedFlags) *cobra.Command {
 			}
 
 			result := onboarding.BuildResult([]onboarding.StepResult{step}, nil, []string{"stage up"})
+			result.ProjectScope = scope
 
 			projector := onboarding.NewProjector(mode, cmd.OutOrStdout())
 			if err := projector.Project(result); err != nil {

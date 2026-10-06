@@ -72,6 +72,11 @@ func (r guidedRuntimeRunner) Status(ctx context.Context, cfg config.ProjectConfi
 }
 
 func (r guidedRuntimeRunner) Logs(ctx context.Context, cfg config.ProjectConfig, service string) (string, error) {
+	var err error
+	cfg, err = recordedProjectForRead(cfg, "")
+	if err != nil {
+		return "", err
+	}
 	var output bytes.Buffer
 	streamer := &obslogs.Streamer{Runtime: applecontainer.NewManager(nil)}
 	if err := streamer.Stream(ctx, cfg.ComposeProjectName, service, false, &output); err != nil {

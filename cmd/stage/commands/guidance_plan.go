@@ -11,6 +11,8 @@ import (
 )
 
 type guidancePlanView struct {
+	SchemaVersion   int                       `json:"schema_version"`
+	ProjectScope    *guidanceProjectScope     `json:"project_scope,omitempty"`
 	Situation       guidance.Situation        `json:"situation"`
 	StatusHeader    string                    `json:"status_header"`
 	Summary         string                    `json:"summary,omitempty"`
@@ -19,6 +21,12 @@ type guidancePlanView struct {
 	VisibleDefaults []guidance.VisibleDefault `json:"visible_defaults,omitempty"`
 	DirectCommands  []string                  `json:"direct_commands,omitempty"`
 	Warnings        []string                  `json:"warnings,omitempty"`
+}
+
+type guidanceProjectScope struct {
+	Dir       string `json:"dir"`
+	Slug      string `json:"slug"`
+	ProjectID string `json:"project_id,omitempty"`
 }
 
 func NewGuidancePlan(shared *SharedFlags) *cobra.Command {
@@ -32,6 +40,7 @@ func NewGuidancePlan(shared *SharedFlags) *cobra.Command {
 			capability := guidance.DetectCapability(os.Stdin, os.Stdout, os.Stderr, true, true)
 			cfg, err := loadConfig(shared)
 			var plan guidance.NextActionPlan
+			var scope *guidanceProjectScope
 			if err != nil {
 				cwd, cwdErr := os.Getwd()
 				if cwdErr != nil {
@@ -49,9 +58,15 @@ func NewGuidancePlan(shared *SharedFlags) *cobra.Command {
 					}
 				}
 				collected := guidance.Collect(cmd.Context(), cfg, opts)
+				scope = &guidanceProjectScope{Dir: cfg.Dir, Slug: cfg.Slug}
+				if collected.ProjectState != nil {
+					scope.ProjectID = collected.ProjectState.ProjectID
+				}
 				plan = guidance.Plan(collected)
 			}
 			view := guidancePlanView{
+				SchemaVersion:   1,
+				ProjectScope:    scope,
 				Situation:       plan.Situation,
 				StatusHeader:    plan.StatusHeader,
 				Summary:         plan.Summary,

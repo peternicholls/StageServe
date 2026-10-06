@@ -13,6 +13,8 @@ type JSONProjector struct {
 
 // Project renders the result as indented JSON.
 func (p *JSONProjector) Project(r CommandResult) error {
+	// The projector owns the wire version, including results built without BuildResult.
+	r.SchemaVersion = 1
 	enc := json.NewEncoder(p.W)
 	enc.SetIndent("", "  ")
 	if err := enc.Encode(r); err != nil {

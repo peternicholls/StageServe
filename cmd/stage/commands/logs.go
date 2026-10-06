@@ -3,11 +3,9 @@ package commands
 
 import (
 	"fmt"
-	"os"
 
 	"github.com/spf13/cobra"
 
-	"github.com/peternicholls/stageserve/core/state"
 	"github.com/peternicholls/stageserve/infra/applecontainer"
 	"github.com/peternicholls/stageserve/observability/logs"
 )
@@ -32,24 +30,17 @@ func NewLogs(flags *SharedFlags) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			if projectSelector != "" {
-				store, err := state.NewStore(cfg.StateDir)
-				if err != nil {
-					return err
-				}
-				rec, _, err := store.StateFileForSelector(projectSelector)
-				if err != nil {
-					return fmt.Errorf("logs: project %q not found: %w", projectSelector, err)
-				}
-				cfg = rec.Project
+			cfg, err = recordedProjectForRead(cfg, projectSelector)
+			if err != nil {
+				return fmt.Errorf("logs: cannot resolve recorded project: %w", err)
 			}
 			ctx, cancel := contextWithSignal(cmd.Context())
 			defer cancel()
 			s := &logs.Streamer{Runtime: applecontainer.NewManager(nil)}
-			return s.Stream(ctx, cfg.ComposeProjectName, serviceName, follow, os.Stdout)
+			return s.Stream(ctx, cfg.ComposeProjectName, serviceName, follow, cmd.OutOrStdout())
 		},
 	}
-	cmd.Flags().StringVar(&service, "service", "", "Compose service name (default: nginx)")
+	cmd.Flags().StringVar(&service, "service", "", "Project service name (default: nginx)")
 	cmd.Flags().StringVar(&projectSelector, "project", "", "Recorded project selector (slug, name, hostname, or path)")
 	cmd.Flags().BoolVarP(&follow, "follow", "f", false, "Follow log output")
 	return cmd

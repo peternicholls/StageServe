@@ -77,7 +77,7 @@ func guidedRuntimeStatus(ctx context.Context, cfg config.ProjectConfig, record *
 		return guidance.RuntimeSummary{}
 	}
 
-	containers, err := applecontainer.NewManager(nil).ListServices(ctx, cfg.ComposeProjectName)
+	containers, err := applecontainer.NewManager(nil).ListServices(ctx, record.Project.ComposeProjectName)
 	if err != nil {
 		return guidance.RuntimeSummary{}
 	}
