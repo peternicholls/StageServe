@@ -1,0 +1,15 @@
+{
+  "scope": "Optional ignored Finder metadata, not required to verify a Git checkout. Original bytes are retained locally.",
+  "files": [
+    {
+      "original": "specs/003-rewrite-language-choices/.DS_Store",
+      "archived": "archive/2026-09-11-pre-apple-only/specs/003-rewrite-language-choices/.DS_Store",
+      "sha256": "d65165279105ca6773180500688df4bdc69a2c7b771752f0a46ef120b7fd8ec3"
+    },
+    {
+      "original": "specs/005-installer-and-onboarding/.DS_Store",
+      "archived": "archive/2026-09-11-pre-apple-only/specs/005-installer-and-onboarding/.DS_Store",
+      "sha256": "43af3903af23d4e9d5f4e550981716871ae0f40bc8ed4c9715e587960a53bdef"
+    }
+  ]
+}

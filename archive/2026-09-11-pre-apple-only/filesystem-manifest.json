@@ -1,0 +1,456 @@
+{
+  "date": "2026-09-11",
+  "reason": "Superseded by Apple-only spec 012; historical status claims retained unchanged.",
+  "files": [
+    {
+      "original": "specs/002-project-rebrand/checklists/requirements.md",
+      "archived": "archive/2026-09-11-pre-apple-only/specs/002-project-rebrand/checklists/requirements.md",
+      "sha256": "8b9ea0685b7407079677c08882a21a3ffc97a413297538e289a68d2214d0bdad"
+    },
+    {
+      "original": "specs/002-project-rebrand/contracts/cli-contract.md",
+      "archived": "archive/2026-09-11-pre-apple-only/specs/002-project-rebrand/contracts/cli-contract.md",
+      "sha256": "a103825c756ca5c2b1aa696fce8a5c28d107728837ffa6cd04a49194cacdc7d0"
+    },
+    {
+      "original": "specs/002-project-rebrand/data-model.md",
+      "archived": "archive/2026-09-11-pre-apple-only/specs/002-project-rebrand/data-model.md",
+      "sha256": "90704a32ada8a2d39112bdb6b5434d052d08615afa7c8e73997fe8a3dd7b42a2"
+    },
+    {
+      "original": "specs/002-project-rebrand/plan.md",
+      "archived": "archive/2026-09-11-pre-apple-only/specs/002-project-rebrand/plan.md",
+      "sha256": "a8914dcd06adb46a8742f539417bda1c12ea564c3e923721aa300c8e7ba488a1"
+    },
+    {
+      "original": "specs/002-project-rebrand/quickstart.md",
+      "archived": "archive/2026-09-11-pre-apple-only/specs/002-project-rebrand/quickstart.md",
+      "sha256": "0e820eea551d34afaef44519ab6cce27a3a1c59fa228fdd2d5ff4a5360ddd01c"
+    },
+    {
+      "original": "specs/002-project-rebrand/research.md",
+      "archived": "archive/2026-09-11-pre-apple-only/specs/002-project-rebrand/research.md",
+      "sha256": "decf3eb602d3a7a570dd8f662bd76c39ecc0614e71430c45ea1d34a1676dde66"
+    },
+    {
+      "original": "specs/002-project-rebrand/spec.md",
+      "archived": "archive/2026-09-11-pre-apple-only/specs/002-project-rebrand/spec.md",
+      "sha256": "013de61473f25e584842b289f3343e6de16d042c6fd7021be13992cf3951ebc2"
+    },
+    {
+      "original": "specs/002-project-rebrand/tasks.md",
+      "archived": "archive/2026-09-11-pre-apple-only/specs/002-project-rebrand/tasks.md",
+      "sha256": "4a1a7865dcad8b0111e562d58688082ffb25b958a33a58196e5ef3c5847f8f3d"
+    },
+    {
+      "original": "specs/003-rewrite-language-choices/.DS_Store",
+      "archived": "archive/2026-09-11-pre-apple-only/specs/003-rewrite-language-choices/.DS_Store",
+      "sha256": "d65165279105ca6773180500688df4bdc69a2c7b771752f0a46ef120b7fd8ec3"
+    },
+    {
+      "original": "specs/003-rewrite-language-choices/Language-Choices-Research-Report.md",
+      "archived": "archive/2026-09-11-pre-apple-only/specs/003-rewrite-language-choices/Language-Choices-Research-Report.md",
+      "sha256": "1f0e6d65d8a32fdb0bc2cfce5485ca414dfac2ae29998efdddc9396b12a3e699"
+    },
+    {
+      "original": "specs/003-rewrite-language-choices/StackLane-Modular-Architecture-Rewrite-Research-Report.md",
+      "archived": "archive/2026-09-11-pre-apple-only/specs/003-rewrite-language-choices/StackLane-Modular-Architecture-Rewrite-Research-Report.md",
+      "sha256": "5705e6e25d6b25ae8b9a8276e152181e5ccbbec6b40470a7b980a0180482cd31"
+    },
+    {
+      "original": "specs/003-rewrite-language-choices/checklists/requirements.md",
+      "archived": "archive/2026-09-11-pre-apple-only/specs/003-rewrite-language-choices/checklists/requirements.md",
+      "sha256": "00ddeda8356e9ad41c894f6cf613e1501588ed63b5e94ceac14d6ade5d866d50"
+    },
+    {
+      "original": "specs/003-rewrite-language-choices/plan.md",
+      "archived": "archive/2026-09-11-pre-apple-only/specs/003-rewrite-language-choices/plan.md",
+      "sha256": "997ec9a80ed0d6d4edae2a4ad6d73e9c6e89284d4fc3f63a295e068e3573d035"
+    },
+    {
+      "original": "specs/003-rewrite-language-choices/review-findings-and-remediation.md",
+      "archived": "archive/2026-09-11-pre-apple-only/specs/003-rewrite-language-choices/review-findings-and-remediation.md",
+      "sha256": "c1ff256e9f55555f4ba0f107c946626abac59f95d3807f44ce849cf85b1171ae"
+    },
+    {
+      "original": "specs/003-rewrite-language-choices/spec.md",
+      "archived": "archive/2026-09-11-pre-apple-only/specs/003-rewrite-language-choices/spec.md",
+      "sha256": "3907ea164695274f086d3800d1811e9059947f3a637f73b20162189d69bfe567"
+    },
+    {
+      "original": "specs/003-rewrite-language-choices/tasks.md",
+      "archived": "archive/2026-09-11-pre-apple-only/specs/003-rewrite-language-choices/tasks.md",
+      "sha256": "2b2ed69e0afba5e578ffeeb4c7383bd0f0268ba6e7db207d33a129f8c09c8569"
+    },
+    {
+      "original": "specs/004-workflow-and-lifecycle/contracts/data-model.md",
+      "archived": "archive/2026-09-11-pre-apple-only/specs/004-workflow-and-lifecycle/contracts/data-model.md",
+      "sha256": "06acfd3dcdf6380e490906134f25f2b9c7441f449d4b92b7fb2952735a85279c"
+    },
+    {
+      "original": "specs/004-workflow-and-lifecycle/contracts/workflow-lifecycle-contract.md",
+      "archived": "archive/2026-09-11-pre-apple-only/specs/004-workflow-and-lifecycle/contracts/workflow-lifecycle-contract.md",
+      "sha256": "87dca834f1402b1da5c6888bdc87b1e65286fe5a6880243d8ca47e9a45cd6a56"
+    },
+    {
+      "original": "specs/004-workflow-and-lifecycle/handoff.md",
+      "archived": "archive/2026-09-11-pre-apple-only/specs/004-workflow-and-lifecycle/handoff.md",
+      "sha256": "8c45725499d644c3bfdc5b800f1da1796ed25b24761a18f445a9d6a5d8f21d5e"
+    },
+    {
+      "original": "specs/004-workflow-and-lifecycle/implementation-review.md",
+      "archived": "archive/2026-09-11-pre-apple-only/specs/004-workflow-and-lifecycle/implementation-review.md",
+      "sha256": "135a8ad39bf1008d434d2f8c555762f8ddf43b4cd57751b73551899897f9eaf4"
+    },
+    {
+      "original": "specs/004-workflow-and-lifecycle/plan.md",
+      "archived": "archive/2026-09-11-pre-apple-only/specs/004-workflow-and-lifecycle/plan.md",
+      "sha256": "f5fe3c8b7e6f22af5cdaad647a5b38407a18d9e32b2b7215bc20b77efcd4f716"
+    },
+    {
+      "original": "specs/004-workflow-and-lifecycle/planning-review.md",
+      "archived": "archive/2026-09-11-pre-apple-only/specs/004-workflow-and-lifecycle/planning-review.md",
+      "sha256": "5bc1eafbdeb2465ee3dbafb8955a0ddb2bc4549a318fbe43e399013e8b36c8bc"
+    },
+    {
+      "original": "specs/004-workflow-and-lifecycle/quickstart.md",
+      "archived": "archive/2026-09-11-pre-apple-only/specs/004-workflow-and-lifecycle/quickstart.md",
+      "sha256": "e5d2cd96fde6409c36dd8faa01a1f7d860b4b5179c9c41b1133f8d5b147cc2c3"
+    },
+    {
+      "original": "specs/004-workflow-and-lifecycle/recommendation-plan.md",
+      "archived": "archive/2026-09-11-pre-apple-only/specs/004-workflow-and-lifecycle/recommendation-plan.md",
+      "sha256": "2d1bf437f2b498d9a0d7f2af8a6484c2c982f317f2ec71cae424149aaf6c09db"
+    },
+    {
+      "original": "specs/004-workflow-and-lifecycle/recommendation-tasks.md",
+      "archived": "archive/2026-09-11-pre-apple-only/specs/004-workflow-and-lifecycle/recommendation-tasks.md",
+      "sha256": "7ca8a2a0509a170a95101bda67c995e1f50a63a549a1434ecb42e5b8c2467afd"
+    },
+    {
+      "original": "specs/004-workflow-and-lifecycle/research.md",
+      "archived": "archive/2026-09-11-pre-apple-only/specs/004-workflow-and-lifecycle/research.md",
+      "sha256": "c1d93db92a02997c95efd3aafc2df4feac3f6d20fffa48972fc8c37fac95a21c"
+    },
+    {
+      "original": "specs/004-workflow-and-lifecycle/spec.md",
+      "archived": "archive/2026-09-11-pre-apple-only/specs/004-workflow-and-lifecycle/spec.md",
+      "sha256": "77c888c162e9305d3561344875aa32199e6e05b7134e68c7f9645a21093ce7e3"
+    },
+    {
+      "original": "specs/004-workflow-and-lifecycle/tasks.md",
+      "archived": "archive/2026-09-11-pre-apple-only/specs/004-workflow-and-lifecycle/tasks.md",
+      "sha256": "d05466c373094dc6d078773aacd20e7e917568a0a8e29aec93d4a29acb6f74a1"
+    },
+    {
+      "original": "specs/005-installer-and-onboarding/.DS_Store",
+      "archived": "archive/2026-09-11-pre-apple-only/specs/005-installer-and-onboarding/.DS_Store",
+      "sha256": "43af3903af23d4e9d5f4e550981716871ae0f40bc8ed4c9715e587960a53bdef"
+    },
+    {
+      "original": "specs/005-installer-and-onboarding/architecture-review-scratchpad.md",
+      "archived": "archive/2026-09-11-pre-apple-only/specs/005-installer-and-onboarding/architecture-review-scratchpad.md",
+      "sha256": "5d40f838898605619a617ae20861e4617d8d10f4dc6c5538e5bab8be9ec9b604"
+    },
+    {
+      "original": "specs/005-installer-and-onboarding/code-review-implementation-plan.md",
+      "archived": "archive/2026-09-11-pre-apple-only/specs/005-installer-and-onboarding/code-review-implementation-plan.md",
+      "sha256": "d119650b042e252526fbe6d617812182dbd1b8c1116fca2bec781e115e55a836"
+    },
+    {
+      "original": "specs/005-installer-and-onboarding/code-review.md",
+      "archived": "archive/2026-09-11-pre-apple-only/specs/005-installer-and-onboarding/code-review.md",
+      "sha256": "8d106f049d3238d5fc1a7117f103784dafc9d5450259239b289af4acdc96a9db"
+    },
+    {
+      "original": "specs/005-installer-and-onboarding/installer-onboarding.md",
+      "archived": "archive/2026-09-11-pre-apple-only/specs/005-installer-and-onboarding/installer-onboarding.md",
+      "sha256": "e81fb61b3170535ebc64843985661e2622dc8a68d6af951602ff5edbdf0052b8"
+    },
+    {
+      "original": "specs/005-installer-and-onboarding/installer-research-report.md",
+      "archived": "archive/2026-09-11-pre-apple-only/specs/005-installer-and-onboarding/installer-research-report.md",
+      "sha256": "0cb871d60022e8c6168581a6ae68115d95e5e3c06c964bac509ee379e7fc1661"
+    },
+    {
+      "original": "specs/005-installer-and-onboarding/quickstart.md",
+      "archived": "archive/2026-09-11-pre-apple-only/specs/005-installer-and-onboarding/quickstart.md",
+      "sha256": "5e12ebf66b0bfb73097269674d077d2a6b2ba3fa96727d71c0b1131dc078ea49"
+    },
+    {
+      "original": "specs/005-installer-and-onboarding/spec.md",
+      "archived": "archive/2026-09-11-pre-apple-only/specs/005-installer-and-onboarding/spec.md",
+      "sha256": "62617433c7bf821770bd00ef226a0cc19bf59f3879741e13d1ecb17da9a803a0"
+    },
+    {
+      "original": "specs/005-installer-and-onboarding/stageserve-rename-ticket-list.md",
+      "archived": "archive/2026-09-11-pre-apple-only/specs/005-installer-and-onboarding/stageserve-rename-ticket-list.md",
+      "sha256": "938183612d1f93e3a55bb330495dc18e8bd92a6412613256809192fb412ce997"
+    },
+    {
+      "original": "specs/005-installer-and-onboarding/tasks.md",
+      "archived": "archive/2026-09-11-pre-apple-only/specs/005-installer-and-onboarding/tasks.md",
+      "sha256": "c2e02153098739c16c8b8e2ca7f73b42253256c1df84a540eafc224a30a520bb"
+    },
+    {
+      "original": "specs/006-project-and-command-renaming/cli-naming-analysis.md",
+      "archived": "archive/2026-09-11-pre-apple-only/specs/006-project-and-command-renaming/cli-naming-analysis.md",
+      "sha256": "97fa07a02eb0895182d980f6e5618d06855dac07049fc2bb0272a6a2d3e711f2"
+    },
+    {
+      "original": "specs/006-project-and-command-renaming/contracts/stageserve-rename-contract.md",
+      "archived": "archive/2026-09-11-pre-apple-only/specs/006-project-and-command-renaming/contracts/stageserve-rename-contract.md",
+      "sha256": "51210a2c65ab615625929d9e06a10a8e14a1bb7f4c0131bafd1198b79f04f233"
+    },
+    {
+      "original": "specs/006-project-and-command-renaming/inventory.md",
+      "archived": "archive/2026-09-11-pre-apple-only/specs/006-project-and-command-renaming/inventory.md",
+      "sha256": "f8608666898d5860b9f777da00737a7b475c7795925b0486aa7d2ff6acb8998b"
+    },
+    {
+      "original": "specs/006-project-and-command-renaming/plan.md",
+      "archived": "archive/2026-09-11-pre-apple-only/specs/006-project-and-command-renaming/plan.md",
+      "sha256": "043d6b9fdcfbdf1b2dab40ea23c6d44144591f8c4a81beb837288749632fa2fd"
+    },
+    {
+      "original": "specs/006-project-and-command-renaming/research.md",
+      "archived": "archive/2026-09-11-pre-apple-only/specs/006-project-and-command-renaming/research.md",
+      "sha256": "ae2596aeae1ad9a68c1af77426e871e79c48a62cbbf9848822af9a3ecdc25681"
+    },
+    {
+      "original": "specs/006-project-and-command-renaming/review-remediation-plan.md",
+      "archived": "archive/2026-09-11-pre-apple-only/specs/006-project-and-command-renaming/review-remediation-plan.md",
+      "sha256": "03e711d9bb824a2c5f500e505ce6fecd146a2f904d61c752e913ad28f4cca0ab"
+    },
+    {
+      "original": "specs/006-project-and-command-renaming/runbook.md",
+      "archived": "archive/2026-09-11-pre-apple-only/specs/006-project-and-command-renaming/runbook.md",
+      "sha256": "1d6fc55d6bbe54058fe8bca4d9c98f9a53d64b73095acb3d1161ad92ed094f16"
+    },
+    {
+      "original": "specs/006-project-and-command-renaming/stageserve-rename-ticket-list.md",
+      "archived": "archive/2026-09-11-pre-apple-only/specs/006-project-and-command-renaming/stageserve-rename-ticket-list.md",
+      "sha256": "b6074e3bbfe06a00b52ec311f94a971653fc071f02b0e4ebb1f97a671d1557df"
+    },
+    {
+      "original": "specs/006-project-and-command-renaming/tickets.md",
+      "archived": "archive/2026-09-11-pre-apple-only/specs/006-project-and-command-renaming/tickets.md",
+      "sha256": "76f16a00d9a0d34843f6e3f186918258a9961cb8c356ae7fe5a6dc20dafad8b6"
+    },
+    {
+      "original": "specs/007-harden-TUI-and-other-interactions/.gitkeep",
+      "archived": "archive/2026-09-11-pre-apple-only/specs/007-harden-TUI-and-other-interactions/.gitkeep",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "original": "specs/007-harden-TUI-and-other-interactions/contracts/guided-tui-contract.md",
+      "archived": "archive/2026-09-11-pre-apple-only/specs/007-harden-TUI-and-other-interactions/contracts/guided-tui-contract.md",
+      "sha256": "15b2b874e20c76b66dfe91261f6ac181bbb4c16d7cb7176880d2924f8775b481"
+    },
+    {
+      "original": "specs/007-harden-TUI-and-other-interactions/current-implementation-review.md",
+      "archived": "archive/2026-09-11-pre-apple-only/specs/007-harden-TUI-and-other-interactions/current-implementation-review.md",
+      "sha256": "7d280960a4cd872869894012f2848a427175b309255bd5c9bd53fcee7d077dd1"
+    },
+    {
+      "original": "specs/007-harden-TUI-and-other-interactions/data-model.md",
+      "archived": "archive/2026-09-11-pre-apple-only/specs/007-harden-TUI-and-other-interactions/data-model.md",
+      "sha256": "916e102f9a39a9be2322c1f98a50c5a3ff64085a721c419a902a9a7cf288886a"
+    },
+    {
+      "original": "specs/007-harden-TUI-and-other-interactions/flow-diagrams/00-vocabulary.md",
+      "archived": "archive/2026-09-11-pre-apple-only/specs/007-harden-TUI-and-other-interactions/flow-diagrams/00-vocabulary.md",
+      "sha256": "6d14f6b1e12af6738d111be73f9af3dd9f876ffd83f41035dd409d36b5ddfb65"
+    },
+    {
+      "original": "specs/007-harden-TUI-and-other-interactions/flow-diagrams/01-intent-from-004-005.md",
+      "archived": "archive/2026-09-11-pre-apple-only/specs/007-harden-TUI-and-other-interactions/flow-diagrams/01-intent-from-004-005.md",
+      "sha256": "547abb36754bbf04cf088a95a510f91c480594297ce841e8657e4f138861e910"
+    },
+    {
+      "original": "specs/007-harden-TUI-and-other-interactions/flow-diagrams/02-top-level-routing.md",
+      "archived": "archive/2026-09-11-pre-apple-only/specs/007-harden-TUI-and-other-interactions/flow-diagrams/02-top-level-routing.md",
+      "sha256": "a6ff3ac313c0b303399d3b3b4db82fddd13bd8439bcb9ed6c4324605ca9db842"
+    },
+    {
+      "original": "specs/007-harden-TUI-and-other-interactions/flow-diagrams/03-state-machine.md",
+      "archived": "archive/2026-09-11-pre-apple-only/specs/007-harden-TUI-and-other-interactions/flow-diagrams/03-state-machine.md",
+      "sha256": "f36f7dc032192b1dc2cd456beafd2198baba498f2d259299e4d5f74645d33277"
+    },
+    {
+      "original": "specs/007-harden-TUI-and-other-interactions/flow-diagrams/04-machine-setup.md",
+      "archived": "archive/2026-09-11-pre-apple-only/specs/007-harden-TUI-and-other-interactions/flow-diagrams/04-machine-setup.md",
+      "sha256": "7acba42764dbc51df307a8344e520da7bbe4c57565ffa9166babda3fc72719fb"
+    },
+    {
+      "original": "specs/007-harden-TUI-and-other-interactions/flow-diagrams/05-project-setup.md",
+      "archived": "archive/2026-09-11-pre-apple-only/specs/007-harden-TUI-and-other-interactions/flow-diagrams/05-project-setup.md",
+      "sha256": "540014b9e16c239bdd032ce680d7fc84199cc938673b3b28ad5a13cf404e05e0"
+    },
+    {
+      "original": "specs/007-harden-TUI-and-other-interactions/flow-diagrams/06-run-stop-inspect.md",
+      "archived": "archive/2026-09-11-pre-apple-only/specs/007-harden-TUI-and-other-interactions/flow-diagrams/06-run-stop-inspect.md",
+      "sha256": "2f4f71d5d85e45916675b0f82032d63895491a3c67e7f21107b097d49030df96"
+    },
+    {
+      "original": "specs/007-harden-TUI-and-other-interactions/flow-diagrams/07-out-of-sync.md",
+      "archived": "archive/2026-09-11-pre-apple-only/specs/007-harden-TUI-and-other-interactions/flow-diagrams/07-out-of-sync.md",
+      "sha256": "f48bb2b4a71dc30aabbe0bff37a1624ba8345b1f946ee1b8e815682c8608f115"
+    },
+    {
+      "original": "specs/007-harden-TUI-and-other-interactions/flow-diagrams/08-recovery-and-help.md",
+      "archived": "archive/2026-09-11-pre-apple-only/specs/007-harden-TUI-and-other-interactions/flow-diagrams/08-recovery-and-help.md",
+      "sha256": "6127d84a5f939916905da29e4b1946479bf4c7b3a82b7c26b74b5b95a29e5c4e"
+    },
+    {
+      "original": "specs/007-harden-TUI-and-other-interactions/flow-diagrams/09-power-user-paths.md",
+      "archived": "archive/2026-09-11-pre-apple-only/specs/007-harden-TUI-and-other-interactions/flow-diagrams/09-power-user-paths.md",
+      "sha256": "e727015776ca17cde2d99ecd2b600194bb827d6a4d31e7ade3d306dbd67bd4d4"
+    },
+    {
+      "original": "specs/007-harden-TUI-and-other-interactions/flow-diagrams/10-defaults-rules.md",
+      "archived": "archive/2026-09-11-pre-apple-only/specs/007-harden-TUI-and-other-interactions/flow-diagrams/10-defaults-rules.md",
+      "sha256": "c21de7349e0df17d72e3bb5695cf9947059d2419fad08d830036667b36ea7fc0"
+    },
+    {
+      "original": "specs/007-harden-TUI-and-other-interactions/flow-diagrams/README.md",
+      "archived": "archive/2026-09-11-pre-apple-only/specs/007-harden-TUI-and-other-interactions/flow-diagrams/README.md",
+      "sha256": "53b4e267b213e11ab5bf68b96c52010ce8fc5dbf3308b4b28f29f7c0ece9a1ea"
+    },
+    {
+      "original": "specs/007-harden-TUI-and-other-interactions/flow-redesign.md",
+      "archived": "archive/2026-09-11-pre-apple-only/specs/007-harden-TUI-and-other-interactions/flow-redesign.md",
+      "sha256": "0e764a1173734d1f0a2ab2bb26ace945d52ace5ccfbfeef145e8ca4097c5332c"
+    },
+    {
+      "original": "specs/007-harden-TUI-and-other-interactions/original-intentions-and-decisions.md",
+      "archived": "archive/2026-09-11-pre-apple-only/specs/007-harden-TUI-and-other-interactions/original-intentions-and-decisions.md",
+      "sha256": "55057d71daae1f822f76763f1f2c8030c762fec4c22fdc2cd9171e203a87985e"
+    },
+    {
+      "original": "specs/007-harden-TUI-and-other-interactions/plan.md",
+      "archived": "archive/2026-09-11-pre-apple-only/specs/007-harden-TUI-and-other-interactions/plan.md",
+      "sha256": "94e0ffec836945fa7c3eabfb5f17d5070b07f9061d25ff5aabfc0a4c634957c5"
+    },
+    {
+      "original": "specs/007-harden-TUI-and-other-interactions/prototype-plan.md",
+      "archived": "archive/2026-09-11-pre-apple-only/specs/007-harden-TUI-and-other-interactions/prototype-plan.md",
+      "sha256": "0a5e8b6079e571fb802263f9e0946bae3ac317e2860c2dafc64117fb482a76be"
+    },
+    {
+      "original": "specs/007-harden-TUI-and-other-interactions/quickstart.md",
+      "archived": "archive/2026-09-11-pre-apple-only/specs/007-harden-TUI-and-other-interactions/quickstart.md",
+      "sha256": "5f5fd1533fc616ece6176256831187622ad21329f42c862b24065b0855026c81"
+    },
+    {
+      "original": "specs/007-harden-TUI-and-other-interactions/recovery-plan.md",
+      "archived": "archive/2026-09-11-pre-apple-only/specs/007-harden-TUI-and-other-interactions/recovery-plan.md",
+      "sha256": "3a61d48d49de027e8793e13ff28f76b571882ab082a21a6670bb797e160a25cb"
+    },
+    {
+      "original": "specs/007-harden-TUI-and-other-interactions/research.md",
+      "archived": "archive/2026-09-11-pre-apple-only/specs/007-harden-TUI-and-other-interactions/research.md",
+      "sha256": "a6bd90211176c5e04c2938263c20a81a021855e1e9ab30dcf9ec10aa29b8fe96"
+    },
+    {
+      "original": "specs/007-harden-TUI-and-other-interactions/spec-planning-departures.md",
+      "archived": "archive/2026-09-11-pre-apple-only/specs/007-harden-TUI-and-other-interactions/spec-planning-departures.md",
+      "sha256": "235b708deae6178e498773fe5f411912c8e8a8c68fca40eec2a880a91d9457f5"
+    },
+    {
+      "original": "specs/007-harden-TUI-and-other-interactions/spec.md",
+      "archived": "archive/2026-09-11-pre-apple-only/specs/007-harden-TUI-and-other-interactions/spec.md",
+      "sha256": "4918c9068f82a69a4447e1f031a22855096d0c2f039071e7f8a59ab457a87e74"
+    },
+    {
+      "original": "specs/007-harden-TUI-and-other-interactions/tasks.md",
+      "archived": "archive/2026-09-11-pre-apple-only/specs/007-harden-TUI-and-other-interactions/tasks.md",
+      "sha256": "54766ab6b2b26cd8c28c88585d50419559a808814ce31f7954c7f7439c016944"
+    },
+    {
+      "original": "specs/008-version-management-releases-and-update-workflows/spec.md",
+      "archived": "archive/2026-09-11-pre-apple-only/specs/008-version-management-releases-and-update-workflows/spec.md",
+      "sha256": "5098a359ef5792c41ca8134e37b6cc721d44c5d5bbabd55bc9915a0f890cb821"
+    },
+    {
+      "original": "specs/009-documentation-update-and-declutter/spec.md",
+      "archived": "archive/2026-09-11-pre-apple-only/specs/009-documentation-update-and-declutter/spec.md",
+      "sha256": "9d6d9845539f0e9ad51cad813b49bf19e9bfc0a8bf010de878497138f497a81f"
+    },
+    {
+      "original": "specs/010-extract-local-dns-project/README.md",
+      "archived": "archive/2026-09-11-pre-apple-only/specs/010-extract-local-dns-project/README.md",
+      "sha256": "50790e74a229456be9a8d436c5c59ce2aad40fe47e994cd76b3dc01f25cffad3"
+    },
+    {
+      "original": "specs/010-extract-local-dns-project/architecture.md",
+      "archived": "archive/2026-09-11-pre-apple-only/specs/010-extract-local-dns-project/architecture.md",
+      "sha256": "71128fff4695dc194029ec6e2e94c0a5e1c7d2c5b07bd97c0925fb82522244ea"
+    },
+    {
+      "original": "specs/010-extract-local-dns-project/contracts/stageserve-integration-contract.md",
+      "archived": "archive/2026-09-11-pre-apple-only/specs/010-extract-local-dns-project/contracts/stageserve-integration-contract.md",
+      "sha256": "f57112fe6b9f103f54973e7b767d0a1c835594f150782fca9c139704f0c1b92d"
+    },
+    {
+      "original": "specs/010-extract-local-dns-project/migration.md",
+      "archived": "archive/2026-09-11-pre-apple-only/specs/010-extract-local-dns-project/migration.md",
+      "sha256": "1fe07deb398a78ad6cec1596dfe97069d042703ad537e5aadc196a9d8adb2b58"
+    },
+    {
+      "original": "specs/010-extract-local-dns-project/plan.md",
+      "archived": "archive/2026-09-11-pre-apple-only/specs/010-extract-local-dns-project/plan.md",
+      "sha256": "0cadf80b0b6a45c989ef3ab2e9c863ebcb51b02b76369b20dda239a2cb6b05a8"
+    },
+    {
+      "original": "specs/010-extract-local-dns-project/research.md",
+      "archived": "archive/2026-09-11-pre-apple-only/specs/010-extract-local-dns-project/research.md",
+      "sha256": "2d3283c22b4c64651ff8a3441eaf388fb9c704b223c84c3da020d62438e188d7"
+    },
+    {
+      "original": "specs/010-extract-local-dns-project/spec.md",
+      "archived": "archive/2026-09-11-pre-apple-only/specs/010-extract-local-dns-project/spec.md",
+      "sha256": "d18399f21b309f6300f67ed8df3d31fd2b2b385169ab956cf769e9681a5ec604"
+    },
+    {
+      "original": "specs/010-extract-local-dns-project/tasks.md",
+      "archived": "archive/2026-09-11-pre-apple-only/specs/010-extract-local-dns-project/tasks.md",
+      "sha256": "6d971f247b7bc0f22be7d15634e90a62c3f90b0172708bfe63acef3360bfd9c9"
+    },
+    {
+      "original": "specs/011-guided-experience-and-runtime-hardening/contracts/guided-runtime-hardening-contract.md",
+      "archived": "archive/2026-09-11-pre-apple-only/specs/011-guided-experience-and-runtime-hardening/contracts/guided-runtime-hardening-contract.md",
+      "sha256": "a8cd801e7c6c2265dc2a9bf4a2494144ead3111c3760fb4262c30878efa32f99"
+    },
+    {
+      "original": "specs/011-guided-experience-and-runtime-hardening/data-model.md",
+      "archived": "archive/2026-09-11-pre-apple-only/specs/011-guided-experience-and-runtime-hardening/data-model.md",
+      "sha256": "f4cfcf962fe9b057294274d85b64731736dfc3d18276fc416050e9c17e43c66e"
+    },
+    {
+      "original": "specs/011-guided-experience-and-runtime-hardening/plan.md",
+      "archived": "archive/2026-09-11-pre-apple-only/specs/011-guided-experience-and-runtime-hardening/plan.md",
+      "sha256": "63c44d3be750d49459f7e93b37c1c598e70166f1a6ecb5f3ad620b3d07a1d8b3"
+    },
+    {
+      "original": "specs/011-guided-experience-and-runtime-hardening/quickstart.md",
+      "archived": "archive/2026-09-11-pre-apple-only/specs/011-guided-experience-and-runtime-hardening/quickstart.md",
+      "sha256": "09e9ab7b32b212cd8749ddd03bfe21084a0d159aef07a7c46749d8ad95f36c9b"
+    },
+    {
+      "original": "specs/011-guided-experience-and-runtime-hardening/research.md",
+      "archived": "archive/2026-09-11-pre-apple-only/specs/011-guided-experience-and-runtime-hardening/research.md",
+      "sha256": "d9fab91ffef8b804a1dc3a1d39d9e3ae96ef029ec0456b8a718836579bd96e89"
+    },
+    {
+      "original": "specs/011-guided-experience-and-runtime-hardening/spec.md",
+      "archived": "archive/2026-09-11-pre-apple-only/specs/011-guided-experience-and-runtime-hardening/spec.md",
+      "sha256": "c5777a6ea3609257d9693a323313dfb32b3b9a516a2e89fc5391ae4f0ee99bef"
+    },
+    {
+      "original": "specs/011-guided-experience-and-runtime-hardening/tasks.md",
+      "archived": "archive/2026-09-11-pre-apple-only/specs/011-guided-experience-and-runtime-hardening/tasks.md",
+      "sha256": "2690e13688ebc391ebe4312e55021a90835fb3dc61e6d452446ee1b620ca940f"
+    }
+  ]
+}
