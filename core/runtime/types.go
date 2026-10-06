@@ -58,36 +58,42 @@ type Service struct {
 
 // StartOptions describes a project or shared-runtime start operation.
 type StartOptions struct {
-	ProjectDir    string
-	Definition    string
-	ProjectName   string
-	EnvFile       string
-	Env           []string
-	Profiles      []string
-	WaitTimeout   time.Duration
-	NoDeps        bool
-	ForceRecreate bool
-	Services      []string
+	Ownership      Ownership
+	RecordResource ResourceRecorder
+	ProjectDir     string
+	Definition     string
+	ProjectName    string
+	EnvFile        string
+	Env            []string
+	Profiles       []string
+	WaitTimeout    time.Duration
+	NoDeps         bool
+	ForceRecreate  bool
+	Services       []string
 }
 
 // StopOptions describes a project stop operation.
 type StopOptions struct {
-	ProjectDir    string
-	Definition    string
-	ProjectName   string
-	EnvFile       string
-	Env           []string
-	RemoveVolumes bool
+	Ownership      Ownership
+	RecordResource ResourceRecorder
+	ProjectDir     string
+	Definition     string
+	ProjectName    string
+	EnvFile        string
+	Env            []string
+	RemoveVolumes  bool
 }
 
 // RestartOptions describes a service restart operation.
 type RestartOptions struct {
-	ProjectDir  string
-	Definition  string
-	ProjectName string
-	EnvFile     string
-	Env         []string
-	Service     string
+	Ownership      Ownership
+	RecordResource ResourceRecorder
+	ProjectDir     string
+	Definition     string
+	ProjectName    string
+	EnvFile        string
+	Env            []string
+	Service        string
 }
 
 // LogsOptions describes a service or project log stream.
